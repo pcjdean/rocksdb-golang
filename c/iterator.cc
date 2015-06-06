@@ -22,12 +22,7 @@
 #include "rocksdb/slice.h"
 #include "rocksdb/status.h"
 
-inline Iterator_t NewIteratorT(Iterator* it)
-{
-    Iterator_t it_t;
-    it_t.rep = it;
-    return it_t;
-}
+DEFINE_C_WRAP_CONSTRUCTOR(Iterator)
 
 namespace rocksdb {
 

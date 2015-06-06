@@ -51,12 +51,10 @@ extern const std::string kDefaultColumnFamilyName;
 static const int kMajorVersion = __ROCKSDB_MAJOR__;
 static const int kMinorVersion = __ROCKSDB_MINOR__;
 
-inline Snapshot_t NewSnapshotT(Snapshot* snp)
-{
-    Snapshot_t snp_t;
-    snp_t.rep = snp;
-    return snp_t;
-}
+#define INITIALIZE_DEFAULT_COLUMN_FAMILY() ColumnFamilyHandle_t cf_handle;   \
+                                           cf_handle.rep = DefaultColumnFamily(); 
+
+DEFINE_C_WRAP_CONSTRUCTOR(Snapshot)
 
 // Abstract handle to particular state of a DB.
 // A Snapshot is an immutable object and can therefore be safely
@@ -138,7 +136,7 @@ Status_t OpenForReadOnlyWithColumnFamilies(
     assert(handles_vec.size() == size_col);
     *handles = new ColumnFamilyHandle_t[size_col];
     for (int j = 0; j < size_col; j++)
-        (*handles)[j]->rep = handles_vec[j];
+        GET_REP((*handles)[j]) = handles_vec[j];
     return ret;
 }
 
@@ -166,7 +164,7 @@ Status_t OpenWithColumnFamilies(const Options_t* options, const String_t* name,
     assert(handles_vec.size() == size_col);
     *handles = new ColumnFamilyHandle_t[size_col];
     for (int j = 0; j < size_col; j++)
-        (*handles)[j]->rep = handles_vec[j];
+        GET_REP((*handles)[j]) = handles_vec[j];
     return ret;
 }
 
@@ -183,7 +181,7 @@ Status_t ListColumnFamilies(DBOptions_t* db_options,
     *size_col = column_families_vec.size();
     *column_families = new String_t[column_families];
     for (int j = 0; j < *size_col; j++)
-        *(*column_families)[j]->rep = std::move(column_families_vec[i]);
+        GET_REP_REF((*column_families)[j]) = std::move(column_families_vec[i]);
     return ret;
 }
 
@@ -232,8 +230,7 @@ Status_t Put(DB_t* dbptr, const WriteOptions_t* optionss,
            const Slice_t* key,
            const Slice_t* value)
 {
-    ColumnFamilyHandle_t cf_handle;
-    cf_handle.rep = DefaultColumnFamily();
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
     return PutWithColumnFamily(dbptr, options, &cf_handle, key, value);
 }
 
@@ -254,8 +251,7 @@ Status_t DeleteWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
 Status_t Delete(DB_t* dbptr, const WriteOptions_t* optionss,
               const Slice_t* key)
 {
-    ColumnFamilyHandle_t cf_handle;
-    cf_handle.rep = DefaultColumnFamily();
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
     return DeleteWithColumnFamily(dbptr, options, &cf_handle, key);
 }
 
@@ -278,8 +274,7 @@ Status_t Merge(DB_t* dbptr, const WriteOptions_t* optionss,
              const Slice_t* key,
              const Slice_t* value)
 {
-    ColumnFamilyHandle_t cf_handle;
-    cf_handle.rep = DefaultColumnFamily();
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
     return MergeWithColumnFamily(dbptr, options, &cf_handle, key, value);
 }
 
@@ -313,7 +308,7 @@ Status_t GetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
         std::string str_val;
         Status ret = GET_REP(dbptr)->Get(GET_REP_REF(options), GET_REP(column_family), *key->rep, &str_val);
         if (!str_val.empty())
-            *value->rep = std::move(str_val);
+            GET_REP_REF(value) = std::move(str_val);
         
         return MoveCopyStatus(&ret);
     }
@@ -325,8 +320,7 @@ Status_t Get(DB_t* dbptr, const ReadOptions_t* options,
              const Slice_t* key,
              const String_t* value)
 {
-    ColumnFamilyHandle_t cf_handle;
-    cf_handle.rep = DefaultColumnFamily();
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
     return GetWithColumnFamily(dbptr, options, &cf_handle, key, value);
 }
 
@@ -357,14 +351,14 @@ Status_t* MultiGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
         for (int i = 0; i < size_keys; i++)
             keys_vec.push_back(*keys[i].rep);
         std::vector<std::string> values_vec;
-        std::vector<Status> ret_vec = dbptr->MultiGetWithColumnFamily(*options->rep, column_families_vec, keys_vec, values_vec);
+        std::vector<Status> ret_vec = GET_REP(dbptr)->MultiGetWithColumnFamily(GET_REP_REF(options), column_families_vec, keys_vec, values_vec);
         assert(values_vec.size() == size_keys);
         assert(ret_vec.size() == size_keys);
         *values = new String_t[size_keys];
         ret = new Status_t[size_keys];
         for (int j = 0; j < size_keys; j++)
         {
-            *values[j]->rep = std::move(values_vec[j]);
+            GET_REP_REF(values[j]) = std::move(values_vec[j]);
             *ret[j] = MoveCopyStatus(&ret_vec[j]);
         }
     }
@@ -382,8 +376,7 @@ Status_t* MultiGet(DB_t* dbptr, const ReadOptions_t* options,
                    String_t** values)
 {
     ColumnFamilyHandle_t *column_families = new ColumnFamilyHandle_t[size_keys];
-    ColumnFamilyHandle_t cf_handle;
-    cf_handle.rep = DefaultColumnFamily();
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
     std::fill_n(column_families, size_keys, cf_handle);
     return MultiGetWithColumnFamily(dbptr, options, column_families, keys, size_keys, values);
 }
@@ -402,8 +395,8 @@ bool KeyMayExistWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options
                  bool* value_found)
 {
     std::string val_str;
-    bool ret = dbptr->KeyMayExist(*options->rep, column_family->rep, *key->rep, &val_str, value_found);
-    *value->rep = std::move(val_str);
+    bool ret = GET_REP(dbptr)->KeyMayExist(GET_REP_REF(options), GET_REP(column_family), GET_REP_REF(key), &val_str, value_found);
+    GET_REP_REF(value) = std::move(val_str);
     return ret;
 }
 
@@ -412,8 +405,7 @@ bool KeyMayExist(DB_t* dbptr, const ReadOptions_t* options
                          String_t* value,
                          bool* value_found)
 {
-    ColumnFamilyHandle_t cf_handle;
-    cf_handle.rep = DefaultColumnFamily();
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
     return KeyMayExistWithColumnFamily(dbptr, options, &cf_handle, key, value, value_found);
 }
 
@@ -426,13 +418,12 @@ bool KeyMayExist(DB_t* dbptr, const ReadOptions_t* options
 Iterator_t NewIteratorWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
                        ColumnFamilyHandle_t* column_family)
 {
-    return NewIteratorT(dbptr ? dbptr->NewIterator(*options->rep, *column_family->rep) : nullptr);
+    return NewIteratorT(dbptr ? GET_REP(dbptr)->NewIterator(GET_REP_REF(options), GET_REP(column_family)) : nullptr);
 }
     
 Iterator_t NewIterator(DB_t* dbptr, const ReadOptions_t* options)
 {
-    ColumnFamilyHandle_t cf_handle;
-    cf_handle.rep = DefaultColumnFamily();
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
     return NewIteratorWithColumnFamily(dbptr, options, &cf_handle);
 }
 
@@ -453,12 +444,12 @@ virtual Status_t NewIterators(DB_t* dbptr, const ReadOptions_t* options,
         for (int i = 0; i < size_col; i++)
             column_families_vec.push_back(column_families[i].rep);
         std::vector<Iterator*> values_vec;
-        Status ret = dbptr->NewIterators(*options->rep, column_families_vec, &values_vec);
+        Status ret = GET_REP(dbptr)->NewIterators(GET_REP_REF(options), column_families_vec, &values_vec);
         int num_val = values_vec.size();
         *values = new Iterator_t[num_val];
         for (int j = 0; j < num_val; j++)
         {
-            *values[j]->rep = std::move(values_vec[j]);
+            GET_REP_REF(values[j]) = std::move(values_vec[j]);
         }
         return MoveCopyStatus(&ret);
     }
@@ -477,7 +468,7 @@ virtual Status_t NewIterators(DB_t* dbptr, const ReadOptions_t* options,
 // not support snapshot.
 Snapshot_t GetSnapshot(DB_t* dbptr)
 {
-    return NewSnapshotT(dbptr ? dbptr->GetSnapshot() : nullptr);
+    return NewSnapshotT(dbptr ? GET_REP(dbptr)->GetSnapshot() : nullptr);
 }
 
 // Release a previously acquired snapshot.  The caller must not
@@ -485,7 +476,7 @@ Snapshot_t GetSnapshot(DB_t* dbptr)
 void ReleaseSnapshot(DB_t* dbptr, const Snapshot_t* snapshot)
 {
     if (dbptr)
-        dbptr->ReleaseSnapshot(*snapshot->rep);
+        GET_REP(dbptr)->ReleaseSnapshot(*snapshot->rep);
 }
 
 // DB implementations can export properties about their state
@@ -525,61 +516,95 @@ void ReleaseSnapshot(DB_t* dbptr, const Snapshot_t* snapshot)
 //      files are held from being deleted, by iterators or unfinished
 //      compactions.
 
-bool GetProperty(DB_t* dbptr, const ReadOptions_t* options,
+bool GetPropertyWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
                        ColumnFamilyHandle_t* column_family
                        const Slice_t* property, String_t* value)
 {
     if (dbptr)
     {
-        return dbptr->GetProperty(*options->rep, *column_family->rep, *property->rep
+        std::string str_val
+        bool ret = GET_REP(dbptr)->GetProperty(GET_REP_REF(options), GET_REP(column_family), GET_REP_REF(property), &str_val);
+        GET_REP_REF(value) = std::move(str_val);
+        return ret;
     }
     else
         return false;
 }
     
-virtual bool GetProperty(const Slice& property, std::string* value) {
-return GetProperty(DefaultColumnFamily(), property, value);
+bool GetProperty(DB_t* dbptr, const ReadOptions_t* options,
+                 const Slice_t* property, String_t* value)
+{
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
+    return GetPropertyWithColumnFamily(dbptr, options, &cf_handle, property, value);
 }
 
-  // Similar to GetProperty(), but only works for a subset of properties whose
-  // return value is an integer. Return the value by integer. Supported
-  // properties:
-  //  "rocksdb.num-immutable-mem-table"
-  //  "rocksdb.mem-table-flush-pending"
-  //  "rocksdb.compaction-pending"
-  //  "rocksdb.background-errors"
-  //  "rocksdb.cur-size-active-mem-table"
-  //  "rocksdb.cur-size-all-mem-tables"
-  //  "rocksdb.num-entries-active-mem-table"
-  //  "rocksdb.num-entries-imm-mem-tables"
-  //  "rocksdb.num-deletes-active-mem-table"
-  //  "rocksdb.num-deletes-imm-mem-tables"
-  //  "rocksdb.estimate-num-keys"
-  //  "rocksdb.estimate-table-readers-mem"
-  //  "rocksdb.is-file-deletions-enabled"
-  //  "rocksdb.num-snapshots"
-  //  "rocksdb.oldest-snapshot-time"
-  //  "rocksdb.num-live-versions"
-  virtual bool GetIntProperty(ColumnFamilyHandle* column_family,
-                              const Slice& property, uint64_t* value) = 0;
-  virtual bool GetIntProperty(const Slice& property, uint64_t* value) {
-    return GetIntProperty(DefaultColumnFamily(), property, value);
-  }
+// Similar to GetProperty(), but only works for a subset of properties whose
+// return value is an integer. Return the value by integer. Supported
+// properties:
+//  "rocksdb.num-immutable-mem-table"
+//  "rocksdb.mem-table-flush-pending"
+//  "rocksdb.compaction-pending"
+//  "rocksdb.background-errors"
+//  "rocksdb.cur-size-active-mem-table"
+//  "rocksdb.cur-size-all-mem-tables"
+//  "rocksdb.num-entries-active-mem-table"
+//  "rocksdb.num-entries-imm-mem-tables"
+//  "rocksdb.num-deletes-active-mem-table"
+//  "rocksdb.num-deletes-imm-mem-tables"
+//  "rocksdb.estimate-num-keys"
+//  "rocksdb.estimate-table-readers-mem"
+//  "rocksdb.is-file-deletions-enabled"
+//  "rocksdb.num-snapshots"
+//  "rocksdb.oldest-snapshot-time"
+//  "rocksdb.num-live-versions"
+bool GetIntPropertyWithColumnFamily(DB_t* dbptr, 
+                                    ColumnFamilyHandle_t* column_family,
+                                    const Slice_t* property, uint64_t* value)
+{
+    if (dbptr)
+    {
+        return GET_REP(dbptr)->GetIntProperty(GET_REP(column_family), GET_REP_REF(property), value);
+    }
+    else
+        return false;
+}
 
-  // For each i in [0,n-1], store in "sizes[i]", the approximate
-  // file system space used by keys in "[range[i].start .. range[i].limit)".
-  //
-  // Note that the returned sizes measure file system space usage, so
-  // if the user data compresses by a factor of ten, the returned
-  // sizes will be one-tenth the size of the corresponding user data size.
-  //
-  // The results may not include the sizes of recently written data.
-  virtual void GetApproximateSizes(ColumnFamilyHandle* column_family,
-                                   const Range* range, int n,
-                                   uint64_t* sizes) = 0;
-  virtual void GetApproximateSizes(const Range* range, int n, uint64_t* sizes) {
-    GetApproximateSizes(DefaultColumnFamily(), range, n, sizes);
-  }
+bool GetIntProperty(DB_t* dbptr, 
+                    const Slice_t* property, uint64_t* value)
+{
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
+    return GetIntPropertyWithColumnFamily(dbptr, &cf_handle, property, value);
+}
+
+// For each i in [0,n-1], store in "sizes[i]", the approximate
+// file system space used by keys in "[range[i].start .. range[i].limit)".
+//
+// Note that the returned sizes measure file system space usage, so
+// if the user data compresses by a factor of ten, the returned
+// sizes will be one-tenth the size of the corresponding user data size.
+//
+// The results may not include the sizes of recently written data.
+void GetApproximateSizesWithColumnFamily(DB_t* dbptr, 
+                                         ColumnFamilyHandle_t* column_family,
+                                         const Range_t* range, int n,
+                                         uint64_t* sizes)
+{
+    if (dbptr)
+    {
+        const Range* range_ary = new Range*[n];
+        for (int i = 0; i < n; i++)
+            range_ary[i] = GET_REP(range[i]);
+        GET_REP(dbptr)->GetApproximateSizes(GET_REP(column_family), range_ary, n, sizes);
+    }
+}
+
+void GetApproximateSizes(DB_t* dbptr, 
+                         const Range_t* range, int n,
+                         uint64_t* sizes)
+{
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
+    GetApproximateSizesWithColumnFamily(dbptr, &cf_handle, range, n, sizes);
+}
 
   // Compact the underlying storage for the key range [*begin,*end].
   // The actual compaction interval might be superset of [*begin, *end].

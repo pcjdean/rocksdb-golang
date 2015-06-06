@@ -22,9 +22,7 @@
 
 namespace rocksdb {
 
-typedef struct Status_t {
-    Status *rep;
-} Status_t;
+DEFINE_C_WRAP_STRUCT(Status)
     
 
 class Status {

@@ -25,6 +25,8 @@
 #include <string.h>
 #include <string>
 
+DEFINE_C_WRAP_STRUCT(Slice)
+
 namespace rocksdb {
 
 class Slice {

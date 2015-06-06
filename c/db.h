@@ -40,19 +40,13 @@ class EventListener;
 
 using std::unique_ptr;
 
-typedef struct ColumnFamilyHandle_t {
-  ColumnFamilyHandle* rep;
-} ColumnFamilyHandle_t;
+DEFINE_C_WRAP_STRUCT(ColumnFamilyHandle)
 
-typedef struct String_t {
-    std::string* rep;
-} String_t;
+DEFINE_C_WRAP_STRUCT(String, std::string)
 
 extern const std::string kDefaultColumnFamilyName;
 
-typedef struct ColumnFamilyDescriptor_t {
-  ColumnFamilyDescripto* rep;
-} ColumnFamilyDescriptor_t;
+DEFINE_C_WRAP_STRUCT(ColumnFamilyDescriptor)
 
 static const int kMajorVersion = __ROCKSDB_MAJOR__;
 static const int kMinorVersion = __ROCKSDB_MINOR__;
@@ -60,9 +54,7 @@ static const int kMinorVersion = __ROCKSDB_MINOR__;
 // Abstract handle to particular state of a DB.
 // A Snapshot is an immutable object and can therefore be safely
 // accessed from multiple threads without any external synchronization.
-typedef struct Snapshot_t {
-    Snapshot* rep;
-} Snapshot_t;
+DEFINE_C_WRAP_STRUCT(Snapshot)
 
 // A range of keys
 struct Range {
@@ -82,9 +74,7 @@ typedef std::unordered_map<std::string, std::shared_ptr<const TableProperties>>
 // A DB is a persistent ordered map from keys to values.
 // A DB is safe for concurrent access from multiple threads without
 // any external synchronization.
-typedef struct DB_t {
-  DB* rep;
-} DB_t;
+DEFINE_C_WRAP_STRUCT(DB)
 
 #ifndef ROCKSDB_LITE
   struct Properties {
