@@ -657,7 +657,7 @@ Status_t SetOptionsWithColumnFamily(DB_t* dbptr,
 {
     const std::unordered_map<std::string, std::string> new_options_map;
     for (int i = 0; i < n; i++)
-        new_options_map[new_options[i]] = new_options[++i];
+        new_options_map[std::move(GET_REP(&new_options[i]))] = std::move(GET_REP(&new_options[++i]));
     return MoveCopyStatus(&GET_REP(dbptr)->SetOptions(GET_REP(column_families), new_options_map));
 }
 
@@ -680,11 +680,15 @@ Status_t CompactFilesWithColumnFamily(DB_t* dbptr,
                                       const CompactionOptions_t compact_options,
                                       ColumnFamilyHandle_t* column_family,
                                       const String_t input_file_names[],
+                                      const int n,
                                       const int output_level, const int output_path_id)
 {
     if (dbptr)
     {
-        return MoveCopyStatus(&GET_REP(dbptr)->CompactFiles(GET_REP_REF(compact_options), GET_REP(column_family), GET_REP(end), reduce_level, target_level, target_path_id));
+        const std::vector<std::string> input_file_names_vec;
+        for (int i = 0; i < n; i++)
+            input_file_names_vec.push_back(std::move(GET_REP_REF(&input_file_names[i])));
+        return MoveCopyStatus(&GET_REP(dbptr)->CompactFiles(GET_REP_REF(compact_options), GET_REP(column_family), input_file_names_vec, output_level, output_path_id));
     }
     else
     {
