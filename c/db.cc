@@ -606,64 +606,99 @@ void GetApproximateSizes(DB_t* dbptr,
     GetApproximateSizesWithColumnFamily(dbptr, &cf_handle, range, n, sizes);
 }
 
-  // Compact the underlying storage for the key range [*begin,*end].
-  // The actual compaction interval might be superset of [*begin, *end].
-  // In particular, deleted and overwritten versions are discarded,
-  // and the data is rearranged to reduce the cost of operations
-  // needed to access the data.  This operation should typically only
-  // be invoked by users who understand the underlying implementation.
-  //
-  // begin==nullptr is treated as a key before all keys in the database.
-  // end==nullptr is treated as a key after all keys in the database.
-  // Therefore the following call will compact the entire database:
-  //    db->CompactRange(nullptr, nullptr);
-  // Note that after the entire database is compacted, all data are pushed
-  // down to the last level containing any data. If the total data size
-  // after compaction is reduced, that level might not be appropriate for
-  // hosting all the files. In this case, client could set reduce_level
-  // to true, to move the files back to the minimum level capable of holding
-  // the data set or a given level (specified by non-negative target_level).
-  // Compaction outputs should be placed in options.db_paths[target_path_id].
-  // Behavior is undefined if target_path_id is out of range.
-  virtual Status_t CompactRange(ColumnFamilyHandle* column_family,
-                              const Slice* begin, const Slice* end,
-                              bool reduce_level = false, int target_level = -1,
-                              uint32_t target_path_id = 0) = 0;
-  virtual Status_t CompactRange(const Slice* begin, const Slice* end,
-                              bool reduce_level = false, int target_level = -1,
-                              uint32_t target_path_id = 0) {
-    return CompactRange(DefaultColumnFamily(), begin, end, reduce_level,
-                        target_level, target_path_id);
-  }
-  virtual Status_t SetOptions(ColumnFamilyHandle* column_family,
-      const std::unordered_map<std::string, std::string>& new_options) {
-    return Status_t::NotSupported("Not implemented");
-  }
-  virtual Status_t SetOptions(
-      const std::unordered_map<std::string, std::string>& new_options) {
-    return SetOptions(DefaultColumnFamily(), new_options);
-  }
+// Compact the underlying storage for the key range [*begin,*end].
+// The actual compaction interval might be superset of [*begin, *end].
+// In particular, deleted and overwritten versions are discarded,
+// and the data is rearranged to reduce the cost of operations
+// needed to access the data.  This operation should typically only
+// be invoked by users who understand the underlying implementation.
+//
+// begin==nullptr is treated as a key before all keys in the database.
+// end==nullptr is treated as a key after all keys in the database.
+// Therefore the following call will compact the entire database:
+//    db->CompactRange(nullptr, nullptr);
+// Note that after the entire database is compacted, all data are pushed
+// down to the last level containing any data. If the total data size
+// after compaction is reduced, that level might not be appropriate for
+// hosting all the files. In this case, client could set reduce_level
+// to true, to move the files back to the minimum level capable of holding
+// the data set or a given level (specified by non-negative target_level).
+// Compaction outputs should be placed in options.db_paths[target_path_id].
+// Behavior is undefined if target_path_id is out of range.
+Status_t CompactRangeWithColumnFamily(DB_t* dbptr, 
+                                      ColumnFamilyHandle_t* column_family,
+                                      const Slice_t* begin, const Slice_t* end,
+                                      bool reduce_level, int target_level,
+                                      uint32_t target_path_id)
+{
+    if (dbptr)
+    {
+        return MoveCopyStatus(&GET_REP(dbptr)->CompactRange(GET_REP(column_families), GET_REP(begin), GET_REP(end), reduce_level, target_level, target_path_id));
+    }
+    else
+    {
+        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+    }
+}
 
-  // CompactFiles() inputs a list of files specified by file numbers
-  // and compacts them to the specified level.  Note that the behavior
-  // is different from CompactRange in that CompactFiles() will
-  // perform the compaction job using the CURRENT thread.
-  //
-  // @see GetDataBaseMetaData
-  // @see GetColumnFamilyMetaData
-  virtual Status_t CompactFiles(
-      const CompactionOptions& compact_options,
-      ColumnFamilyHandle* column_family,
-      const std::vector<std::string>& input_file_names,
-      const int output_level, const int output_path_id = -1) = 0;
+Status_t CompactRange(DB_t* dbptr, 
+                      const Slice_t* begin, const Slice_t* end,
+                      bool reduce_level, int target_level,
+                      uint32_t target_path_id)
+{
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
+    return CompactRangeWithColumnFamily(dbptr, &cf_handle, begin, end, reduce_level, target_level, target_path_id);
+}
 
-  virtual Status_t CompactFiles(
-      const CompactionOptions& compact_options,
-      const std::vector<std::string>& input_file_names,
-      const int output_level, const int output_path_id = -1) {
-    return CompactFiles(compact_options, DefaultColumnFamily(),
-                        input_file_names, output_level, output_path_id);
-  }
+Status_t SetOptionsWithColumnFamily(DB_t* dbptr, 
+                                    ColumnFamilyHandle_t* column_family
+                                    const String_t new_options[],
+                                    int n)
+{
+    const std::unordered_map<std::string, std::string> new_options_map;
+    for (int i = 0; i < n; i++)
+        new_options_map[new_options[i]] = new_options[++i];
+    return MoveCopyStatus(&GET_REP(dbptr)->SetOptions(GET_REP(column_families), new_options_map));
+}
+
+Status_t SetOptions(DB_t* dbptr, 
+                    const String_t new_options[],
+                    const int n)
+{
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
+    return SetOptions(&cf_handle, new_options, n);
+}
+
+// CompactFiles() inputs a list of files specified by file numbers
+// and compacts them to the specified level.  Note that the behavior
+// is different from CompactRange in that CompactFiles() will
+// perform the compaction job using the CURRENT thread.
+//
+// @see GetDataBaseMetaData
+// @see GetColumnFamilyMetaData
+Status_t CompactFilesWithColumnFamily(DB_t* dbptr, 
+                                      const CompactionOptions_t compact_options,
+                                      ColumnFamilyHandle_t* column_family,
+                                      const String_t input_file_names[],
+                                      const int output_level, const int output_path_id)
+{
+    if (dbptr)
+    {
+        return MoveCopyStatus(&GET_REP(dbptr)->CompactFiles(GET_REP_REF(compact_options), GET_REP(column_family), GET_REP(end), reduce_level, target_level, target_path_id));
+    }
+    else
+    {
+        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+    }
+}
+
+Status_t CompactFiles(
+  const CompactionOptions& compact_options,
+  const std::vector<std::string>& input_file_names,
+  const int output_level, const int output_path_id = -1) {
+return CompactFiles(compact_options, DefaultColumnFamily(),
+                    input_file_names, output_level, output_path_id);
+}
   // Number of levels used for this DB.
   virtual int NumberLevels(ColumnFamilyHandle* column_family) = 0;
   virtual int NumberLevels() { return NumberLevels(DefaultColumnFamily()); }
