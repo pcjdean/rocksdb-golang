@@ -55,6 +55,7 @@ static const int kMinorVersion = __ROCKSDB_MINOR__;
                                            cf_handle.rep = DefaultColumnFamily(); 
 
 DEFINE_C_WRAP_CONSTRUCTOR(Snapshot)
+DEFINE_C_WRAP_CONSTRUCTOR(String)
 
 // Abstract handle to particular state of a DB.
 // A Snapshot is an immutable object and can therefore be safely
@@ -696,48 +697,105 @@ Status_t CompactFilesWithColumnFamily(DB_t* dbptr,
     }
 }
 
-Status_t CompactFiles(
-  const CompactionOptions& compact_options,
-  const std::vector<std::string>& input_file_names,
-  const int output_level, const int output_path_id = -1) {
-return CompactFiles(compact_options, DefaultColumnFamily(),
-                    input_file_names, output_level, output_path_id);
+Status_t CompactFiles(DB_t* dbptr, 
+                      const CompactionOptions_t compact_options,
+                      const String_t input_file_names[],
+                      const int n,
+                      const int output_level, const int output_path_id)
+{
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
+    return CompactFilesWithColumnFamily(dbptr, compact_options, &cf_handle,
+                                            input_file_names, n, output_level, output_path_id);
 }
-  // Number of levels used for this DB.
-  virtual int NumberLevels(ColumnFamilyHandle* column_family) = 0;
-  virtual int NumberLevels() { return NumberLevels(DefaultColumnFamily()); }
 
-  // Maximum level to which a new compacted memtable is pushed if it
-  // does not create overlap.
-  virtual int MaxMemCompactionLevel(ColumnFamilyHandle* column_family) = 0;
-  virtual int MaxMemCompactionLevel() {
-    return MaxMemCompactionLevel(DefaultColumnFamily());
-  }
+// Number of levels used for this DB.
+int NumberLevelsWithColumnFamily(DB_t* dbptr, 
+                                 ColumnFamilyHandle_t* column_family)
+{
+    int ret = 0;
+    if (dbptr)
+    {
+        ret = GET_REP(dbptr)->NumberLevels(GET_REP(column_family));
+    }
+    return ret;
+}
 
-  // Number of files in level-0 that would stop writes.
-  virtual int Level0StopWriteTrigger(ColumnFamilyHandle* column_family) = 0;
-  virtual int Level0StopWriteTrigger() {
-    return Level0StopWriteTrigger(DefaultColumnFamily());
-  }
+int NumberLevels(DB_t* dbptr)
+{
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
+    return NumberLevelsWithColumnFamily(dbptr, &cf_handle);
+}
 
-  // Get DB name -- the exact same name that was provided as an argument to
-  // DB::Open()
-  virtual const std::string& GetName() const = 0;
+// Maximum level to which a new compacted memtable is pushed if it
+// does not create overlap.
+int MaxMemCompactionLevelWithColumnFamily(DB_t* dbptr, 
+                                          ColumnFamilyHandle_t* column_family)
+{
+    int ret = 0;
+    if (dbptr)
+    {
+        ret = GET_REP(dbptr)->MaxMemCompactionLevel(GET_REP(column_family));
+    }
+    return ret;
+}
 
-  // Get Env object from the DB
-  virtual Env* GetEnv() const = 0;
+int MaxMemCompactionLevel(DB_t* dbptr)
+{
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
+    return MaxMemCompactionLevelWithColumnFamily(dbptr, &cf_handle);
+}
 
-  // Get DB Options that we use.  During the process of opening the
-  // column family, the options provided when calling DB::Open() or
-  // DB::CreateColumnFamily() will have been "sanitized" and transformed
-  // in an implementation-defined manner.
-  virtual const Options& GetOptions(ColumnFamilyHandle* column_family)
-      const = 0;
-  virtual const Options& GetOptions() const {
-    return GetOptions(DefaultColumnFamily());
-  }
+// Number of files in level-0 that would stop writes.
+int Level0StopWriteTriggerWithColumnFamily(DB_t* dbptr, 
+                                          ColumnFamilyHandle_t* column_family)
+{
+    int ret = 0;
+    if (dbptr)
+    {
+        ret = GET_REP(dbptr)->Level0StopWriteTrigger(GET_REP(column_family));
+    }
+    return ret;
+}
 
-  virtual const DBOptions& GetDBOptions() const = 0;
+int Level0StopWriteTrigger(DB_t* dbptr)
+{
+    INITIALIZE_DEFAULT_COLUMN_FAMILY()
+    return Level0StopWriteTriggerWithColumnFamily(dbptr, &cf_handle);
+}
+
+// Get DB name -- the exact same name that was provided as an argument to
+// DB::Open()
+String_t GetName(DB_t* dbptr)
+{
+    return NewStringT(dbptr ? &GET_REP(dbptr)->GetName() : nullptr);
+}
+
+// Get Env object from the DB
+Env_t GetEnv(DB_t* dbptr)
+{
+    return NewEnvT(dbptr ? GET_REP(dbptr)->GetEnv() : nullptr);
+}
+
+// Get DB Options that we use.  During the process of opening the
+// column family, the options provided when calling DB::Open() or
+// DB::CreateColumnFamily() will have been "sanitized" and transformed
+// in an implementation-defined manner.
+Options_t GetOptionsWithColumnFamily(DB_t* dbptr, 
+                     ColumnFamilyHandle_t* column_family)
+{
+    return NewOptionsT(dbptr ? &GET_REP(dbptr)->GetOptions(GET_REP(column_family)) : nullptr);
+}
+
+Options_t GetOptions(DB_t* dbptr) const
+{
+    INITIALIZE_DEFAULT_COLUMN_FAMILY
+    return GetOptionsWithColumnFamily(dbptr, &cf_handle);
+}
+
+DBOptions_t GetDBOptions(DB_t* dbptr)
+{
+    return NewDBOptionsT(dbptr ? GET_REP(dbptr)->GetDBOptions() : nullptr);
+}
 
   // Flush all mem-table data.
   virtual Status_t Flush(const FlushOptions& options,

@@ -43,6 +43,7 @@ class ThreadStatusUpdater;
 using std::unique_ptr;
 using std::shared_ptr;
 
+DEFINE_C_WRAP_STRUCT(Env)
 
 // Options while opening a file to read/write
 struct EnvOptions {
