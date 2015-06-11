@@ -51,9 +51,6 @@ extern const std::string kDefaultColumnFamilyName;
 static const int kMajorVersion = __ROCKSDB_MAJOR__;
 static const int kMinorVersion = __ROCKSDB_MINOR__;
 
-#define INITIALIZE_DEFAULT_COLUMN_FAMILY() ColumnFamilyHandle_t cf_handle;   \
-                                           cf_handle.rep = DefaultColumnFamily(); 
-
 DEFINE_C_WRAP_CONSTRUCTOR(Snapshot)
 DEFINE_C_WRAP_CONSTRUCTOR(String)
 
@@ -182,7 +179,7 @@ Status_t ListColumnFamilies(DBOptions_t* db_options,
     *size_col = column_families_vec.size();
     *column_families = new String_t[column_families];
     for (int j = 0; j < *size_col; j++)
-        GET_REP_REF((*column_families)[j]) = std::move(column_families_vec[i]);
+        GET_REP_REF((*column_families)[j]) = std::move(column_families_vec[j]);
     return ret;
 }
 
@@ -231,8 +228,7 @@ Status_t Put(DB_t* dbptr, const WriteOptions_t* optionss,
            const Slice_t* key,
            const Slice_t* value)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return PutWithColumnFamily(dbptr, options, &cf_handle, key, value);
+    return PutWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
 }
 
 // Remove the database entry (if any) for "key".  Returns OK on
@@ -252,8 +248,7 @@ Status_t DeleteWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
 Status_t Delete(DB_t* dbptr, const WriteOptions_t* optionss,
               const Slice_t* key)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return DeleteWithColumnFamily(dbptr, options, &cf_handle, key);
+    return DeleteWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key);
 }
 
 // Merge the database entry for "key" with "value".  Returns OK on success,
@@ -275,8 +270,7 @@ Status_t Merge(DB_t* dbptr, const WriteOptions_t* optionss,
              const Slice_t* key,
              const Slice_t* value)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return MergeWithColumnFamily(dbptr, options, &cf_handle, key, value);
+    return MergeWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
 }
 
 // Apply the specified updates to the database.
@@ -321,8 +315,7 @@ Status_t Get(DB_t* dbptr, const ReadOptions_t* options,
              const Slice_t* key,
              const String_t* value)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return GetWithColumnFamily(dbptr, options, &cf_handle, key, value);
+    return GetWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
 }
 
 // If keys[i] does not exist in the database, then the i'th returned
@@ -377,8 +370,7 @@ Status_t* MultiGet(DB_t* dbptr, const ReadOptions_t* options,
                    String_t** values)
 {
     ColumnFamilyHandle_t *column_families = new ColumnFamilyHandle_t[size_keys];
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    std::fill_n(column_families, size_keys, cf_handle);
+    std::fill_n(column_families, size_keys, DefaultColumnFamily(dbptr));
     return MultiGetWithColumnFamily(dbptr, options, column_families, keys, size_keys, values);
 }
 
@@ -406,8 +398,7 @@ bool KeyMayExist(DB_t* dbptr, const ReadOptions_t* options
                          String_t* value,
                          bool* value_found)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return KeyMayExistWithColumnFamily(dbptr, options, &cf_handle, key, value, value_found);
+    return KeyMayExistWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value, value_found);
 }
 
 // Return a heap-allocated iterator over the contents of the database.
@@ -424,8 +415,7 @@ Iterator_t NewIteratorWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options
     
 Iterator_t NewIterator(DB_t* dbptr, const ReadOptions_t* options)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return NewIteratorWithColumnFamily(dbptr, options, &cf_handle);
+    return NewIteratorWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr));
 }
 
 // Returns iterators from a consistent database state across multiple
@@ -434,10 +424,7 @@ Iterator_t NewIterator(DB_t* dbptr, const ReadOptions_t* options)
 virtual Status_t NewIterators(DB_t* dbptr, const ReadOptions_t* options,
                  const ColumnFamilyHandle_t column_families[],
                  const int size_col,
-                 Iterator_t** values
-  const ReadOptions& options,
-  const std::vector<ColumnFamilyHandle*>& column_families,
-  std::vector<Iterator*>* iterators)
+                 Iterator_t** values)
 {
     if (dbptr)
     {
@@ -518,8 +505,8 @@ void ReleaseSnapshot(DB_t* dbptr, const Snapshot_t* snapshot)
 //      compactions.
 
 bool GetPropertyWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
-                       ColumnFamilyHandle_t* column_family
-                       const Slice_t* property, String_t* value)
+                                 ColumnFamilyHandle_t* column_family
+                                 const Slice_t* property, String_t* value)
 {
     if (dbptr)
     {
@@ -535,8 +522,7 @@ bool GetPropertyWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
 bool GetProperty(DB_t* dbptr, const ReadOptions_t* options,
                  const Slice_t* property, String_t* value)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return GetPropertyWithColumnFamily(dbptr, options, &cf_handle, property, value);
+    return GetPropertyWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), property, value);
 }
 
 // Similar to GetProperty(), but only works for a subset of properties whose
@@ -573,8 +559,7 @@ bool GetIntPropertyWithColumnFamily(DB_t* dbptr,
 bool GetIntProperty(DB_t* dbptr, 
                     const Slice_t* property, uint64_t* value)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return GetIntPropertyWithColumnFamily(dbptr, &cf_handle, property, value);
+    return GetIntPropertyWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr), property, value);
 }
 
 // For each i in [0,n-1], store in "sizes[i]", the approximate
@@ -603,8 +588,7 @@ void GetApproximateSizes(DB_t* dbptr,
                          const Range_t* range, int n,
                          uint64_t* sizes)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    GetApproximateSizesWithColumnFamily(dbptr, &cf_handle, range, n, sizes);
+    GetApproximateSizesWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr), range, n, sizes);
 }
 
 // Compact the underlying storage for the key range [*begin,*end].
@@ -647,8 +631,7 @@ Status_t CompactRange(DB_t* dbptr,
                       bool reduce_level, int target_level,
                       uint32_t target_path_id)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return CompactRangeWithColumnFamily(dbptr, &cf_handle, begin, end, reduce_level, target_level, target_path_id);
+    return CompactRangeWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr), begin, end, reduce_level, target_level, target_path_id);
 }
 
 Status_t SetOptionsWithColumnFamily(DB_t* dbptr, 
@@ -666,8 +649,7 @@ Status_t SetOptions(DB_t* dbptr,
                     const String_t new_options[],
                     const int n)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return SetOptions(&cf_handle, new_options, n);
+    return SetOptionsWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr), new_options, n);
 }
 
 // CompactFiles() inputs a list of files specified by file numbers
@@ -703,8 +685,7 @@ Status_t CompactFiles(DB_t* dbptr,
                       const int n,
                       const int output_level, const int output_path_id)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return CompactFilesWithColumnFamily(dbptr, compact_options, &cf_handle,
+    return CompactFilesWithColumnFamily(dbptr, compact_options, &DefaultColumnFamily(dbptr),
                                             input_file_names, n, output_level, output_path_id);
 }
 
@@ -722,8 +703,7 @@ int NumberLevelsWithColumnFamily(DB_t* dbptr,
 
 int NumberLevels(DB_t* dbptr)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return NumberLevelsWithColumnFamily(dbptr, &cf_handle);
+    return NumberLevelsWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr));
 }
 
 // Maximum level to which a new compacted memtable is pushed if it
@@ -741,8 +721,7 @@ int MaxMemCompactionLevelWithColumnFamily(DB_t* dbptr,
 
 int MaxMemCompactionLevel(DB_t* dbptr)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return MaxMemCompactionLevelWithColumnFamily(dbptr, &cf_handle);
+    return MaxMemCompactionLevelWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr));
 }
 
 // Number of files in level-0 that would stop writes.
@@ -759,8 +738,7 @@ int Level0StopWriteTriggerWithColumnFamily(DB_t* dbptr,
 
 int Level0StopWriteTrigger(DB_t* dbptr)
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY()
-    return Level0StopWriteTriggerWithColumnFamily(dbptr, &cf_handle);
+    return Level0StopWriteTriggerWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr));
 }
 
 // Get DB name -- the exact same name that was provided as an argument to
@@ -781,15 +759,14 @@ Env_t GetEnv(DB_t* dbptr)
 // DB::CreateColumnFamily() will have been "sanitized" and transformed
 // in an implementation-defined manner.
 Options_t GetOptionsWithColumnFamily(DB_t* dbptr, 
-                     ColumnFamilyHandle_t* column_family)
+                                     ColumnFamilyHandle_t* column_family)
 {
     return NewOptionsT(dbptr ? &GET_REP(dbptr)->GetOptions(GET_REP(column_family)) : nullptr);
 }
 
 Options_t GetOptions(DB_t* dbptr) const
 {
-    INITIALIZE_DEFAULT_COLUMN_FAMILY
-    return GetOptionsWithColumnFamily(dbptr, &cf_handle);
+    return GetOptionsWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr));
 }
 
 DBOptions_t GetDBOptions(DB_t* dbptr)
@@ -797,131 +774,275 @@ DBOptions_t GetDBOptions(DB_t* dbptr)
     return NewDBOptionsT(dbptr ? GET_REP(dbptr)->GetDBOptions() : nullptr);
 }
 
-  // Flush all mem-table data.
-  virtual Status_t Flush(const FlushOptions& options,
-                       ColumnFamilyHandle* column_family) = 0;
-  virtual Status_t Flush(const FlushOptions& options) {
-    return Flush(options, DefaultColumnFamily());
-  }
+// Flush all mem-table data.
+Status_t FlushWithColumnFamily(DB_t* dbptr, 
+                               const FlushOptions_t* options,
+                               ColumnFamilyHandle_t* column_family)
+{
+    if (dbptr)
+    {
+        return MoveCopyStatus(&GET_REP(dbptr)->Flush(GET_REP_REF(options), GET_REP(column_family));
+    }
+    else
+    {
+        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+    }
+}
 
-  // The sequence number of the most recent transaction.
-  virtual SequenceNumber GetLatestSequenceNumber() const = 0;
+Status_t Flush(DB_t* dbptr, 
+               const FlushOptions_t* options)
+{
+    return FlushWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr));
+}
 
-#ifndef ROCKSDB_LITE
-
-  // Prevent file deletions. Compactions will continue to occur,
-  // but no obsolete files will be deleted. Calling this multiple
-  // times have the same effect as calling it once.
-  virtual Status_t DisableFileDeletions() = 0;
-
-  // Allow compactions to delete obsolete files.
-  // If force == true, the call to EnableFileDeletions() will guarantee that
-  // file deletions are enabled after the call, even if DisableFileDeletions()
-  // was called multiple times before.
-  // If force == false, EnableFileDeletions will only enable file deletion
-  // after it's been called at least as many times as DisableFileDeletions(),
-  // enabling the two methods to be called by two threads concurrently without
-  // synchronization -- i.e., file deletions will be enabled only after both
-  // threads call EnableFileDeletions()
-  virtual Status_t EnableFileDeletions(bool force = true) = 0;
-
-  // GetLiveFiles followed by GetSortedWalFiles can generate a lossless backup
-
-  // Retrieve the list of all files in the database. The files are
-  // relative to the dbname and are not absolute paths. The valid size of the
-  // manifest file is returned in manifest_file_size. The manifest file is an
-  // ever growing file, but only the portion specified by manifest_file_size is
-  // valid for this snapshot.
-  // Setting flush_memtable to true does Flush before recording the live files.
-  // Setting flush_memtable to false is useful when we don't want to wait for
-  // flush which may have to wait for compaction to complete taking an
-  // indeterminate time.
-  //
-  // In case you have multiple column families, even if flush_memtable is true,
-  // you still need to call GetSortedWalFiles after GetLiveFiles to compensate
-  // for new data that arrived to already-flushed column families while other
-  // column families were flushing
-  virtual Status_t GetLiveFiles(std::vector<std::string>&,
-                              uint64_t* manifest_file_size,
-                              bool flush_memtable = true) = 0;
-
-  // Retrieve the sorted list of all wal files with earliest file first
-  virtual Status_t GetSortedWalFiles(VectorLogPtr& files) = 0;
-
-  // Sets iter to an iterator that is positioned at a write-batch containing
-  // seq_number. If the sequence number is non existent, it returns an iterator
-  // at the first available seq_no after the requested seq_no
-  // Returns Status_t::OK if iterator is valid
-  // Must set WAL_ttl_seconds or WAL_size_limit_MB to large values to
-  // use this api, else the WAL files will get
-  // cleared aggressively and the iterator might keep getting invalid before
-  // an update is read.
-  virtual Status_t GetUpdatesSince(
-      SequenceNumber seq_number, unique_ptr<TransactionLogIterator>* iter,
-      const TransactionLogIterator::ReadOptions&
-          read_options = TransactionLogIterator::ReadOptions()) = 0;
-
-  // Delete the file name from the db directory and update the internal state to
-  // reflect that. Supports deletion of sst and log files only. 'name' must be
-  // path relative to the db directory. eg. 000001.sst, /archive/000003.log
-  virtual Status_t DeleteFile(std::string name) = 0;
-
-  // Returns a list of all table files with their level, start key
-  // and end key
-  virtual void GetLiveFilesMetaData(std::vector<LiveFileMetaData>* metadata) {}
-
-  // Obtains the meta data of the specified column family of the DB.
-  // Status_t::NotFound() will be returned if the current DB does not have
-  // any column family match the specified name.
-  //
-  // If cf_name is not specified, then the metadata of the default
-  // column family will be returned.
-  virtual void GetColumnFamilyMetaData(
-      ColumnFamilyHandle* column_family,
-      ColumnFamilyMetaData* metadata) {}
-
-  // Get the metadata of the default column family.
-  void GetColumnFamilyMetaData(
-      ColumnFamilyMetaData* metadata) {
-    GetColumnFamilyMetaData(DefaultColumnFamily(), metadata);
-  }
-#endif  // ROCKSDB_LITE
-
-  // Sets the globally unique ID created at database creation time by invoking
-  // Env::GenerateUniqueId(), in identity. Returns Status_t::OK if identity could
-  // be set properly
-  virtual Status_t GetDbIdentity(std::string& identity) const = 0;
-
-  // Returns default column family handle
-  virtual ColumnFamilyHandle* DefaultColumnFamily() const = 0;
+// The sequence number of the most recent transaction.
+SequenceNumber GetLatestSequenceNumber(DB_t* dbptr)
+{
+    SequenceNumber ret = -1;
+    if (dbptr)
+    {
+        ret = GET_REP(dbptr)->GetLatestSequenceNumber();
+    }
+    return ret;
+}
 
 #ifndef ROCKSDB_LITE
-  virtual Status_t GetPropertiesOfAllTables(ColumnFamilyHandle* column_family,
-                                          TablePropertiesCollection* props) = 0;
-  virtual Status_t GetPropertiesOfAllTables(TablePropertiesCollection* props) {
-    return GetPropertiesOfAllTables(DefaultColumnFamily(), props);
-  }
+
+// Prevent file deletions. Compactions will continue to occur,
+// but no obsolete files will be deleted. Calling this multiple
+// times have the same effect as calling it once.
+Status_t DisableFileDeletions(DB_t* dbptr)
+{
+    if (dbptr)
+    {
+        return MoveCopyStatus(&GET_REP(dbptr)->DisableFileDeletions();
+    }
+    else
+    {
+        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+    }
+}
+
+// Allow compactions to delete obsolete files.
+// If force == true, the call to EnableFileDeletions() will guarantee that
+// file deletions are enabled after the call, even if DisableFileDeletions()
+// was called multiple times before.
+// If force == false, EnableFileDeletions will only enable file deletion
+// after it's been called at least as many times as DisableFileDeletions(),
+// enabling the two methods to be called by two threads concurrently without
+// synchronization -- i.e., file deletions will be enabled only after both
+// threads call EnableFileDeletions()
+Status_t EnableFileDeletions(DB_t* dbptr, bool force)
+{
+    if (dbptr)
+    {
+        return MoveCopyStatus(&GET_REP(dbptr)->EnableFileDeletions(force);
+    }
+    else
+    {
+        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+    }
+}
+
+// GetLiveFiles followed by GetSortedWalFiles can generate a lossless backup
+
+// Retrieve the list of all files in the database. The files are
+// relative to the dbname and are not absolute paths. The valid size of the
+// manifest file is returned in manifest_file_size. The manifest file is an
+// ever growing file, but only the portion specified by manifest_file_size is
+// valid for this snapshot.
+// Setting flush_memtable to true does Flush before recording the live files.
+// Setting flush_memtable to false is useful when we don't want to wait for
+// flush which may have to wait for compaction to complete taking an
+// indeterminate time.
+//
+// In case you have multiple column families, even if flush_memtable is true,
+// you still need to call GetSortedWalFiles after GetLiveFiles to compensate
+// for new data that arrived to already-flushed column families while other
+// column families were flushing
+Status_t GetLiveFiles(DB_t* dbptr,
+                      const String_t live_files[],
+                      int* n,
+                      uint64_t* manifest_file_size,
+                      bool flush_memtable)
+{
+    if (dbptr)
+    {
+        std::vector<std::string> live_files_vec;
+        Status_t ret = MoveCopyStatus(&GET_REP(dbptr)->GetLiveFiles(live_files_vec, manifest_file_size, flush_memtable));
+        *n = live_files_vec.size();
+        live_files = new String_t[*n];
+        for (int j = 0; j < *n; j++)
+            GET_REP_REF(live_files[j]) = std::move(live_files_vec[j]);
+        return ret;
+    }
+    else
+    {
+        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+    }
+}
+
+// Retrieve the sorted list of all wal files with earliest file first
+Status_t GetSortedWalFiles(DB_t* dbptr, LogFile_t files[], int* n)
+{
+    if (dbptr)
+    {
+        VectorLogPtr files_vec;
+        Status_t ret = MoveCopyStatus(&GET_REP(dbptr)->GetSortedWalFiles(files_vec));
+        *n = files_vec.size();
+        files = new LogFile_t[*n];
+        for (int j = 0; j < *n; j++)
+            GET_REP(files[j]) = files_vec[j].release();
+        return ret;
+    }
+    else
+    {
+        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+    }
+}
+
+// Sets iter to an iterator that is positioned at a write-batch containing
+// seq_number. If the sequence number is non existent, it returns an iterator
+// at the first available seq_no after the requested seq_no
+// Returns Status_t::OK if iterator is valid
+// Must set WAL_ttl_seconds or WAL_size_limit_MB to large values to
+// use this api, else the WAL files will get
+// cleared aggressively and the iterator might keep getting invalid before
+// an update is read.
+Status_t GetUpdatesSince(DB_t* dbptr, SequenceNumber seq_number,
+                         TransactionLogIterator_t* iter,
+                         const TransactionLogIterator_ReadOptions_t* read_options)
+{
+    if (dbptr)
+    {
+        unique_ptr<TransactionLogIterator> iter_ptr;
+        if (GET_REP(read_options) == NULL)
+            GET_REP(read_options) = &TransactionLogIterator::ReadOptions();
+        Status_t ret = MoveCopyStatus(&GET_REP(dbptr)->GetUpdatesSince(sequencenumber, &iter_ptr, GET_REP_REF(read_options)));
+        GET_REP(iter) = iter_ptr.release();
+        return ret;
+    }
+    else
+    {
+        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+    }
+}
+
+// Delete the file name from the db directory and update the internal state to
+// reflect that. Supports deletion of sst and log files only. 'name' must be
+// path relative to the db directory. eg. 000001.sst, /archive/000003.log
+Status_t DeleteFile(DB_t* dbptr, String_t* name)
+{
+    if (dbptr)
+    {
+        return MoveCopyStatus(&GET_REP(dbptr)->DeleteFile(GET_REP_REF(name)));
+    }
+    else
+    {
+        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+    }
+}
+
+// Returns a list of all table files with their level, start key
+// and end key
+void GetLiveFilesMetaData(DB_t* dbptr, LiveFileMetaData_t metadata[], int* n)
+{
+    if (dbptr)
+    {
+        std::vector<LiveFileMetaData> metadata_vec;
+        GET_REP(dbptr)->GetLiveFilesMetaData(&metadata_vec);
+        *n = metadata_vec.size();
+        metadata = new LiveFileMetaData_t[*n];
+        for (int j = 0; j < *n; j++)
+            GET_REP_REF(metadata[j]) = std::move(metadata_vec[j]);
+    }
+}
+
+// Obtains the meta data of the specified column family of the DB.
+// Status_t::NotFound() will be returned if the current DB does not have
+// any column family match the specified name.
+//
+// If cf_name is not specified, then the metadata of the default
+// column family will be returned.
+void GetColumnFamilyMetaDataWithColumnFamily(DB_t* dbptr, 
+                                             ColumnFamilyHandle_t* column_family,
+                                             ColumnFamilyMetaData_t* metadata)
+{
+    if (dbptr)
+    {
+        GET_REP(dbptr)->GetColumnFamilyMetaData(GET_REP(column_family), GET_REP(metadata));
+    }
+}
+
+// Get the metadata of the default column family.
+void GetColumnFamilyMetaData(DB_t* dbptr, 
+                             ColumnFamilyMetaData_t* metadata)
+{
+    GetColumnFamilyMetaDataWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr), metadata);
+}
 #endif  // ROCKSDB_LITE
 
-  // Needed for StackableDB
-  virtual DB* GetRootDB() { return this; }
+// Sets the globally unique ID created at database creation time by invoking
+// Env::GenerateUniqueId(), in identity. Returns Status_t::OK if identity could
+// be set properly
+Status_t GetDbIdentity(DB_t* dbptr, String_t* identity)
+{
+    if (dbptr)
+    {
+        return MoveCopyStatus(&GET_REP(dbptr)->GetDbIdentity(GET_REP_REF(identity)));
+    }
+    else
+    {
+        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+    }
+}
 
- private:
-  // No copying allowed
-  DB(const DB&);
-  void operator=(const DB&);
-};
+// Returns default column family handle
+ColumnFamilyHandle_t DefaultColumnFamily(DB_t* dbptr)
+{
+    ColumnFamilyHandle_t cf_handle;
+    cf_handle.rep = dbptr ? GET_REP(dbptr)->DefaultColumnFamily() : nullptr; 
+    return cf_handle;
+}
+
+#ifndef ROCKSDB_LITE
+Status_t GetPropertiesOfAllTablesWithColumnFamily(DB_t* dbptr, 
+                                                  ColumnFamilyHandle_t* column_family,
+                                                  TablePropertiesCollection_t* props)
+{
+    if (dbptr)
+    {
+        return MoveCopyStatus(&GET_REP(dbptr)->GetPropertiesOfAllTables(GET_REP(column_family), GET_REP(props)));
+    }
+    else
+    {
+        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+    }
+}
+
+Status_t GetPropertiesOfAllTables(DB_t* dbptr, 
+                                  TablePropertiesCollection_t* props)
+{
+    return GetPropertiesOfAllTablesWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr), props);
+}
+#endif  // ROCKSDB_LITE
 
 // Destroy the contents of the specified database.
 // Be very careful using this method.
-Status_t DestroyDB(const std::string& name, const Options& options);
+Status_t DestroyDBGo(const String_t* name, const Options_t* options)
+{
+    return MoveCopyStatus(&DestroyDB(GET_REP_REF(name), GET_REP_REF(options)));
+}
 
 #ifndef ROCKSDB_LITE
 // If a DB cannot be opened, you may attempt to call this method to
 // resurrect as much of the contents of the database as possible.
 // Some data may be lost, so be careful when calling this function
 // on a database that contains important information.
-Status_t RepairDB(const std::string& dbname, const Options& options);
+Status_t RepairDBGo(const String_t* dbname, const Options_t* options);
+{
+    return MoveCopyStatus(&RepairDB(GET_REP_REF(dbname), GET_REP_REF(options)));
+}
 #endif
 
 }  // namespace rocksdb
