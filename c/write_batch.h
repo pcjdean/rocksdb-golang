@@ -22,8 +22,8 @@
 // non-const method, all threads accessing the same WriteBatch must use
 // external synchronization.
 
-#ifndef STORAGE_ROCKSDB_INCLUDE_WRITE_BATCH_H_
-#define STORAGE_ROCKSDB_INCLUDE_WRITE_BATCH_H_
+#ifndef GO_ROCKSDB_INCLUDE_WRITE_BATCH_H_
+#define GO_ROCKSDB_INCLUDE_WRITE_BATCH_H_
 
 #include <string>
 #include "rocksdb/status.h"
@@ -173,4 +173,4 @@ class WriteBatch : public WriteBatchBase {
 
 }  // namespace rocksdb
 
-#endif  // STORAGE_ROCKSDB_INCLUDE_WRITE_BATCH_H_
+#endif  // GO_ROCKSDB_INCLUDE_WRITE_BATCH_H_

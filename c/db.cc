@@ -1,86 +1,44 @@
-// Copyright (c) 2013, Facebook, Inc.  All rights reserved.
+// Copyright (c) 2015, Dean ChaoJun Pan.  All rights reserved.
 // This source code is licensed under the BSD-style license found in the
-// LICENSE file in the root directory of this source tree. An additional grant
-// of patent rights can be found in the PATENTS file in the same directory.
-// Copyright (c) 2011 The LevelDB Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file. See the AUTHORS file for names of contributors.
+// LICENSE file in the root directory of this source tree.
 
-#ifndef STORAGE_ROCKSDB_INCLUDE_DB_H_
-#define STORAGE_ROCKSDB_INCLUDE_DB_H_
+#include <db.h>
+#include "db.h"
 
-#include <stdint.h>
-#include <stdio.h>
-#include <memory>
-#include <vector>
-#include <string>
-#include <unordered_map>
-#include "metadata.h"
-#include "version.h"
-#include "iterator.h"
-#include "options.h"
-#include "types.h"
-#include "transaction_log.h"
-#include "listener.h"
-#include "thread_status.h"
+using namespace rocksdb;
 
-namespace rocksdb {
+DEFINE_C_WRAP_CONSTRUCTOR(String, std::string)
+DEFINE_C_WRAP_DESTRUCTOR(String, std::string)
 
-struct Options;
-struct DBOptions;
-struct ColumnFamilyOptions;
-struct ReadOptions;
-struct WriteOptions;
-struct FlushOptions;
-struct CompactionOptions;
-struct TableProperties;
-class WriteBatch;
-class Env;
-class EventListener;
-
-using std::unique_ptr;
-
-class ColumnFamilyHandle {
- public:
-  virtual ~ColumnFamilyHandle() {}
-  virtual const std::string& GetName() const = 0;
-  virtual uint32_t GetID() const = 0;
-};
-extern const std::string kDefaultColumnFamilyName;
-
-static const int kMajorVersion = __ROCKSDB_MAJOR__;
-static const int kMinorVersion = __ROCKSDB_MINOR__;
-
-DEFINE_C_WRAP_CONSTRUCTOR(Snapshot)
-DEFINE_C_WRAP_CONSTRUCTOR(String)
+String_t ColumnFamilyGetName(ColumnFamilyHandle_t* column_family)
+{
+    std::string& name_str = GET_REP(column_family, ColumnFamilyHandle)->GetName();
+    return NewStringT(&name_str);
+}
+    
+uint32_t ColumnFamilyGetID(ColumnFamilyHandle_t* column_family)
+{
+    return GET_REP(column_family, ColumnFamilyHandle)->GetID();
+}
 
 // Abstract handle to particular state of a DB.
 // A Snapshot is an immutable object and can therefore be safely
 // accessed from multiple threads without any external synchronization.
-class Snapshot {
- public:
-  // returns Snapshot's sequence number
-  virtual SequenceNumber GetSequenceNumber() const = 0;
+DEFINE_C_WRAP_CONSTRUCTOR(Snapshot)
+DEFINE_C_WRAP_DESTRUCTOR(Snapshot)
 
- protected:
-  virtual ~Snapshot();
-};
+SequenceNumber SnapshotGetSequenceNumber(Snapshot_t* snapshot)
+{
+    return GET_REP(snapshot, Snapshot)->GetSequenceNumber();
+}
 
 // A range of keys
-struct Range {
-  Slice start;          // Included in the range
-  Slice limit;          // Not included in the range
+DEFINE_C_WRAP_CONSTRUCTOR(Range)
+DEFINE_C_WRAP_CONSTRUCTOR_ARGS(Range, Slice, Slice)
+DEFINE_C_WRAP_DESTRUCTOR(Range)
 
-  Range() { }
-  Range(const Slice& s, const Slice& l) : start(s), limit(l) { }
-};
-
-// A collections of table properties objects, where
-//  key: is the table's file name.
-//  value: the table properties object of the given table.
-typedef std::unordered_map<std::string, std::shared_ptr<const TableProperties>>
-    TablePropertiesCollection;
-
+DEFINE_C_WRAP_CONSTRUCTOR_ARGS(ColumnFamilyDescriptor, String, ColumnFamilyOptions)
+DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyDescriptor)
 // A DB is a persistent ordered map from keys to values.
 // A DB is safe for concurrent access from multiple threads without
 // any external synchronization.
@@ -90,11 +48,11 @@ typedef std::unordered_map<std::string, std::shared_ptr<const TableProperties>>
 // OK on success.
 // Stores nullptr in *dbptr and returns a non-OK status on error.
 // Caller should delete *dbptr when it is no longer needed.
-Status_t Open(const Options_t* options,
+Status_t DBOpen(const Options_t* options,
             const String_t* name,
             DB_t* dbptr)
 {
-    return MoveCopyStatus(&DB::Open(GET_REP_REF(options), GET_REP_REF(name), &GET_REP(dbptr));
+    return NewStatusTCopy(&DB::Open(GET_REP_REF(options, Options), GET_REP_REF(name, String), &GET_REP(dbptr, DB));
 }
 
 
@@ -105,11 +63,11 @@ Status_t Open(const Options_t* options,
 //
 // Not supported in ROCKSDB_LITE, in which case the function will
 // return Status_t::NotSupported.
-static Status_t OpenForReadOnly(const Options_t* options,
-  const String_t* name, DB_t* dbptr,
-  bool error_if_log_file_exist)
+Status_t DBOpenForReadOnly(const Options_t* options,
+                           const String_t* name, DB_t* dbptr,
+                           bool error_if_log_file_exist)
 {
-    return MoveCopyStatus(&DB::OpenForReadOnly(GET_REP_REF(options), GET_REP_REF(name),  &GET_REP(dbptr), error_if_log_file_exist));
+    return NewStatusTCopy(&DB::OpenForReadOnly(GET_REP_REF(options, Options), GET_REP_REF(name, String),  &GET_REP(dbptr, DB), error_if_log_file_exist));
 }
 
 // Open the database for read only with column families. When opening DB with
@@ -120,17 +78,18 @@ static Status_t OpenForReadOnly(const Options_t* options,
 //
 // Not supported in ROCKSDB_LITE, in which case the function will
 // return Status_t::NotSupported.
-Status_t OpenForReadOnlyWithColumnFamilies(
-  const Options_t* options, const String_t* name,
-  const ColumnFamilyDescriptor_t column_families[], const int size_col
-  ColumnFamilyHandle_t **handles, DB_t* dbptr,
-  bool error_if_log_file_exist)
+Status_t DBOpenForReadOnlyWithColumnFamilies(const Options_t* options,
+                                           const String_t* name,
+                                           const ColumnFamilyDescriptor_t column_families[],
+                                           const int size_col,
+                                           ColumnFamilyHandle_t **handles,
+                                           DB_t* dbptr, bool error_if_log_file_exist)
 {
     std::vector<ColumnFamilyDescriptor> column_families_vec = std::vector<ColumnFamilyDescriptor>(size_col);
     for (int i = 0; i < size_col; i++)
         column_families_vec.push_back(*column_families[i].rep);
     std::vector<ColumnFamilyHandle*> handles_vec;
-    Status_t ret = MoveCopyStatus(&DB::OpenForReadOnly(GET_REP_REF(options), GET_REP_REF(name), column_families_vec, &handles_vec, &GET_REP(dbptr), error_if_log_file_exist));
+    Status_t ret = NewStatusTCopy(&DB::OpenForReadOnly(GET_REP_REF(options), GET_REP_REF(name), column_families_vec, &handles_vec, &GET_REP(dbptr), error_if_log_file_exist));
     assert(handles_vec.size() == size_col);
     *handles = new ColumnFamilyHandle_t[size_col];
     for (int j = 0; j < size_col; j++)
@@ -158,7 +117,7 @@ Status_t OpenWithColumnFamilies(const Options_t* options, const String_t* name,
     for (int i = 0; i < size_col; i++)
         column_families_vec.push_back(*column_families[i].rep);
     std::vector<ColumnFamilyHandle*> handles_vec;
-    Status_t ret = MoveCopyStatus(&DB::Open(GET_REP_REF(options), GET_REP_REF(name), column_families_vec, &handles_vec, &GET_REP(dbptr)));
+    Status_t ret = NewStatusTCopy(&DB::Open(GET_REP_REF(options), GET_REP_REF(name), column_families_vec, &handles_vec, &GET_REP(dbptr)));
     assert(handles_vec.size() == size_col);
     *handles = new ColumnFamilyHandle_t[size_col];
     for (int j = 0; j < size_col; j++)
@@ -175,7 +134,7 @@ Status_t ListColumnFamilies(DBOptions_t* db_options,
                           const String_t **column_families, int* size_col);
 {
     std::vector<std::string> column_families_vec;
-    Status_t ret = MoveCopyStatus(&DB::ListColumnFamilies(GET_REP_REF(options), GET_REP_REF(name), column_families_vec));
+    Status_t ret = NewStatusTCopy(&DB::ListColumnFamilies(GET_REP_REF(options), GET_REP_REF(name), column_families_vec));
     *size_col = column_families_vec.size();
     *column_families = new String_t[column_families];
     for (int j = 0; j < *size_col; j++)
@@ -192,10 +151,10 @@ Status_t CreateColumnFamily(DB_t* dbptr, const ColumnFamilyOptions_t* options,
 {
     if (dbptr)
     {
-        return MoveCopyStatus(&GET_REP(dbptr)->CreateColumnFamily(GET_REP_REF(options), GET_REP_REF(column_family_name), &GET_REP(handle)));
+        return NewStatusTCopy(&GET_REP(dbptr)->CreateColumnFamily(GET_REP_REF(options), GET_REP_REF(column_family_name), &GET_REP(handle)));
     }
     else
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
 }
 
 // Drop a column family specified by column_family handle. This call
@@ -204,9 +163,9 @@ Status_t CreateColumnFamily(DB_t* dbptr, const ColumnFamilyOptions_t* options,
 Status_t DropColumnFamily(DB_t* dbptr, const ColumnFamilyHandle_t* column_family);
 {
     if (dbptr)
-        return MoveCopyStatus(&GET_REP(dbptr)->DropColumnFamily(GET_REP(column_family)));
+        return NewStatusTCopy(&GET_REP(dbptr)->DropColumnFamily(GET_REP(column_family)));
     else
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
 }
 
 // Set the database entry for "key" to "value".
@@ -219,9 +178,9 @@ Status_t PutWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
                            const Slice_t* value)
 {
     if (dbptr)
-        return MoveCopyStatus(&GET_REP(dbptr)->Put(GET_REP_REF(options), GET_REP_REF(column_family), GET_REP_REF(key), GET_REP_REF(value)));
+        return NewStatusTCopy(&GET_REP(dbptr)->Put(GET_REP_REF(options), GET_REP_REF(column_family), GET_REP_REF(key), GET_REP_REF(value)));
     else
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
 }
 
 Status_t Put(DB_t* dbptr, const WriteOptions_t* optionss,
@@ -240,9 +199,9 @@ Status_t DeleteWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
                       const Slice_t* key)
 {
     if (dbptr)
-        return MoveCopyStatus(&GET_REP(dbptr)->Delete(GET_REP_REF(options), GET_REP_REF(column_family), GET_REP_REF(key)));
+        return NewStatusTCopy(&GET_REP(dbptr)->Delete(GET_REP_REF(options), GET_REP_REF(column_family), GET_REP_REF(key)));
     else
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
 }
 
 Status_t Delete(DB_t* dbptr, const WriteOptions_t* optionss,
@@ -261,9 +220,9 @@ Status_t MergeWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
                            const Slice_t* value)
 {
     if (dbptr)
-        return MoveCopyStatus(&GET_REP(dbptr)->Merge(GET_REP_REF(options), GET_REP_REF(column_family), GET_REP_REF(key), GET_REP_REF(value)));
+        return NewStatusTCopy(&GET_REP(dbptr)->Merge(GET_REP_REF(options), GET_REP_REF(column_family), GET_REP_REF(key), GET_REP_REF(value)));
     else
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
 }
 
 Status_t Merge(DB_t* dbptr, const WriteOptions_t* optionss,
@@ -281,9 +240,9 @@ Status_t Merge(DB_t* dbptr, const WriteOptions_t* optionss,
 Status_t Write(DB_t* dbptr, const WriteOptions_t* optionss, WriteBatch_t* updates)
 {
     if (dbptr)
-        return MoveCopyStatus(&GET_REP(dbptr)->Write(GET_REP_REF(options), GET_REP(updates)));
+        return NewStatusTCopy(&GET_REP(dbptr)->Write(GET_REP_REF(options), GET_REP(updates)));
     else
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
 }
 
 // If the database contains an entry for "key" store the
@@ -305,10 +264,10 @@ Status_t GetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
         if (!str_val.empty())
             GET_REP_REF(value) = std::move(str_val);
         
-        return MoveCopyStatus(&ret);
+        return NewStatusTCopy(&ret);
     }
     else
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
 }
 
 Status_t Get(DB_t* dbptr, const ReadOptions_t* options,
@@ -353,13 +312,13 @@ Status_t* MultiGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
         for (int j = 0; j < size_keys; j++)
         {
             GET_REP_REF(values[j]) = std::move(values_vec[j]);
-            *ret[j] = MoveCopyStatus(&ret_vec[j]);
+            *ret[j] = NewStatusTCopy(&ret_vec[j]);
         }
     }
     else
     {
         ret = new Status_t;
-        *ret = MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        *ret = NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
     return ret;
 }
@@ -439,11 +398,11 @@ virtual Status_t NewIterators(DB_t* dbptr, const ReadOptions_t* options,
         {
             GET_REP_REF(values[j]) = std::move(values_vec[j]);
         }
-        return MoveCopyStatus(&ret);
+        return NewStatusTCopy(&ret);
     }
     else
     {
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
 }
 
@@ -618,11 +577,11 @@ Status_t CompactRangeWithColumnFamily(DB_t* dbptr,
 {
     if (dbptr)
     {
-        return MoveCopyStatus(&GET_REP(dbptr)->CompactRange(GET_REP(column_families), GET_REP(begin), GET_REP(end), reduce_level, target_level, target_path_id));
+        return NewStatusTCopy(&GET_REP(dbptr)->CompactRange(GET_REP(column_families), GET_REP(begin), GET_REP(end), reduce_level, target_level, target_path_id));
     }
     else
     {
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
 }
 
@@ -642,7 +601,7 @@ Status_t SetOptionsWithColumnFamily(DB_t* dbptr,
     const std::unordered_map<std::string, std::string> new_options_map;
     for (int i = 0; i < n; i++)
         new_options_map[std::move(GET_REP(&new_options[i]))] = std::move(GET_REP(&new_options[++i]));
-    return MoveCopyStatus(&GET_REP(dbptr)->SetOptions(GET_REP(column_families), new_options_map));
+    return NewStatusTCopy(&GET_REP(dbptr)->SetOptions(GET_REP(column_families), new_options_map));
 }
 
 Status_t SetOptions(DB_t* dbptr, 
@@ -671,11 +630,11 @@ Status_t CompactFilesWithColumnFamily(DB_t* dbptr,
         const std::vector<std::string> input_file_names_vec;
         for (int i = 0; i < n; i++)
             input_file_names_vec.push_back(std::move(GET_REP_REF(&input_file_names[i])));
-        return MoveCopyStatus(&GET_REP(dbptr)->CompactFiles(GET_REP_REF(compact_options), GET_REP(column_family), input_file_names_vec, output_level, output_path_id));
+        return NewStatusTCopy(&GET_REP(dbptr)->CompactFiles(GET_REP_REF(compact_options), GET_REP(column_family), input_file_names_vec, output_level, output_path_id));
     }
     else
     {
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
 }
 
@@ -781,11 +740,11 @@ Status_t FlushWithColumnFamily(DB_t* dbptr,
 {
     if (dbptr)
     {
-        return MoveCopyStatus(&GET_REP(dbptr)->Flush(GET_REP_REF(options), GET_REP(column_family));
+        return NewStatusTCopy(&GET_REP(dbptr)->Flush(GET_REP_REF(options), GET_REP(column_family));
     }
     else
     {
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
 }
 
@@ -815,11 +774,11 @@ Status_t DisableFileDeletions(DB_t* dbptr)
 {
     if (dbptr)
     {
-        return MoveCopyStatus(&GET_REP(dbptr)->DisableFileDeletions();
+        return NewStatusTCopy(&GET_REP(dbptr)->DisableFileDeletions();
     }
     else
     {
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
 }
 
@@ -836,11 +795,11 @@ Status_t EnableFileDeletions(DB_t* dbptr, bool force)
 {
     if (dbptr)
     {
-        return MoveCopyStatus(&GET_REP(dbptr)->EnableFileDeletions(force);
+        return NewStatusTCopy(&GET_REP(dbptr)->EnableFileDeletions(force);
     }
     else
     {
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
 }
 
@@ -869,7 +828,7 @@ Status_t GetLiveFiles(DB_t* dbptr,
     if (dbptr)
     {
         std::vector<std::string> live_files_vec;
-        Status_t ret = MoveCopyStatus(&GET_REP(dbptr)->GetLiveFiles(live_files_vec, manifest_file_size, flush_memtable));
+        Status_t ret = NewStatusTCopy(&GET_REP(dbptr)->GetLiveFiles(live_files_vec, manifest_file_size, flush_memtable));
         *n = live_files_vec.size();
         live_files = new String_t[*n];
         for (int j = 0; j < *n; j++)
@@ -878,7 +837,7 @@ Status_t GetLiveFiles(DB_t* dbptr,
     }
     else
     {
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
 }
 
@@ -888,7 +847,7 @@ Status_t GetSortedWalFiles(DB_t* dbptr, LogFile_t files[], int* n)
     if (dbptr)
     {
         VectorLogPtr files_vec;
-        Status_t ret = MoveCopyStatus(&GET_REP(dbptr)->GetSortedWalFiles(files_vec));
+        Status_t ret = NewStatusTCopy(&GET_REP(dbptr)->GetSortedWalFiles(files_vec));
         *n = files_vec.size();
         files = new LogFile_t[*n];
         for (int j = 0; j < *n; j++)
@@ -897,7 +856,7 @@ Status_t GetSortedWalFiles(DB_t* dbptr, LogFile_t files[], int* n)
     }
     else
     {
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
 }
 
@@ -918,13 +877,13 @@ Status_t GetUpdatesSince(DB_t* dbptr, SequenceNumber seq_number,
         unique_ptr<TransactionLogIterator> iter_ptr;
         if (GET_REP(read_options) == NULL)
             GET_REP(read_options) = &TransactionLogIterator::ReadOptions();
-        Status_t ret = MoveCopyStatus(&GET_REP(dbptr)->GetUpdatesSince(sequencenumber, &iter_ptr, GET_REP_REF(read_options)));
+        Status_t ret = NewStatusTCopy(&GET_REP(dbptr)->GetUpdatesSince(sequencenumber, &iter_ptr, GET_REP_REF(read_options)));
         GET_REP(iter) = iter_ptr.release();
         return ret;
     }
     else
     {
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
 }
 
@@ -935,11 +894,11 @@ Status_t DeleteFile(DB_t* dbptr, String_t* name)
 {
     if (dbptr)
     {
-        return MoveCopyStatus(&GET_REP(dbptr)->DeleteFile(GET_REP_REF(name)));
+        return NewStatusTCopy(&GET_REP(dbptr)->DeleteFile(GET_REP_REF(name)));
     }
     else
     {
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
 }
 
@@ -989,11 +948,11 @@ Status_t GetDbIdentity(DB_t* dbptr, String_t* identity)
 {
     if (dbptr)
     {
-        return MoveCopyStatus(&GET_REP(dbptr)->GetDbIdentity(GET_REP_REF(identity)));
+        return NewStatusTCopy(&GET_REP(dbptr)->GetDbIdentity(GET_REP_REF(identity)));
     }
     else
     {
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
 }
 
@@ -1012,11 +971,11 @@ Status_t GetPropertiesOfAllTablesWithColumnFamily(DB_t* dbptr,
 {
     if (dbptr)
     {
-        return MoveCopyStatus(&GET_REP(dbptr)->GetPropertiesOfAllTables(GET_REP(column_family), GET_REP(props)));
+        return NewStatusTCopy(&GET_REP(dbptr)->GetPropertiesOfAllTables(GET_REP(column_family), GET_REP(props)));
     }
     else
     {
-        return MoveCopyStatus(&Status::InvalidArgument("Invalid database pointer"));
+        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
     }
 }
 
@@ -1031,7 +990,7 @@ Status_t GetPropertiesOfAllTables(DB_t* dbptr,
 // Be very careful using this method.
 Status_t DestroyDBGo(const String_t* name, const Options_t* options)
 {
-    return MoveCopyStatus(&DestroyDB(GET_REP_REF(name), GET_REP_REF(options)));
+    return NewStatusTCopy(&DestroyDB(GET_REP_REF(name), GET_REP_REF(options)));
 }
 
 #ifndef ROCKSDB_LITE
@@ -1041,10 +1000,6 @@ Status_t DestroyDBGo(const String_t* name, const Options_t* options)
 // on a database that contains important information.
 Status_t RepairDBGo(const String_t* dbname, const Options_t* options);
 {
-    return MoveCopyStatus(&RepairDB(GET_REP_REF(dbname), GET_REP_REF(options)));
+    return NewStatusTCopy(&RepairDB(GET_REP_REF(dbname), GET_REP_REF(options)));
 }
 #endif
-
-}  // namespace rocksdb
-
-#endif  // STORAGE_ROCKSDB_INCLUDE_DB_H_

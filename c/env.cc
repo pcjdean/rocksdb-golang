@@ -14,8 +14,8 @@
 // All Env implementations are safe for concurrent access from
 // multiple threads without any external synchronization.
 
-#ifndef STORAGE_ROCKSDB_INCLUDE_ENV_H_
-#define STORAGE_ROCKSDB_INCLUDE_ENV_H_
+#ifndef GO_ROCKSDB_INCLUDE_ENV_H_
+#define GO_ROCKSDB_INCLUDE_ENV_H_
 
 #include <cstdarg>
 #include <string>
@@ -887,4 +887,4 @@ Env* NewMemEnv(Env* base_env);
 
 }  // namespace rocksdb
 
-#endif  // STORAGE_ROCKSDB_INCLUDE_ENV_H_
+#endif  // GO_ROCKSDB_INCLUDE_ENV_H_

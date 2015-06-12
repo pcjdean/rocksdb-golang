@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree. An additional grant
 // of patent rights can be found in the PATENTS file in the same directory.
 
-#ifndef STORAGE_ROCKSDB_INCLUDE_TRANSACTION_LOG_ITERATOR_H_
-#define STORAGE_ROCKSDB_INCLUDE_TRANSACTION_LOG_ITERATOR_H_
+#ifndef GO_ROCKSDB_INCLUDE_TRANSACTION_LOG_ITERATOR_H_
+#define GO_ROCKSDB_INCLUDE_TRANSACTION_LOG_ITERATOR_H_
 
 #include "rocksdb/status.h"
 #include "rocksdb/types.h"
@@ -101,4 +101,4 @@ class TransactionLogIterator {
 };
 } //  namespace rocksdb
 
-#endif  // STORAGE_ROCKSDB_INCLUDE_TRANSACTION_LOG_ITERATOR_H_
+#endif  // GO_ROCKSDB_INCLUDE_TRANSACTION_LOG_ITERATOR_H_

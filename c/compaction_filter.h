@@ -6,8 +6,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file. See the AUTHORS file for names of contributors.
 
-#ifndef STORAGE_ROCKSDB_INCLUDE_COMPACTION_FILTER_H_
-#define STORAGE_ROCKSDB_INCLUDE_COMPACTION_FILTER_H_
+#ifndef GO_ROCKSDB_INCLUDE_COMPACTION_FILTER_H_
+#define GO_ROCKSDB_INCLUDE_COMPACTION_FILTER_H_
 
 #include <memory>
 #include <string>
@@ -196,4 +196,4 @@ class DefaultCompactionFilterFactoryV2 : public CompactionFilterFactoryV2 {
 
 }  // namespace rocksdb
 
-#endif  // STORAGE_ROCKSDB_INCLUDE_COMPACTION_FILTER_H_
+#endif  // GO_ROCKSDB_INCLUDE_COMPACTION_FILTER_H_

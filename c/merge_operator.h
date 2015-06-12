@@ -3,8 +3,8 @@
 // LICENSE file in the root directory of this source tree. An additional grant
 // of patent rights can be found in the PATENTS file in the same directory.
 
-#ifndef STORAGE_ROCKSDB_INCLUDE_MERGE_OPERATOR_H_
-#define STORAGE_ROCKSDB_INCLUDE_MERGE_OPERATOR_H_
+#ifndef GO_ROCKSDB_INCLUDE_MERGE_OPERATOR_H_
+#define GO_ROCKSDB_INCLUDE_MERGE_OPERATOR_H_
 
 #include <memory>
 #include <string>
@@ -179,4 +179,4 @@ class AssociativeMergeOperator : public MergeOperator {
 
 }  // namespace rocksdb
 
-#endif  // STORAGE_ROCKSDB_INCLUDE_MERGE_OPERATOR_H_
+#endif  // GO_ROCKSDB_INCLUDE_MERGE_OPERATOR_H_

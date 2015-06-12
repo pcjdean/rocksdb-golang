@@ -16,8 +16,8 @@
 // non-const method, all threads accessing the same Iterator must use
 // external synchronization.
 
-#ifndef STORAGE_ROCKSDB_INCLUDE_ITERATOR_H_
-#define STORAGE_ROCKSDB_INCLUDE_ITERATOR_H_
+#ifndef GO_ROCKSDB_INCLUDE_ITERATOR_H_
+#define GO_ROCKSDB_INCLUDE_ITERATOR_H_
 
 #include "rocksdb/slice.h"
 #include "rocksdb/status.h"
@@ -109,4 +109,4 @@ extern Iterator* NewErrorIterator(const Status& status);
 
 }  // namespace rocksdb
 
-#endif  // STORAGE_ROCKSDB_INCLUDE_ITERATOR_H_
+#endif  // GO_ROCKSDB_INCLUDE_ITERATOR_H_

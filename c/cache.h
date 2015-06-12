@@ -19,8 +19,8 @@
 // they want something more sophisticated (like scan-resistance, a
 // custom eviction policy, variable cache sizing, etc.)
 
-#ifndef STORAGE_ROCKSDB_INCLUDE_CACHE_H_
-#define STORAGE_ROCKSDB_INCLUDE_CACHE_H_
+#ifndef GO_ROCKSDB_INCLUDE_CACHE_H_
+#define GO_ROCKSDB_INCLUDE_CACHE_H_
 
 #include <memory>
 #include <stdint.h>
@@ -131,4 +131,4 @@ class Cache {
 
 }  // namespace rocksdb
 
-#endif  // STORAGE_ROCKSDB_UTIL_CACHE_H_
+#endif  // GO_ROCKSDB_UTIL_CACHE_H_
