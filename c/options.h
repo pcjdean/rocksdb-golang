@@ -9,7 +9,12 @@
 extern "C" {
 #endif
 
+DEFINE_C_WRAP_STRUCT(ColumnFamilyOptions)
+DEFINE_C_WRAP_STRUCT(DBOptions)
 DEFINE_C_WRAP_STRUCT(Options)
+
+DEFINE_C_WRAP_STRUCT(ReadOptions)
+DEFINE_C_WRAP_STRUCT(WriteOptions)
 
 #ifdef __cplusplus
 }  /* end extern "C" */

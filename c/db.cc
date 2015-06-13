@@ -7,9 +7,10 @@
 
 using namespace rocksdb;
 
-DEFINE_C_WRAP_CONSTRUCTOR(String, std::string)
-DEFINE_C_WRAP_DESTRUCTOR(String, std::string)
+static const Status_t invalid_status = NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
 
+DEFINE_C_WRAP_CONSTRUCTOR(ColumnFamilyHandle)
+DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyHandle)
 String_t ColumnFamilyGetName(ColumnFamilyHandle_t* column_family)
 {
     std::string& name_str = GET_REP(column_family, ColumnFamilyHandle)->GetName();
@@ -38,6 +39,8 @@ DEFINE_C_WRAP_CONSTRUCTOR_ARGS(Range, Slice, Slice)
 DEFINE_C_WRAP_DESTRUCTOR(Range)
 
 DEFINE_C_WRAP_CONSTRUCTOR_ARGS(ColumnFamilyDescriptor, String, ColumnFamilyOptions)
+DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(ColumnFamilyDescriptor, String, ColumnFamilyOptions)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(ColumnFamilyDescriptor, kDefaultColumnFamilyName, ColumnFamilyOptions())
 DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyDescriptor)
 // A DB is a persistent ordered map from keys to values.
 // A DB is safe for concurrent access from multiple threads without
@@ -49,10 +52,10 @@ DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyDescriptor)
 // Stores nullptr in *dbptr and returns a non-OK status on error.
 // Caller should delete *dbptr when it is no longer needed.
 Status_t DBOpen(const Options_t* options,
-            const String_t* name,
-            DB_t* dbptr)
+                const String_t* name,
+                DB_t* dbptr)
 {
-    return NewStatusTCopy(&DB::Open(GET_REP_REF(options, Options), GET_REP_REF(name, String), &GET_REP(dbptr, DB));
+    return NewStatusTCopy(&DB::Open(GET_REP_REF(options, Options), GET_REP_REF(name, String), &GET_REP(dbptr, DB)));
 }
 
 
@@ -89,11 +92,11 @@ Status_t DBOpenForReadOnlyWithColumnFamilies(const Options_t* options,
     for (int i = 0; i < size_col; i++)
         column_families_vec.push_back(*column_families[i].rep);
     std::vector<ColumnFamilyHandle*> handles_vec;
-    Status_t ret = NewStatusTCopy(&DB::OpenForReadOnly(GET_REP_REF(options), GET_REP_REF(name), column_families_vec, &handles_vec, &GET_REP(dbptr), error_if_log_file_exist));
+    Status_t ret = NewStatusTCopy(&DB::OpenForReadOnly(GET_REP_REF(options, Options), GET_REP_REF(name, String), column_families_vec, &handles_vec, &GET_REP(dbptr, DB), error_if_log_file_exist));
     assert(handles_vec.size() == size_col);
     *handles = new ColumnFamilyHandle_t[size_col];
     for (int j = 0; j < size_col; j++)
-        GET_REP((*handles)[j]) = handles_vec[j];
+        GET_REP((*handles)[j], ColumnFamilyHandle) = handles_vec[j];
     return ret;
 }
 
@@ -109,19 +112,19 @@ Status_t DBOpenForReadOnlyWithColumnFamilies(const Options_t* options,
 // If everything is OK, handles will on return be the same size
 // as column_families --- handles[i] will be a handle that you
 // will use to operate on column family column_family[i]
-Status_t OpenWithColumnFamilies(const Options_t* options, const String_t* name,
-                 const ColumnFamilyDescriptor_t column_families[], const int size_col,
-                 ColumnFamilyHandle_t **handles, DB_t* dbptr);
+Status_t DBOpenWithColumnFamilies(const Options_t* options, const String_t* name,
+                                const ColumnFamilyDescriptor_t column_families[], const int size_col,
+                                ColumnFamilyHandle_t **handles, DB_t* dbptr)
 {
     std::vector<ColumnFamilyDescriptor> column_families_vec = std::vector<ColumnFamilyDescriptor>(size_col);
     for (int i = 0; i < size_col; i++)
         column_families_vec.push_back(*column_families[i].rep);
     std::vector<ColumnFamilyHandle*> handles_vec;
-    Status_t ret = NewStatusTCopy(&DB::Open(GET_REP_REF(options), GET_REP_REF(name), column_families_vec, &handles_vec, &GET_REP(dbptr)));
+    Status_t ret = NewStatusTCopy(&DB::Open(GET_REP_REF(options, Options), GET_REP_REF(name, String), column_families_vec, &handles_vec, &GET_REP(dbptr, DB)));
     assert(handles_vec.size() == size_col);
     *handles = new ColumnFamilyHandle_t[size_col];
     for (int j = 0; j < size_col; j++)
-        GET_REP((*handles)[j]) = handles_vec[j];
+        GET_REP((*handles)[j], ColumnFamilyHandle) = handles_vec[j];
     return ret;
 }
 
@@ -129,63 +132,58 @@ Status_t OpenWithColumnFamilies(const Options_t* options, const String_t* name,
 // and return the list of all column families in that DB
 // through column_families argument. The ordering of
 // column families in column_families is unspecified.
-Status_t ListColumnFamilies(DBOptions_t* db_options,
-                          const String_t* name,
-                          const String_t **column_families, int* size_col);
+Status_t DBListColumnFamilies(DBOptions_t* db_options,
+                              const String_t* name,
+                              const String_t **column_families, int* size_col)
 {
     std::vector<std::string> column_families_vec;
-    Status_t ret = NewStatusTCopy(&DB::ListColumnFamilies(GET_REP_REF(options), GET_REP_REF(name), column_families_vec));
+    Status_t ret = NewStatusTCopy(&DB::ListColumnFamilies(GET_REP_REF(options, Options), GET_REP_REF(name, String), column_families_vec));
     *size_col = column_families_vec.size();
     *column_families = new String_t[column_families];
     for (int j = 0; j < *size_col; j++)
-        GET_REP_REF((*column_families)[j]) = std::move(column_families_vec[j]);
+        GET_REP_REF((*column_families)[j], String) = std::move(column_families_vec[j]);
     return ret;
 }
 
 
 // Create a column_family and return the handle of column family
 // through the argument handle.
-Status_t CreateColumnFamily(DB_t* dbptr, const ColumnFamilyOptions_t* options,
-                          const String_t* column_family_name,
-                          ColumnFamilyHandle_t* handle);
+Status_t DBCreateColumnFamily(DB_t* dbptr, const ColumnFamilyOptions_t* options,
+                            const String_t* column_family_name,
+                            ColumnFamilyHandle_t* handle)
 {
-    if (dbptr)
-    {
-        return NewStatusTCopy(&GET_REP(dbptr)->CreateColumnFamily(GET_REP_REF(options), GET_REP_REF(column_family_name), &GET_REP(handle)));
-    }
-    else
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+    return (dbptr ?
+            NewStatusTCopy(&GET_REP(dbptr, DB)->CreateColumnFamily(GET_REP_REF(options, Options), GET_REP_REF(options, ColumnFamilyOptions), GET_REP_REF(column_family_name, String), &GET_REP(handle, ColumnFamilyHandle))) :
+            invalid_status);
 }
 
 // Drop a column family specified by column_family handle. This call
 // only records a drop record in the manifest and prevents the column
 // family from flushing and compacting.
-Status_t DropColumnFamily(DB_t* dbptr, const ColumnFamilyHandle_t* column_family);
+Status_t DBDropColumnFamily(DB_t* dbptr, const ColumnFamilyHandle_t* column_family);
 {
-    if (dbptr)
-        return NewStatusTCopy(&GET_REP(dbptr)->DropColumnFamily(GET_REP(column_family)));
-    else
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+    return (dbptr ?
+            NewStatusTCopy(&GET_REP(dbptr, DB)->DropColumnFamily(GET_REP(column_family, ColumnFamilyHandle))) :
+            invalid_status);
 }
 
 // Set the database entry for "key" to "value".
 // If "key" already exists, it will be overwritten.
 // Returns OK on success, and a non-OK status on error.
 // Note: consider setting options.sync = true.
-Status_t PutWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
+Status_t DBPutWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
                            const ColumnFamilyHandle_t* column_family,
                            const Slice_t* key,
                            const Slice_t* value)
 {
-    if (dbptr)
-        return NewStatusTCopy(&GET_REP(dbptr)->Put(GET_REP_REF(options), GET_REP_REF(column_family), GET_REP_REF(key), GET_REP_REF(value)));
-    else
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+    return (dbptr ?
+            NewStatusTCopy(&GET_REP(dbptr, DB)->Put(GET_REP_REF(options, WriteOptions), GET_REP_REF(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), GET_REP_REF(value, Slice))) :
+            invalid_status);
 }
 
-Status_t Put(DB_t* dbptr, const WriteOptions_t* optionss,
-           const Slice_t* key,
-           const Slice_t* value)
+Status_t DBPut(DB_t* dbptr, const WriteOptions_t* optionss,
+               const Slice_t* key,
+               const Slice_t* value)
 {
     return PutWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
 }
@@ -194,17 +192,17 @@ Status_t Put(DB_t* dbptr, const WriteOptions_t* optionss,
 // success, and a non-OK status on error.  It is not an error if "key"
 // did not exist in the database.
 // Note: consider setting options.sync = true.
-Status_t DeleteWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
-                      const ColumnFamilyHandle_t* column_family,
-                      const Slice_t* key)
+Status_t DBDeleteWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
+                                  const ColumnFamilyHandle_t* column_family,
+                                  const Slice_t* key)
 {
     if (dbptr)
         return NewStatusTCopy(&GET_REP(dbptr)->Delete(GET_REP_REF(options), GET_REP_REF(column_family), GET_REP_REF(key)));
     else
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
 }
 
-Status_t Delete(DB_t* dbptr, const WriteOptions_t* optionss,
+Status_t DBDelete(DB_t* dbptr, const WriteOptions_t* optionss,
               const Slice_t* key)
 {
     return DeleteWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key);
@@ -222,7 +220,7 @@ Status_t MergeWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
     if (dbptr)
         return NewStatusTCopy(&GET_REP(dbptr)->Merge(GET_REP_REF(options), GET_REP_REF(column_family), GET_REP_REF(key), GET_REP_REF(value)));
     else
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
 }
 
 Status_t Merge(DB_t* dbptr, const WriteOptions_t* optionss,
@@ -242,7 +240,7 @@ Status_t Write(DB_t* dbptr, const WriteOptions_t* optionss, WriteBatch_t* update
     if (dbptr)
         return NewStatusTCopy(&GET_REP(dbptr)->Write(GET_REP_REF(options), GET_REP(updates)));
     else
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
 }
 
 // If the database contains an entry for "key" store the
@@ -267,7 +265,7 @@ Status_t GetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
         return NewStatusTCopy(&ret);
     }
     else
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
 }
 
 Status_t Get(DB_t* dbptr, const ReadOptions_t* options,
@@ -318,7 +316,7 @@ Status_t* MultiGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
     else
     {
         ret = new Status_t;
-        *ret = NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        *ret = invalid_status;
     }
     return ret;
 }
@@ -402,7 +400,7 @@ virtual Status_t NewIterators(DB_t* dbptr, const ReadOptions_t* options,
     }
     else
     {
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
     }
 }
 
@@ -581,7 +579,7 @@ Status_t CompactRangeWithColumnFamily(DB_t* dbptr,
     }
     else
     {
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
     }
 }
 
@@ -634,7 +632,7 @@ Status_t CompactFilesWithColumnFamily(DB_t* dbptr,
     }
     else
     {
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
     }
 }
 
@@ -744,7 +742,7 @@ Status_t FlushWithColumnFamily(DB_t* dbptr,
     }
     else
     {
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
     }
 }
 
@@ -778,7 +776,7 @@ Status_t DisableFileDeletions(DB_t* dbptr)
     }
     else
     {
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
     }
 }
 
@@ -799,7 +797,7 @@ Status_t EnableFileDeletions(DB_t* dbptr, bool force)
     }
     else
     {
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
     }
 }
 
@@ -837,7 +835,7 @@ Status_t GetLiveFiles(DB_t* dbptr,
     }
     else
     {
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
     }
 }
 
@@ -856,7 +854,7 @@ Status_t GetSortedWalFiles(DB_t* dbptr, LogFile_t files[], int* n)
     }
     else
     {
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
     }
 }
 
@@ -883,7 +881,7 @@ Status_t GetUpdatesSince(DB_t* dbptr, SequenceNumber seq_number,
     }
     else
     {
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
     }
 }
 
@@ -898,7 +896,7 @@ Status_t DeleteFile(DB_t* dbptr, String_t* name)
     }
     else
     {
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
     }
 }
 
@@ -952,7 +950,7 @@ Status_t GetDbIdentity(DB_t* dbptr, String_t* identity)
     }
     else
     {
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
     }
 }
 
@@ -975,7 +973,7 @@ Status_t GetPropertiesOfAllTablesWithColumnFamily(DB_t* dbptr,
     }
     else
     {
-        return NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+        return invalid_status;
     }
 }
 

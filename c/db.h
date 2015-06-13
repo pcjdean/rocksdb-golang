@@ -9,6 +9,7 @@
 #include "slice.h"
 #include "options.h"
 #include "status.h"
+#include "string.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,8 +18,6 @@ extern "C" {
 DEFINE_C_WRAP_STRUCT(ColumnFamilyHandle)
 extern String_t ColumnFamilyGetName(ColumnFamilyHandle_t* column_family);
 extern uint32_t ColumnFamilyGetID(ColumnFamilyHandle_t* column_family);
-
-DEFINE_C_WRAP_STRUCT(String)
 
 DEFINE_C_WRAP_STRUCT(ColumnFamilyDescriptor)
 
@@ -34,7 +33,30 @@ Status_t DBOpen(const Options_t* options,
                 DB_t* dbptr)
 Status_t DBOpenForReadOnly(const Options_t* options,
                            const String_t* name, DB_t* dbptr,
-                           bool error_if_log_file_exist)
+                           bool error_if_log_file_exist);
+Status_t DBOpenForReadOnlyWithColumnFamilies(const Options_t* options,
+                                           const String_t* name,
+                                           const ColumnFamilyDescriptor_t column_families[],
+                                           const int size_col,
+                                           ColumnFamilyHandle_t **handles,
+                                           DB_t* dbptr, bool error_if_log_file_exist);
+Status_t DBOpenWithColumnFamilies(const Options_t* options, const String_t* name,
+                                const ColumnFamilyDescriptor_t column_families[], const int size_col,
+                                ColumnFamilyHandle_t **handles, DB_t* dbptr);
+Status_t DBListColumnFamilies(DBOptions_t* db_options,
+                              const String_t* name,
+                              const String_t **column_families, int* size_col);
+Status_t DBCreateColumnFamily(DB_t* dbptr, const ColumnFamilyOptions_t* options,
+                            const String_t* column_family_name,
+                            ColumnFamilyHandle_t* handle);
+Status_t DBDropColumnFamily(DB_t* dbptr, const ColumnFamilyHandle_t* column_family);
+Status_t DBPutWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
+                           const ColumnFamilyHandle_t* column_family,
+                           const Slice_t* key,
+                           const Slice_t* value);
+Status_t DBPut(DB_t* dbptr, const WriteOptions_t* optionss,
+               const Slice_t* key,
+               const Slice_t* value);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

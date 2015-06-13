@@ -5,7 +5,6 @@
 #ifndef GO_ROCKSDB_INCLUDE_TYPES_H_
 #define GO_ROCKSDB_INCLUDE_TYPES_H_
 
-#define GET_MACRO2(_1,_2,NAME,...) NAME
 #define GET_MACRO3(_1,_2,_3,NAME,...) NAME
 
 #define GET_REP(x,y) ((y##*)x->rep)
@@ -16,62 +15,84 @@
                                   void* rep;          \
                               } x##_t;
 
-#define DEFINE_C_WRAP_CONSTRUCTOR1(x) inline x##_t New##x##T(x##* ptr) \
+// Used internally by the C/C++ code
+#define DEFINE_C_WRAP_CONSTRUCTOR(x) inline x##_t New##x##T(x##* ptr) \
                                      { \
                                           x##_t wrap_t; \
                                           wrap_t.rep = (void*)ptr;  \
                                           return wrap_t; \
                                      } \
 
-#define DEFINE_C_WRAP_CONSTRUCTOR2(x,y) inline x##_t New##x##T(y##* ptr)  \
-                                     { \
-                                          x##_t wrap_t; \
-                                          wrap_t.rep = (void*)ptr;  \
-                                          return wrap_t; \
-                                     } \
-
-#define DEFINE_C_WRAP_CONSTRUCTOR(...) GET_MACRO2(__VA_ARGS__, DEFINE_C_WRAP_CONSTRUCTOR2, DEFINE_C_WRAP_CONSTRUCTOR1)(__VA_ARGS__)
-
-#define DEFINE_C_WRAP_CONSTRUCTOR_COPY1(x) inline x##_t New##x##TCopy(x##* ptr) \
+// Used internally by the C/C++ code
+#define DEFINE_C_WRAP_CONSTRUCTOR_COPY(x) inline x##_t New##x##TCopy(x##* ptr) \
                                      { \
                                           x##_t wrap_t; \
                                           wrap_t.rep = (void*)new x(*ptr); \
                                           return wrap_t; \
                                      } \
 
-#define DEFINE_C_WRAP_CONSTRUCTOR_COPY2(x,y) inline x##_t New##x##TCopy(y##* ptr)  \
+// Used externally by the calling code
+#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS0(x) inline x##_t New##x##TArgs() \
                                      { \
                                           x##_t wrap_t; \
-                                          wrap_t.rep = (void*)new y(*ptr);  \
-                                          return wrap_t; \
-                                     } \
-
-#define DEFINE_C_WRAP_CONSTRUCTOR_COPY(...) GET_MACRO2(__VA_ARGS__, DEFINE_C_WRAP_CONSTRUCTOR_COPY2, DEFINE_C_WRAP_CONSTRUCTOR_COPY1)(__VA_ARGS__)
-
-#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS0(x) inline x##_t New##x##TArgs(x##_t* ptr) \
-                                     { \
-                                          x##_t wrap_t; \
-                                          wrap_t.rep = (void*)new x(GET_REP_REF(ptr)); \
+                                          wrap_t.rep = (void*)new x(); \
                                           return wrap_t; \
                                      } \
 
 #define DEFINE_C_WRAP_CONSTRUCTOR_ARGS1(x,a) inline x##_t New##x##TArgs(a##_t* ptr_a) \
                                      { \
                                           x##_t wrap_t; \
-                                          wrap_t.rep = (void*)new x(GET_REP_REF(ptr_a)); \
+                                          wrap_t.rep = (void*)new x(GET_REP_REF(ptr_a, a)); \
                                           return wrap_t; \
                                      } \
 
 #define DEFINE_C_WRAP_CONSTRUCTOR_ARGS2(x,a,b) inline x##_t New##x##TArgs(a##_t* ptr_a, b##_t* ptr_b) \
                                      { \
                                           x##_t wrap_t; \
-                                          wrap_t.rep = (void*)new x(GET_REP_REF(ptr_a), GET_REP_REF(ptr_b)); \
+                                          wrap_t.rep = (void*)new x(GET_REP_REF(ptr_a, a), GET_REP_REF(ptr_b, b)); \
                                           return wrap_t; \
                                      } \
 
+// Used externally by the calling code
 #define DEFINE_C_WRAP_CONSTRUCTOR_ARGS(...) GET_MACRO3(__VA_ARGS__, DEFINE_C_WRAP_CONSTRUCTOR_ARGS2, DEFINE_C_WRAP_CONSTRUCTOR_ARGS1, DEFINE_C_WRAP_CONSTRUCTOR_ARGS0)(__VA_ARGS__)
 
-#define DEFINE_C_WRAP_DESTRUCTOR1(x) inline void Delete##x##T(x##_t* ptr) \
+// Used externally by the calling code
+#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0(x) DEFINE_C_WRAP_CONSTRUCTOR_ARGS0(x)
+
+#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1(x,a) inline x##_t New##x##TRawArgs(a _a) \
+                                     { \
+                                          x##_t wrap_t; \
+                                          wrap_t.rep = (void*)new x(_a); \
+                                          return wrap_t; \
+                                     } \
+
+#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2(x,a,b) inline x##_t New##x##TRawArgs(a _a, b _b) \
+                                     { \
+                                          x##_t wrap_t; \
+                                          wrap_t.rep = (void*)new x(_a, _b); \
+                                          return wrap_t; \
+                                     } \
+// Used internally by the C/C++ code
+#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(...) GET_MACRO3(__VA_ARGS__, DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2, DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1, DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0)(__VA_ARGS__)
+
+// Used externally by the calling code. But it's implemented inernally.
+#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0(x) DEFINE_C_WRAP_CONSTRUCTOR_ARGS0(x)
+
+#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1(x,a) inline x##_t New##x##TDefault() \
+                                     { \
+                                          return New##x##TRawArgs(a);      \
+                                     } \
+
+#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2(x,a,b) inline x##_t New##x##TDefault() \
+                                     { \
+                                         return New##x##TRawArgs(a, b);      \
+                                     } \
+
+// Used externally by the calling code
+#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(...) GET_MACRO3(__VA_ARGS__, DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2, DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1, DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0)(__VA_ARGS__)
+
+// Used externally by the calling code
+#define DEFINE_C_WRAP_DESTRUCTOR(x) inline void Delete##x##T(x##_t* ptr) \
                                      { \
                                           if (ptr) \
                                           {        \
@@ -81,19 +102,6 @@
                                               delete ptr; \
                                           }        \
                                      } \
-
-#define DEFINE_C_WRAP_DESTRUCTOR1(x,y) inline void Delete##x##T(x##_t* ptr) \
-                                     { \
-                                          if (ptr) \
-                                          {        \
-                                              y* rep = GET_REP(ptr,y); \
-                                              if (rep) \
-                                                  delete rep;   \
-                                              delete ptr; \
-                                          }        \
-                                     } \
-
-#define DEFINE_C_WRAP_DESTRUCTOR(...) GET_MACRO2(__VA_ARGS__, DEFINE_C_WRAP_DESTRUCTOR2, DEFINE_C_WRAP_DESTRUCTOR1)(__VA_ARGS__)
 
 
 #endif //  GO_ROCKSDB_INCLUDE_TYPES_H_
