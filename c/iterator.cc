@@ -11,3 +11,10 @@
 // external synchronization, but if any of the threads may call a
 // non-const method, all threads accessing the same Iterator must use
 // external synchronization.
+
+#include <iterator.h>
+#include "iterator.h"
+
+DEFINE_C_WRAP_CONSTRUCTOR(Iterator)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(Iterator)
+DEFINE_C_WRAP_DESTRUCTOR(Iterator)

@@ -31,6 +31,14 @@
                                           return wrap_t; \
                                      } \
 
+// Used internally by the C/C++ code
+#define DEFINE_C_WRAP_CONSTRUCTOR_MOVE(x) inline x##_t New##x##TMove(x##* ptr) \
+                                     { \
+                                          x##_t wrap_t; \
+                                          wrap_t.rep = (void*)new x(std::move(*ptr)); \
+                                          return wrap_t; \
+                                     } \
+
 // Used externally by the calling code
 #define DEFINE_C_WRAP_CONSTRUCTOR_ARGS0(x) inline x##_t New##x##TArgs() \
                                      { \
@@ -92,14 +100,15 @@
 #define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(...) GET_MACRO3(__VA_ARGS__, DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2, DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1, DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0)(__VA_ARGS__)
 
 // Used externally by the calling code
-#define DEFINE_C_WRAP_DESTRUCTOR(x) inline void Delete##x##T(x##_t* ptr) \
+#define DEFINE_C_WRAP_DESTRUCTOR(x) inline void Delete##x##T(x##_t* ptr, bool self) \
                                      { \
                                           if (ptr) \
                                           {        \
                                               x* rep = GET_REP(ptr,x); \
                                               if (rep) \
                                                   delete rep;   \
-                                              delete ptr; \
+                                              if (self) \
+                                                  delete ptr;   \
                                           }        \
                                      } \
 

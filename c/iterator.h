@@ -6,4 +6,16 @@
 #ifndef GO_ROCKSDB_INCLUDE_ITERATOR_H_
 #define GO_ROCKSDB_INCLUDE_ITERATOR_H_
 
+#include "types.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+DEFINE_C_WRAP_STRUCT(Iterator)
+
+#ifdef __cplusplus
+}  /* end extern "C" */
+#endif
+
 #endif  // GO_ROCKSDB_INCLUDE_ITERATOR_H_

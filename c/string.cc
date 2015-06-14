@@ -9,4 +9,5 @@
 typedef std::string String;
 
 DEFINE_C_WRAP_CONSTRUCTOR(String)
+DEFINE_C_WRAP_CONSTRUCTOR_MOVE(String)
 DEFINE_C_WRAP_DESTRUCTOR(String)

@@ -22,6 +22,10 @@ uint32_t ColumnFamilyGetID(ColumnFamilyHandle_t* column_family)
     return GET_REP(column_family, ColumnFamilyHandle)->GetID();
 }
 
+DEFINE_C_WRAP_CONSTRUCTOR(TablePropertiesCollection)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(TablePropertiesCollection)
+DEFINE_C_WRAP_DESTRUCTOR(TablePropertiesCollection)
+
 // Abstract handle to particular state of a DB.
 // A Snapshot is an immutable object and can therefore be safely
 // accessed from multiple threads without any external synchronization.
@@ -185,7 +189,7 @@ Status_t DBPut(DB_t* dbptr, const WriteOptions_t* optionss,
                const Slice_t* key,
                const Slice_t* value)
 {
-    return DBPutWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
+    return DBPutWithColumnFamily(dbptr, options, &DBDefaultColumnFamily(dbptr), key, value);
 }
 
 // Remove the database entry (if any) for "key".  Returns OK on
@@ -204,7 +208,7 @@ Status_t DBDeleteWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
 Status_t DBDelete(DB_t* dbptr, const WriteOptions_t* optionss,
                   const Slice_t* key)
 {
-    return DBDeleteWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key);
+    return DBDeleteWithColumnFamily(dbptr, options, &DBDefaultColumnFamily(dbptr), key);
 }
 
 // Merge the database entry for "key" with "value".  Returns OK on success,
@@ -225,7 +229,7 @@ Status_t DBMerge(DB_t* dbptr, const WriteOptions_t* optionss,
                const Slice_t* key,
                const Slice_t* value)
 {
-    return DBMergeWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
+    return DBMergeWithColumnFamily(dbptr, options, &DBDefaultColumnFamily(dbptr), key, value);
 }
 
 // Apply the specified updates to the database.
@@ -270,7 +274,7 @@ Status_t DBGet(DB_t* dbptr, const ReadOptions_t* options,
              const Slice_t* key,
              const String_t* value)
 {
-    return DBGetWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
+    return DBGetWithColumnFamily(dbptr, options, &DBDefaultColumnFamily(dbptr), key, value);
 }
 
 // If keys[i] does not exist in the database, then the i'th returned
@@ -325,7 +329,7 @@ Status_t* DBMultiGet(DB_t* dbptr, const ReadOptions_t* options,
                      String_t** values)
 {
     ColumnFamilyHandle_t *column_families = new ColumnFamilyHandle_t[size_keys];
-    std::fill_n(column_families, size_keys, DefaultColumnFamily(dbptr));
+    std::fill_n(column_families, size_keys, DBDefaultColumnFamily(dbptr));
     return DBMultiGetWithColumnFamily(dbptr, options, column_families, keys, size_keys, values);
 }
 
@@ -353,7 +357,7 @@ bool DBKeyMayExist(DB_t* dbptr, const ReadOptions_t* options
                    String_t* value,
                    bool* value_found)
 {
-    return DBKeyMayExistWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value, value_found);
+    return DBKeyMayExistWithColumnFamily(dbptr, options, &DBDefaultColumnFamily(dbptr), key, value, value_found);
 }
 
 // Return a heap-allocated iterator over the contents of the database.
@@ -365,41 +369,42 @@ bool DBKeyMayExist(DB_t* dbptr, const ReadOptions_t* options
 Iterator_t DBNewIteratorWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
                                          ColumnFamilyHandle_t* column_family)
 {
-    return NewIteratorT(dbptr ? GET_REP(dbptr)->NewIterator(GET_REP_REF(options), GET_REP(column_family)) : nullptr);
+    return NewIteratorT(dbptr ? GET_REP(dbptr, DB)->NewIterator(GET_REP_REF(options, ReadOptions), GET_REP(column_family, ColumnFamilyHandle)) : nullptr);
 }
     
-Iterator_t NewIterator(DB_t* dbptr, const ReadOptions_t* options)
+Iterator_t DBNewIterator(DB_t* dbptr, const ReadOptions_t* options)
 {
-    return NewIteratorWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr));
+    return DBNewIteratorWithColumnFamily(dbptr, options, &DBDefaultColumnFamily(dbptr));
 }
 
 // Returns iterators from a consistent database state across multiple
 // column families. Iterators are heap allocated and need to be deleted
 // before the db is deleted
-virtual Status_t NewIterators(DB_t* dbptr, const ReadOptions_t* options,
-                 const ColumnFamilyHandle_t column_families[],
-                 const int size_col,
-                 Iterator_t** values)
+Status_t DBNewIterators(DB_t* dbptr, const ReadOptions_t* options,
+                      const ColumnFamilyHandle_t column_families[],
+                      const int size_col,
+                      Iterator_t** values)
 {
+    Status &ret;
     if (dbptr)
     {
         std::vector<ColumnFamilyHandle*> column_families_vec = std::vector<ColumnFamilyHandle*>(size_col);
         for (int i = 0; i < size_col; i++)
-            column_families_vec.push_back(column_families[i].rep);
+            column_families_vec.push_back(GET_REP(column_families[i], ColumnFamilyHandle));
         std::vector<Iterator*> values_vec;
-        Status ret = GET_REP(dbptr)->NewIterators(GET_REP_REF(options), column_families_vec, &values_vec);
+        ret = GET_REP(dbptr, DB)->NewIterators(GET_REP_REF(options, ReadOptions), column_families_vec, &values_vec);
         int num_val = values_vec.size();
         *values = new Iterator_t[num_val];
         for (int j = 0; j < num_val; j++)
         {
-            GET_REP_REF(values[j]) = std::move(values_vec[j]);
+            GET_REP(values[j], Iterator) = values_vec[j];
         }
-        return NewStatusTCopy(&ret);
     }
     else
     {
-        return invalid_status;
+        ret = invalid_status;
     }
+    return NewStatusTCopy(&ret);
 }
 
 // Return a handle to the current DB state.  Iterators created with
@@ -409,17 +414,17 @@ virtual Status_t NewIterators(DB_t* dbptr, const ReadOptions_t* options,
 //
 // nullptr will be returned if the DB fails to take a snapshot or does
 // not support snapshot.
-Snapshot_t GetSnapshot(DB_t* dbptr)
+Snapshot_t DBGetSnapshot(DB_t* dbptr)
 {
-    return NewSnapshotT(dbptr ? GET_REP(dbptr)->GetSnapshot() : nullptr);
+    return NewSnapshotT(dbptr ? GET_REP(dbptr, DB)->GetSnapshot() : nullptr);
 }
 
 // Release a previously acquired snapshot.  The caller must not
 // use "snapshot" after this call.
-void ReleaseSnapshot(DB_t* dbptr, const Snapshot_t* snapshot)
+void DBReleaseSnapshot(DB_t* dbptr, const Snapshot_t* snapshot)
 {
     if (dbptr)
-        GET_REP(dbptr)->ReleaseSnapshot(*snapshot->rep);
+        GET_REP(dbptr, DB)->ReleaseSnapshot(GET_REP_REF(snapshot, Snapshot));
 }
 
 // DB implementations can export properties about their state
@@ -459,25 +464,25 @@ void ReleaseSnapshot(DB_t* dbptr, const Snapshot_t* snapshot)
 //      files are held from being deleted, by iterators or unfinished
 //      compactions.
 
-bool GetPropertyWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
-                                 ColumnFamilyHandle_t* column_family
-                                 const Slice_t* property, String_t* value)
+bool DBGetPropertyWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
+                                   ColumnFamilyHandle_t* column_family
+                                   const Slice_t* property, String_t* value)
 {
     if (dbptr)
     {
-        std::string str_val
-        bool ret = GET_REP(dbptr)->GetProperty(GET_REP_REF(options), GET_REP(column_family), GET_REP_REF(property), &str_val);
-        GET_REP_REF(value) = std::move(str_val);
+        std::string str_val;
+        bool ret = GET_REP(dbptr, DB)->GetProperty(GET_REP_REF(options, ReadOptions), GET_REP(column_family, ColumnFamilyHandle), GET_REP_REF(property, Slice), &str_val);
+        GET_REP_REF(value, String) = std::move(str_val);
         return ret;
     }
     else
         return false;
 }
     
-bool GetProperty(DB_t* dbptr, const ReadOptions_t* options,
-                 const Slice_t* property, String_t* value)
+bool DBGetProperty(DB_t* dbptr, const ReadOptions_t* options,
+                   const Slice_t* property, String_t* value)
 {
-    return GetPropertyWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), property, value);
+    return DBGetPropertyWithColumnFamily(dbptr, options, &DBDefaultColumnFamily(dbptr), property, value);
 }
 
 // Similar to GetProperty(), but only works for a subset of properties whose
@@ -499,22 +504,22 @@ bool GetProperty(DB_t* dbptr, const ReadOptions_t* options,
 //  "rocksdb.num-snapshots"
 //  "rocksdb.oldest-snapshot-time"
 //  "rocksdb.num-live-versions"
-bool GetIntPropertyWithColumnFamily(DB_t* dbptr, 
-                                    ColumnFamilyHandle_t* column_family,
-                                    const Slice_t* property, uint64_t* value)
+bool DBGetIntPropertyWithColumnFamily(DB_t* dbptr, 
+                                      ColumnFamilyHandle_t* column_family,
+                                      const Slice_t* property, uint64_t* value)
 {
     if (dbptr)
     {
-        return GET_REP(dbptr)->GetIntProperty(GET_REP(column_family), GET_REP_REF(property), value);
+        return GET_REP(dbptr, DB)->GetIntProperty(GET_REP(column_family, ColumnFamilyHandle), GET_REP_REF(property, Slice), value);
     }
     else
         return false;
 }
 
-bool GetIntProperty(DB_t* dbptr, 
-                    const Slice_t* property, uint64_t* value)
+bool DBGetIntProperty(DB_t* dbptr, 
+                      const Slice_t* property, uint64_t* value)
 {
-    return GetIntPropertyWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr), property, value);
+    return DBGetIntPropertyWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr), property, value);
 }
 
 // For each i in [0,n-1], store in "sizes[i]", the approximate
@@ -525,25 +530,25 @@ bool GetIntProperty(DB_t* dbptr,
 // sizes will be one-tenth the size of the corresponding user data size.
 //
 // The results may not include the sizes of recently written data.
-void GetApproximateSizesWithColumnFamily(DB_t* dbptr, 
-                                         ColumnFamilyHandle_t* column_family,
-                                         const Range_t* range, int n,
-                                         uint64_t* sizes)
+void DBGetApproximateSizesWithColumnFamily(DB_t* dbptr, 
+                                           ColumnFamilyHandle_t* column_family,
+                                           const Range_t* range, int n,
+                                           uint64_t* sizes)
 {
     if (dbptr)
     {
         const Range* range_ary = new Range*[n];
         for (int i = 0; i < n; i++)
-            range_ary[i] = GET_REP(range[i]);
-        GET_REP(dbptr)->GetApproximateSizes(GET_REP(column_family), range_ary, n, sizes);
+            range_ary[i] = GET_REP(range[i], Range);
+        GET_REP(dbptr, DB)->GetApproximateSizes(GET_REP(column_family, ColumnFamilyHandle), range_ary, n, sizes);
     }
 }
 
-void GetApproximateSizes(DB_t* dbptr, 
-                         const Range_t* range, int n,
-                         uint64_t* sizes)
+void DBGetApproximateSizes(DB_t* dbptr, 
+                           const Range_t* range, int n,
+                           uint64_t* sizes)
 {
-    GetApproximateSizesWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr), range, n, sizes);
+    DBGetApproximateSizesWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr), range, n, sizes);
 }
 
 // Compact the underlying storage for the key range [*begin,*end].
@@ -565,46 +570,41 @@ void GetApproximateSizes(DB_t* dbptr,
 // the data set or a given level (specified by non-negative target_level).
 // Compaction outputs should be placed in options.db_paths[target_path_id].
 // Behavior is undefined if target_path_id is out of range.
-Status_t CompactRangeWithColumnFamily(DB_t* dbptr, 
-                                      ColumnFamilyHandle_t* column_family,
-                                      const Slice_t* begin, const Slice_t* end,
-                                      bool reduce_level, int target_level,
-                                      uint32_t target_path_id)
+Status_t DBCompactRangeWithColumnFamily(DB_t* dbptr, 
+                                        ColumnFamilyHandle_t* column_family,
+                                        const Slice_t* begin, const Slice_t* end,
+                                        bool reduce_level, int target_level,
+                                        uint32_t target_path_id)
 {
-    if (dbptr)
-    {
-        return NewStatusTCopy(&GET_REP(dbptr)->CompactRange(GET_REP(column_families), GET_REP(begin), GET_REP(end), reduce_level, target_level, target_path_id));
-    }
-    else
-    {
-        return invalid_status;
-    }
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr)->CompactRange(GET_REP(column_families), GET_REP(begin), GET_REP(end), reduce_level, target_level, target_path_id) :
+                          &invalid_status);
 }
 
-Status_t CompactRange(DB_t* dbptr, 
-                      const Slice_t* begin, const Slice_t* end,
-                      bool reduce_level, int target_level,
-                      uint32_t target_path_id)
+Status_t DBCompactRange(DB_t* dbptr, 
+                        const Slice_t* begin, const Slice_t* end,
+                        bool reduce_level, int target_level,
+                        uint32_t target_path_id)
 {
-    return CompactRangeWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr), begin, end, reduce_level, target_level, target_path_id);
+    return DBCompactRangeWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr), begin, end, reduce_level, target_level, target_path_id);
 }
 
-Status_t SetOptionsWithColumnFamily(DB_t* dbptr, 
-                                    ColumnFamilyHandle_t* column_family
-                                    const String_t new_options[],
-                                    int n)
+Status_t DBSetOptionsWithColumnFamily(DB_t* dbptr, 
+                                      ColumnFamilyHandle_t* column_family
+                                      const String_t new_options[],
+                                      int n)
 {
     const std::unordered_map<std::string, std::string> new_options_map;
     for (int i = 0; i < n; i++)
-        new_options_map[std::move(GET_REP(&new_options[i]))] = std::move(GET_REP(&new_options[++i]));
-    return NewStatusTCopy(&GET_REP(dbptr)->SetOptions(GET_REP(column_families), new_options_map));
+        new_options_map[std::move(GET_REP(&new_options[i], String))] = std::move(GET_REP(&new_options[++i], String));
+    return NewStatusTCopy(&GET_REP(dbptr, DB)->SetOptions(GET_REP(column_family, ColumnFamilyHandle), new_options_map));
 }
 
-Status_t SetOptions(DB_t* dbptr, 
-                    const String_t new_options[],
-                    const int n)
+Status_t DBSetOptions(DB_t* dbptr, 
+                      const String_t new_options[],
+                      const int n)
 {
-    return SetOptionsWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr), new_options, n);
+    return DBSetOptionsWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr), new_options, n);
 }
 
 // CompactFiles() inputs a list of files specified by file numbers
@@ -614,97 +614,104 @@ Status_t SetOptions(DB_t* dbptr,
 //
 // @see GetDataBaseMetaData
 // @see GetColumnFamilyMetaData
-Status_t CompactFilesWithColumnFamily(DB_t* dbptr, 
-                                      const CompactionOptions_t compact_options,
-                                      ColumnFamilyHandle_t* column_family,
-                                      const String_t input_file_names[],
-                                      const int n,
-                                      const int output_level, const int output_path_id)
+Status_t DBCompactFilesWithColumnFamily(DB_t* dbptr, 
+                                        const CompactionOptions_t compact_options,
+                                        ColumnFamilyHandle_t* column_family,
+                                        const String_t input_file_names[],
+                                        const int n,
+                                        const int output_level, const int output_path_id)
 {
+    Status &ret;
     if (dbptr)
     {
         const std::vector<std::string> input_file_names_vec;
         for (int i = 0; i < n; i++)
-            input_file_names_vec.push_back(std::move(GET_REP_REF(&input_file_names[i])));
-        return NewStatusTCopy(&GET_REP(dbptr)->CompactFiles(GET_REP_REF(compact_options), GET_REP(column_family), input_file_names_vec, output_level, output_path_id));
+            input_file_names_vec.push_back(std::move(GET_REP_REF(&input_file_names[i], String)));
+        ret = GET_REP(dbptr)->CompactFiles(GET_REP_REF(compact_options, CompactionOptions), GET_REP(column_family, ColumnFamilyHandle), input_file_names_vec, output_level, output_path_id);
     }
     else
     {
-        return invalid_status;
+        ret = invalid_status;
     }
+    return NewStatusTCopy(&ret);
 }
 
-Status_t CompactFiles(DB_t* dbptr, 
-                      const CompactionOptions_t compact_options,
-                      const String_t input_file_names[],
-                      const int n,
-                      const int output_level, const int output_path_id)
+Status_t DBCompactFiles(DB_t* dbptr, 
+                        const CompactionOptions_t compact_options,
+                        const String_t input_file_names[],
+                        const int n,
+                        const int output_level, const int output_path_id)
 {
-    return CompactFilesWithColumnFamily(dbptr, compact_options, &DefaultColumnFamily(dbptr),
-                                            input_file_names, n, output_level, output_path_id);
+    return DBCompactFilesWithColumnFamily(dbptr, compact_options, &DBDefaultColumnFamily(dbptr),
+                                          input_file_names, n, output_level, output_path_id);
 }
 
 // Number of levels used for this DB.
-int NumberLevelsWithColumnFamily(DB_t* dbptr, 
-                                 ColumnFamilyHandle_t* column_family)
+int DBNumberLevelsWithColumnFamily(DB_t* dbptr, 
+                                   ColumnFamilyHandle_t* column_family)
 {
     int ret = 0;
     if (dbptr)
     {
-        ret = GET_REP(dbptr)->NumberLevels(GET_REP(column_family));
+        ret = GET_REP(dbptr, DB)->NumberLevels(GET_REP(column_family, ColumnFamilyHandle));
     }
     return ret;
 }
 
-int NumberLevels(DB_t* dbptr)
+int DBNumberLevels(DB_t* dbptr)
 {
-    return NumberLevelsWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr));
+    return DBNumberLevelsWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr));
 }
 
 // Maximum level to which a new compacted memtable is pushed if it
 // does not create overlap.
-int MaxMemCompactionLevelWithColumnFamily(DB_t* dbptr, 
-                                          ColumnFamilyHandle_t* column_family)
+int DBMaxMemCompactionLevelWithColumnFamily(DB_t* dbptr, 
+                                            ColumnFamilyHandle_t* column_family)
 {
     int ret = 0;
     if (dbptr)
     {
-        ret = GET_REP(dbptr)->MaxMemCompactionLevel(GET_REP(column_family));
+        ret = GET_REP(dbptr, DB)->MaxMemCompactionLevel(GET_REP(column_family, ColumnFamilyHandle));
     }
     return ret;
 }
 
-int MaxMemCompactionLevel(DB_t* dbptr)
+int DBMaxMemCompactionLevel(DB_t* dbptr)
 {
-    return MaxMemCompactionLevelWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr));
+    return DBMaxMemCompactionLevelWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr));
 }
 
 // Number of files in level-0 that would stop writes.
-int Level0StopWriteTriggerWithColumnFamily(DB_t* dbptr, 
-                                          ColumnFamilyHandle_t* column_family)
+int DBLevel0StopWriteTriggerWithColumnFamily(DB_t* dbptr, 
+                                             ColumnFamilyHandle_t* column_family)
 {
     int ret = 0;
     if (dbptr)
     {
-        ret = GET_REP(dbptr)->Level0StopWriteTrigger(GET_REP(column_family));
+        ret = GET_REP(dbptr, DB)->Level0StopWriteTrigger(GET_REP(column_family, ColumnFamilyHandle));
     }
     return ret;
 }
 
-int Level0StopWriteTrigger(DB_t* dbptr)
+int DBLevel0StopWriteTrigger(DB_t* dbptr)
 {
-    return Level0StopWriteTriggerWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr));
+    return DBLevel0StopWriteTriggerWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr));
 }
 
 // Get DB name -- the exact same name that was provided as an argument to
 // DB::Open()
-String_t GetName(DB_t* dbptr)
+String_t DBGetName(DB_t* dbptr)
 {
-    return NewStringT(dbptr ? &GET_REP(dbptr)->GetName() : nullptr);
+    if (dbptr)
+    {
+        return NewStringTMove(&GET_REP(dbptr, DB)->GetName());
+    }
+    else
+        return NewStringT(nullptr);
 }
 
 // Get Env object from the DB
-Env_t GetEnv(DB_t* dbptr)
+Env_t DBGetEnv(DB_t* dbptr)
 {
     return NewEnvT(dbptr ? GET_REP(dbptr)->GetEnv() : nullptr);
 }
@@ -713,50 +720,57 @@ Env_t GetEnv(DB_t* dbptr)
 // column family, the options provided when calling DB::Open() or
 // DB::CreateColumnFamily() will have been "sanitized" and transformed
 // in an implementation-defined manner.
-Options_t GetOptionsWithColumnFamily(DB_t* dbptr, 
-                                     ColumnFamilyHandle_t* column_family)
-{
-    return NewOptionsT(dbptr ? &GET_REP(dbptr)->GetOptions(GET_REP(column_family)) : nullptr);
-}
-
-Options_t GetOptions(DB_t* dbptr) const
-{
-    return GetOptionsWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr));
-}
-
-DBOptions_t GetDBOptions(DB_t* dbptr)
-{
-    return NewDBOptionsT(dbptr ? GET_REP(dbptr)->GetDBOptions() : nullptr);
-}
-
-// Flush all mem-table data.
-Status_t FlushWithColumnFamily(DB_t* dbptr, 
-                               const FlushOptions_t* options,
-                               ColumnFamilyHandle_t* column_family)
+Options_t DBGetOptionsWithColumnFamily(DB_t* dbptr, 
+                                       ColumnFamilyHandle_t* column_family)
 {
     if (dbptr)
     {
-        return NewStatusTCopy(&GET_REP(dbptr)->Flush(GET_REP_REF(options), GET_REP(column_family));
+        Options &options = GET_REP(dbptr, DB)->GetOptions(GET_REP(column_family, ColumnFamilyHandle));
+        return NewOptionsTRawArgs(options, options);
     }
     else
-    {
-        return invalid_status;
-    }
+        return NewOptionsT(nullptr);
 }
 
-Status_t Flush(DB_t* dbptr, 
-               const FlushOptions_t* options)
+Options_t DBGetOptions(DB_t* dbptr) const
 {
-    return FlushWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr));
+    return DBGetOptionsWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr));
+}
+
+DBOptions_t DBGetDBOptions(DB_t* dbptr)
+{
+    if (dbptr)
+    {
+        Options &options = GET_REP(dbptr, DB)->GetDBOptions();
+        return NewDBOptionsTRawArgs(options);
+    }
+    else
+        return NewDBOptionsT(nullptr);
+}
+
+// Flush all mem-table data.
+Status_t DBFlushWithColumnFamily(DB_t* dbptr, 
+                                 const FlushOptions_t* options,
+                                 ColumnFamilyHandle_t* column_family)
+{
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr, DB)->Flush(GET_REP_REF(options, FlushOptions), GET_REP(column_family, ColumnFamilyHandle) :
+                          &invalid_status);
+}
+
+Status_t DBFlush(DB_t* dbptr, 
+                 const FlushOptions_t* options)
+{
+    return DBFlushWithColumnFamily(dbptr, options, &DBDefaultColumnFamily(dbptr));
 }
 
 // The sequence number of the most recent transaction.
-SequenceNumber GetLatestSequenceNumber(DB_t* dbptr)
+SequenceNumber DBGetLatestSequenceNumber(DB_t* dbptr)
 {
     SequenceNumber ret = -1;
     if (dbptr)
     {
-        ret = GET_REP(dbptr)->GetLatestSequenceNumber();
+        ret = GET_REP(dbptr, DB)->GetLatestSequenceNumber();
     }
     return ret;
 }
@@ -766,16 +780,11 @@ SequenceNumber GetLatestSequenceNumber(DB_t* dbptr)
 // Prevent file deletions. Compactions will continue to occur,
 // but no obsolete files will be deleted. Calling this multiple
 // times have the same effect as calling it once.
-Status_t DisableFileDeletions(DB_t* dbptr)
+Status_t DBDisableFileDeletions(DB_t* dbptr)
 {
-    if (dbptr)
-    {
-        return NewStatusTCopy(&GET_REP(dbptr)->DisableFileDeletions();
-    }
-    else
-    {
-        return invalid_status;
-    }
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr, DB)->DisableFileDeletions() :
+                          &invalid_status);
 }
 
 // Allow compactions to delete obsolete files.
@@ -787,16 +796,11 @@ Status_t DisableFileDeletions(DB_t* dbptr)
 // enabling the two methods to be called by two threads concurrently without
 // synchronization -- i.e., file deletions will be enabled only after both
 // threads call EnableFileDeletions()
-Status_t EnableFileDeletions(DB_t* dbptr, bool force)
+Status_t DBEnableFileDeletions(DB_t* dbptr, bool force)
 {
-    if (dbptr)
-    {
-        return NewStatusTCopy(&GET_REP(dbptr)->EnableFileDeletions(force);
-    }
-    else
-    {
-        return invalid_status;
-    }
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr, DB)->EnableFileDeletions(force) :
+                          &invalid_status);
 }
 
 // GetLiveFiles followed by GetSortedWalFiles can generate a lossless backup
@@ -815,45 +819,47 @@ Status_t EnableFileDeletions(DB_t* dbptr, bool force)
 // you still need to call GetSortedWalFiles after GetLiveFiles to compensate
 // for new data that arrived to already-flushed column families while other
 // column families were flushing
-Status_t GetLiveFiles(DB_t* dbptr,
-                      const String_t live_files[],
-                      int* n,
-                      uint64_t* manifest_file_size,
-                      bool flush_memtable)
+Status_t DBGetLiveFiles(DB_t* dbptr,
+                        const String_t live_files[],
+                        int* n,
+                        uint64_t* manifest_file_size,
+                        bool flush_memtable)
 {
+    Status &ret;
     if (dbptr)
     {
         std::vector<std::string> live_files_vec;
-        Status_t ret = NewStatusTCopy(&GET_REP(dbptr)->GetLiveFiles(live_files_vec, manifest_file_size, flush_memtable));
+        ret = GET_REP(dbptr, DB)->GetLiveFiles(live_files_vec, manifest_file_size, flush_memtable);
         *n = live_files_vec.size();
         live_files = new String_t[*n];
         for (int j = 0; j < *n; j++)
-            GET_REP_REF(live_files[j]) = std::move(live_files_vec[j]);
-        return ret;
+            GET_REP_REF(live_files[j], String) = std::move(live_files_vec[j]);
     }
     else
     {
-        return invalid_status;
+        ret = invalid_status;
     }
+    return NewStatusTCopy(&ret);
 }
 
 // Retrieve the sorted list of all wal files with earliest file first
-Status_t GetSortedWalFiles(DB_t* dbptr, LogFile_t files[], int* n)
+Status_t DBGetSortedWalFiles(DB_t* dbptr, LogFile_t files[], int* n)
 {
+    Status &ret;
     if (dbptr)
     {
         VectorLogPtr files_vec;
-        Status_t ret = NewStatusTCopy(&GET_REP(dbptr)->GetSortedWalFiles(files_vec));
+        ret = GET_REP(dbptr, DB)->GetSortedWalFiles(files_vec);
         *n = files_vec.size();
         files = new LogFile_t[*n];
         for (int j = 0; j < *n; j++)
             GET_REP(files[j]) = files_vec[j].release();
-        return ret;
     }
     else
     {
-        return invalid_status;
+        ret = invalid_status;
     }
+    return NewStatusTCopy(&ret);
 }
 
 // Sets iter to an iterator that is positioned at a write-batch containing
@@ -864,52 +870,47 @@ Status_t GetSortedWalFiles(DB_t* dbptr, LogFile_t files[], int* n)
 // use this api, else the WAL files will get
 // cleared aggressively and the iterator might keep getting invalid before
 // an update is read.
-Status_t GetUpdatesSince(DB_t* dbptr, SequenceNumber seq_number,
-                         TransactionLogIterator_t* iter,
-                         const TransactionLogIterator_ReadOptions_t* read_options)
+Status_t DBGetUpdatesSince(DB_t* dbptr, SequenceNumber seq_number,
+                           TransactionLogIterator_t* iter,
+                           const TransactionLogIterator_ReadOptions_t* read_options)
 {
+    Status &ret;
     if (dbptr)
     {
         unique_ptr<TransactionLogIterator> iter_ptr;
-        if (GET_REP(read_options) == NULL)
-            GET_REP(read_options) = &TransactionLogIterator::ReadOptions();
-        Status_t ret = NewStatusTCopy(&GET_REP(dbptr)->GetUpdatesSince(sequencenumber, &iter_ptr, GET_REP_REF(read_options)));
-        GET_REP(iter) = iter_ptr.release();
-        return ret;
+        if (GET_REP(read_options, TransactionLogIterator_ReadOptions) == NULL)
+            GET_REP(read_options, TransactionLogIterator_ReadOptions) = &TransactionLogIterator::ReadOptions();
+        ret = GET_REP(dbptr, DB)->GetUpdatesSince(seq_number, &iter_ptr, GET_REP_REF(read_options, TransactionLogIterator_ReadOptions));
+        GET_REP(iter, TransactionLogIterator) = iter_ptr.release();
     }
-    else
     {
-        return invalid_status;
+        ret = invalid_status;
     }
+    return NewStatusTCopy(&ret);
 }
 
 // Delete the file name from the db directory and update the internal state to
 // reflect that. Supports deletion of sst and log files only. 'name' must be
 // path relative to the db directory. eg. 000001.sst, /archive/000003.log
-Status_t DeleteFile(DB_t* dbptr, String_t* name)
+Status_t DBDeleteFile(DB_t* dbptr, String_t* name)
 {
-    if (dbptr)
-    {
-        return NewStatusTCopy(&GET_REP(dbptr)->DeleteFile(GET_REP_REF(name)));
-    }
-    else
-    {
-        return invalid_status;
-    }
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr, DB)->DeleteFile(GET_REP_REF(name, String) :
+                          &invalid_status);
 }
 
 // Returns a list of all table files with their level, start key
 // and end key
-void GetLiveFilesMetaData(DB_t* dbptr, LiveFileMetaData_t metadata[], int* n)
+void DBGetLiveFilesMetaData(DB_t* dbptr, LiveFileMetaData_t metadata[], int* n)
 {
     if (dbptr)
     {
         std::vector<LiveFileMetaData> metadata_vec;
-        GET_REP(dbptr)->GetLiveFilesMetaData(&metadata_vec);
+        GET_REP(dbptr, DB)->GetLiveFilesMetaData(&metadata_vec);
         *n = metadata_vec.size();
         metadata = new LiveFileMetaData_t[*n];
         for (int j = 0; j < *n; j++)
-            GET_REP_REF(metadata[j]) = std::move(metadata_vec[j]);
+            GET_REP_REF(metadata[j], LiveFileMetaData) = metadata_vec[j];
     }
 }
 
@@ -919,74 +920,64 @@ void GetLiveFilesMetaData(DB_t* dbptr, LiveFileMetaData_t metadata[], int* n)
 //
 // If cf_name is not specified, then the metadata of the default
 // column family will be returned.
-void GetColumnFamilyMetaDataWithColumnFamily(DB_t* dbptr, 
-                                             ColumnFamilyHandle_t* column_family,
-                                             ColumnFamilyMetaData_t* metadata)
+void DBGetColumnFamilyMetaDataWithColumnFamily(DB_t* dbptr, 
+                                               ColumnFamilyHandle_t* column_family,
+                                               ColumnFamilyMetaData_t* metadata)
 {
     if (dbptr)
     {
-        GET_REP(dbptr)->GetColumnFamilyMetaData(GET_REP(column_family), GET_REP(metadata));
+        GET_REP(dbptr, DB)->GetColumnFamilyMetaData(GET_REP(column_family, ColumnFamilyHandle), GET_REP(metadata, ColumnFamilyMetaData));
     }
 }
 
 // Get the metadata of the default column family.
-void GetColumnFamilyMetaData(DB_t* dbptr, 
-                             ColumnFamilyMetaData_t* metadata)
+void DBGetColumnFamilyMetaData(DB_t* dbptr, 
+                               ColumnFamilyMetaData_t* metadata)
 {
-    GetColumnFamilyMetaDataWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr), metadata);
+    DBGetColumnFamilyMetaDataWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr), metadata);
 }
 #endif  // ROCKSDB_LITE
 
 // Sets the globally unique ID created at database creation time by invoking
 // Env::GenerateUniqueId(), in identity. Returns Status_t::OK if identity could
 // be set properly
-Status_t GetDbIdentity(DB_t* dbptr, String_t* identity)
+Status_t DBGetDbIdentity(DB_t* dbptr, String_t* identity)
 {
-    if (dbptr)
-    {
-        return NewStatusTCopy(&GET_REP(dbptr)->GetDbIdentity(GET_REP_REF(identity)));
-    }
-    else
-    {
-        return invalid_status;
-    }
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr, DB)->GetDbIdentity(GET_REP_REF(identity, String)) :
+                          &invalid_status);
 }
 
 // Returns default column family handle
-ColumnFamilyHandle_t DefaultColumnFamily(DB_t* dbptr)
+ColumnFamilyHandle_t DBDefaultColumnFamily(DB_t* dbptr)
 {
     ColumnFamilyHandle_t cf_handle;
-    cf_handle.rep = dbptr ? GET_REP(dbptr)->DefaultColumnFamily() : nullptr; 
+    cf_handle.rep = dbptr ? GET_REP(dbptr, DB)->DefaultColumnFamily() : nullptr; 
     return cf_handle;
 }
 
 #ifndef ROCKSDB_LITE
-Status_t GetPropertiesOfAllTablesWithColumnFamily(DB_t* dbptr, 
-                                                  ColumnFamilyHandle_t* column_family,
-                                                  TablePropertiesCollection_t* props)
+Status_t DBGetPropertiesOfAllTablesWithColumnFamily(DB_t* dbptr, 
+                                                    ColumnFamilyHandle_t* column_family,
+                                                    TablePropertiesCollection_t* props)
 {
-    if (dbptr)
-    {
-        return NewStatusTCopy(&GET_REP(dbptr)->GetPropertiesOfAllTables(GET_REP(column_family), GET_REP(props)));
-    }
-    else
-    {
-        return invalid_status;
-    }
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr, DB)->GetPropertiesOfAllTables(GET_REP(column_family, ColumnFamilyHandle), GET_REP(props, TablePropertiesCollection)) :
+                          &invalid_status);
 }
 
-Status_t GetPropertiesOfAllTables(DB_t* dbptr, 
-                                  TablePropertiesCollection_t* props)
+Status_t DBGetPropertiesOfAllTables(DB_t* dbptr, 
+                                    TablePropertiesCollection_t* props)
 {
-    return GetPropertiesOfAllTablesWithColumnFamily(dbptr, &DefaultColumnFamily(dbptr), props);
+    return DBGetPropertiesOfAllTablesWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr), props);
 }
 #endif  // ROCKSDB_LITE
 
 // Destroy the contents of the specified database.
 // Be very careful using this method.
-Status_t DestroyDBGo(const String_t* name, const Options_t* options)
+Status_t DBDestroyDB(const String_t* name, const Options_t* options)
 {
-    return NewStatusTCopy(&DestroyDB(GET_REP_REF(name), GET_REP_REF(options)));
+    return NewStatusTCopy(&DestroyDB(GET_REP_REF(name, String), GET_REP_REF(options, Options)));
 }
 
 #ifndef ROCKSDB_LITE
@@ -994,8 +985,8 @@ Status_t DestroyDBGo(const String_t* name, const Options_t* options)
 // resurrect as much of the contents of the database as possible.
 // Some data may be lost, so be careful when calling this function
 // on a database that contains important information.
-Status_t RepairDBGo(const String_t* dbname, const Options_t* options);
+Status_t DBRepairDB(const String_t* dbname, const Options_t* options)
 {
-    return NewStatusTCopy(&RepairDB(GET_REP_REF(dbname), GET_REP_REF(options)));
+    return NewStatusTCopy(&RepairDB(GET_REP_REF(dbname, String), GET_REP_REF(options, Options)));
 }
 #endif

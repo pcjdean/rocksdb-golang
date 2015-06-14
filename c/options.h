@@ -5,6 +5,8 @@
 #ifndef GO_ROCKSDB_INCLUDE_OPTIONS_H_
 #define GO_ROCKSDB_INCLUDE_OPTIONS_H_
 
+#include "types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -15,6 +17,9 @@ DEFINE_C_WRAP_STRUCT(Options)
 
 DEFINE_C_WRAP_STRUCT(ReadOptions)
 DEFINE_C_WRAP_STRUCT(WriteOptions)
+
+DEFINE_C_WRAP_STRUCT(FlushOptions)
+DEFINE_C_WRAP_STRUCT(CompactionOptions)
 
 #ifdef __cplusplus
 }  /* end extern "C" */
