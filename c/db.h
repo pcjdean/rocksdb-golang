@@ -10,6 +10,7 @@
 #include "options.h"
 #include "status.h"
 #include "string.h"
+#include "write_batch.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -68,6 +69,34 @@ Status_t DBMergeWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
 Status_t DBMerge(DB_t* dbptr, const WriteOptions_t* optionss,
                const Slice_t* key,
                const Slice_t* value);
+Status_t DBWrite(DB_t* dbptr, const WriteOptions_t* optionss, WriteBatch_t* updates);
+Status_t DBGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
+                               const ColumnFamilyHandle_t* column_family,
+                               const Slice_t* key,
+                               const String_t* value);
+Status_t DBGet(DB_t* dbptr, const ReadOptions_t* options,
+               const Slice_t* key,
+               const String_t* value);
+
+Status_t* DBMultiGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
+                                     const ColumnFamilyHandle_t column_families[],
+                                     const int size_col,
+                                     const Slice_t keys[],
+                                     const int size_keys,
+                                     String_t** values);
+Status_t* DBMultiGet(DB_t* dbptr, const ReadOptions_t* options,
+                     const Slice_t keys[],
+                     const int size_keys,
+                     String_t** values);
+bool DBKeyMayExistWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options
+                                   ColumnFamilyHandle_t* column_family,
+                                   const Slice_t* key,
+                                   String_t* value,
+                                   bool* value_found);
+bool DBKeyMayExist(DB_t* dbptr, const ReadOptions_t* options
+                   const Slice_t* key,
+                   String_t* value,
+                   bool* value_found);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

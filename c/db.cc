@@ -7,7 +7,7 @@
 
 using namespace rocksdb;
 
-static const Status_t invalid_status = NewStatusTCopy(&Status::InvalidArgument("Invalid database pointer"));
+static const Status invalid_status = Status::InvalidArgument("Invalid database pointer");
 
 DEFINE_C_WRAP_CONSTRUCTOR(ColumnFamilyHandle)
 DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyHandle)
@@ -152,9 +152,9 @@ Status_t DBCreateColumnFamily(DB_t* dbptr, const ColumnFamilyOptions_t* options,
                             const String_t* column_family_name,
                             ColumnFamilyHandle_t* handle)
 {
-    return (dbptr ?
-            NewStatusTCopy(&GET_REP(dbptr, DB)->CreateColumnFamily(GET_REP_REF(options, Options), GET_REP_REF(options, ColumnFamilyOptions), GET_REP_REF(column_family_name, String), &GET_REP(handle, ColumnFamilyHandle))) :
-            invalid_status);
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr, DB)->CreateColumnFamily(GET_REP_REF(options, Options), GET_REP_REF(options, ColumnFamilyOptions), GET_REP_REF(column_family_name, String), &GET_REP(handle, ColumnFamilyHandle)) :
+                          &invalid_status);
 }
 
 // Drop a column family specified by column_family handle. This call
@@ -162,9 +162,9 @@ Status_t DBCreateColumnFamily(DB_t* dbptr, const ColumnFamilyOptions_t* options,
 // family from flushing and compacting.
 Status_t DBDropColumnFamily(DB_t* dbptr, const ColumnFamilyHandle_t* column_family);
 {
-    return (dbptr ?
-            NewStatusTCopy(&GET_REP(dbptr, DB)->DropColumnFamily(GET_REP(column_family, ColumnFamilyHandle))) :
-            invalid_status);
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr, DB)->DropColumnFamily(GET_REP(column_family, ColumnFamilyHandle)) :
+                          &invalid_status);
 }
 
 // Set the database entry for "key" to "value".
@@ -176,16 +176,16 @@ Status_t DBPutWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
                            const Slice_t* key,
                            const Slice_t* value)
 {
-    return (dbptr ?
-            NewStatusTCopy(&GET_REP(dbptr, DB)->Put(GET_REP_REF(options, WriteOptions), GET_REP_REF(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), GET_REP_REF(value, Slice))) :
-            invalid_status);
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr, DB)->Put(GET_REP_REF(options, WriteOptions), GET_REP_REF(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), GET_REP_REF(value, Slice)) :
+                          &invalid_status);
 }
 
 Status_t DBPut(DB_t* dbptr, const WriteOptions_t* optionss,
                const Slice_t* key,
                const Slice_t* value)
 {
-    return PutWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
+    return DBPutWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
 }
 
 // Remove the database entry (if any) for "key".  Returns OK on
@@ -196,15 +196,15 @@ Status_t DBDeleteWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
                                   const ColumnFamilyHandle_t* column_family,
                                   const Slice_t* key)
 {
-    return (dbptr ?
-            NewStatusTCopy(&GET_REP(dbptr, DB)->Delete(GET_REP_REF(options, WriteOptions), GET_REP_REF(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice))) :
-            invalid_status);
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr, DB)->Delete(GET_REP_REF(options, WriteOptions), GET_REP_REF(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice)) :
+                          invalid_status);
 }
 
 Status_t DBDelete(DB_t* dbptr, const WriteOptions_t* optionss,
                   const Slice_t* key)
 {
-    return DeleteWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key);
+    return DBDeleteWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key);
 }
 
 // Merge the database entry for "key" with "value".  Returns OK on success,
@@ -216,16 +216,16 @@ Status_t DBMergeWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
                                  const Slice_t* key,
                                  const Slice_t* value)
 {
-    return (dbptr ?
-            NewStatusTCopy(&GET_REP(dbptr, DB)->Merge(GET_REP_REF(options, WriteOptions), GET_REP_REF(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), GET_REP_REF(value, Slice))) :
-            invalid_status);
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr, DB)->Merge(GET_REP_REF(options, WriteOptions), GET_REP_REF(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), GET_REP_REF(value, Slice)) :
+                          &invalid_status);
 }
 
 Status_t DBMerge(DB_t* dbptr, const WriteOptions_t* optionss,
                const Slice_t* key,
                const Slice_t* value)
 {
-    return MergeWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
+    return DBMergeWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
 }
 
 // Apply the specified updates to the database.
@@ -235,10 +235,9 @@ Status_t DBMerge(DB_t* dbptr, const WriteOptions_t* optionss,
 // Note: consider setting options.sync = true.
 Status_t DBWrite(DB_t* dbptr, const WriteOptions_t* optionss, WriteBatch_t* updates)
 {
-    if (dbptr)
-        return NewStatusTCopy(&GET_REP(dbptr)->Write(GET_REP_REF(options), GET_REP(updates)));
-    else
-        return invalid_status;
+    return NewStatusTCopy(dbptr ?
+                          &GET_REP(dbptr, DB)->Write(GET_REP_REF(options, WriteOptions), GET_REP(updates, WriteBatch)) :
+                          &invalid_status);
 }
 
 // If the database contains an entry for "key" store the
@@ -248,29 +247,30 @@ Status_t DBWrite(DB_t* dbptr, const WriteOptions_t* optionss, WriteBatch_t* upda
 // a status for which Status_t::IsNotFound() returns true.
 //
 // May return some other Status_t on an error.
-Status_t GetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
-           const ColumnFamilyHandle_t* column_family,
-           const Slice_t* key,
-           const String_t* value)
+Status_t DBGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
+                               const ColumnFamilyHandle_t* column_family,
+                               const Slice_t* key,
+                               const String_t* value)
 {
+    Status &ret;
     if (dbptr)
     {
         std::string str_val;
-        Status ret = GET_REP(dbptr)->Get(GET_REP_REF(options), GET_REP(column_family), *key->rep, &str_val);
+        ret = GET_REP(dbptr, DB)->Get(GET_REP_REF(options, ReadOptions), GET_REP(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), &str_val);
         if (!str_val.empty())
             GET_REP_REF(value) = std::move(str_val);
         
-        return NewStatusTCopy(&ret);
     }
     else
-        return invalid_status;
+        ret = invalid_status;
+    return NewStatusTCopy(&ret);
 }
 
-Status_t Get(DB_t* dbptr, const ReadOptions_t* options,
+Status_t DBGet(DB_t* dbptr, const ReadOptions_t* options,
              const Slice_t* key,
              const String_t* value)
 {
-    return GetWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
+    return DBGetWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
 }
 
 // If keys[i] does not exist in the database, then the i'th returned
@@ -283,12 +283,12 @@ Status_t Get(DB_t* dbptr, const ReadOptions_t* options,
 // Similarly, the number of returned statuses will be the number of keys.
 // Note: keys will not be "de-duplicated". Duplicate keys will return
 // duplicate values in order.
-Status_t* MultiGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
-                 const ColumnFamilyHandle_t column_families[],
-                 const int size_col,
-                 const Slice_t keys[],
-                 const int size_keys,
-                 String_t** values)
+Status_t* DBMultiGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
+                                     const ColumnFamilyHandle_t column_families[],
+                                     const int size_col,
+                                     const Slice_t keys[],
+                                     const int size_keys,
+                                     String_t** values)
 {
     Status_t* ret;
     if (dbptr)
@@ -300,33 +300,33 @@ Status_t* MultiGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
         for (int i = 0; i < size_keys; i++)
             keys_vec.push_back(*keys[i].rep);
         std::vector<std::string> values_vec;
-        std::vector<Status> ret_vec = GET_REP(dbptr)->MultiGetWithColumnFamily(GET_REP_REF(options), column_families_vec, keys_vec, values_vec);
+        std::vector<Status> ret_vec = GET_REP(dbptr, DB)->MultiGetWithColumnFamily(GET_REP_REF(options, ReadOptions), column_families_vec, keys_vec, values_vec);
         assert(values_vec.size() == size_keys);
         assert(ret_vec.size() == size_keys);
         *values = new String_t[size_keys];
         ret = new Status_t[size_keys];
         for (int j = 0; j < size_keys; j++)
         {
-            GET_REP_REF(values[j]) = std::move(values_vec[j]);
+            GET_REP_REF(values[j], String) = std::move(values_vec[j]);
             *ret[j] = NewStatusTCopy(&ret_vec[j]);
         }
     }
     else
     {
-        ret = new Status_t;
-        *ret = invalid_status;
+        ret = new Status_t();
+        GET_REP(ret, Status) = &invalid_status;
     }
     return ret;
 }
 
-Status_t* MultiGet(DB_t* dbptr, const ReadOptions_t* options,
-                   const Slice_t keys[],
-                   const int size_keys,
-                   String_t** values)
+Status_t* DBMultiGet(DB_t* dbptr, const ReadOptions_t* options,
+                     const Slice_t keys[],
+                     const int size_keys,
+                     String_t** values)
 {
     ColumnFamilyHandle_t *column_families = new ColumnFamilyHandle_t[size_keys];
     std::fill_n(column_families, size_keys, DefaultColumnFamily(dbptr));
-    return MultiGetWithColumnFamily(dbptr, options, column_families, keys, size_keys, values);
+    return DBMultiGetWithColumnFamily(dbptr, options, column_families, keys, size_keys, values);
 }
 
 // If the key definitely does not exist in the database, then this method
@@ -336,24 +336,24 @@ Status_t* MultiGet(DB_t* dbptr, const ReadOptions_t* options,
 // This check is potentially lighter-weight than invoking DB::Get(). One way
 // to make this lighter weight is to avoid doing any IOs.
 // Default implementation here returns true and sets 'value_found' to false
-bool KeyMayExistWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options
-                 ColumnFamilyHandle_t* column_family,
-                 const Slice_t* key,
-                 String_t* value,
-                 bool* value_found)
+bool DBKeyMayExistWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options
+                                   ColumnFamilyHandle_t* column_family,
+                                   const Slice_t* key,
+                                   String_t* value,
+                                   bool* value_found)
 {
     std::string val_str;
-    bool ret = GET_REP(dbptr)->KeyMayExist(GET_REP_REF(options), GET_REP(column_family), GET_REP_REF(key), &val_str, value_found);
-    GET_REP_REF(value) = std::move(val_str);
+    bool ret = GET_REP(dbptr, DB)->KeyMayExist(GET_REP_REF(options, ReadOptions), GET_REP(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), &val_str, value_found);
+    GET_REP_REF(value, String) = std::move(val_str);
     return ret;
 }
 
-bool KeyMayExist(DB_t* dbptr, const ReadOptions_t* options
-                         const Slice_t* key,
-                         String_t* value,
-                         bool* value_found)
+bool DBKeyMayExist(DB_t* dbptr, const ReadOptions_t* options
+                   const Slice_t* key,
+                   String_t* value,
+                   bool* value_found)
 {
-    return KeyMayExistWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value, value_found);
+    return DBKeyMayExistWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value, value_found);
 }
 
 // Return a heap-allocated iterator over the contents of the database.
@@ -362,8 +362,8 @@ bool KeyMayExist(DB_t* dbptr, const ReadOptions_t* options
 //
 // Caller should delete the iterator when it is no longer needed.
 // The returned iterator should be deleted before this db is deleted.
-Iterator_t NewIteratorWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
-                       ColumnFamilyHandle_t* column_family)
+Iterator_t DBNewIteratorWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
+                                         ColumnFamilyHandle_t* column_family)
 {
     return NewIteratorT(dbptr ? GET_REP(dbptr)->NewIterator(GET_REP_REF(options), GET_REP(column_family)) : nullptr);
 }
