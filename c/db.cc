@@ -196,14 +196,13 @@ Status_t DBDeleteWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
                                   const ColumnFamilyHandle_t* column_family,
                                   const Slice_t* key)
 {
-    if (dbptr)
-        return NewStatusTCopy(&GET_REP(dbptr)->Delete(GET_REP_REF(options), GET_REP_REF(column_family), GET_REP_REF(key)));
-    else
-        return invalid_status;
+    return (dbptr ?
+            NewStatusTCopy(&GET_REP(dbptr, DB)->Delete(GET_REP_REF(options, WriteOptions), GET_REP_REF(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice))) :
+            invalid_status);
 }
 
 Status_t DBDelete(DB_t* dbptr, const WriteOptions_t* optionss,
-              const Slice_t* key)
+                  const Slice_t* key)
 {
     return DeleteWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key);
 }
@@ -212,20 +211,19 @@ Status_t DBDelete(DB_t* dbptr, const WriteOptions_t* optionss,
 // and a non-OK status on error. The semantics of this operation is
 // determined by the user provided merge_operator when opening DB.
 // Note: consider setting options.sync = true.
-Status_t MergeWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
-                           const ColumnFamilyHandle_t* column_family,
-                           const Slice_t* key,
-                           const Slice_t* value)
+Status_t DBMergeWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
+                                 const ColumnFamilyHandle_t* column_family,
+                                 const Slice_t* key,
+                                 const Slice_t* value)
 {
-    if (dbptr)
-        return NewStatusTCopy(&GET_REP(dbptr)->Merge(GET_REP_REF(options), GET_REP_REF(column_family), GET_REP_REF(key), GET_REP_REF(value)));
-    else
-        return invalid_status;
+    return (dbptr ?
+            NewStatusTCopy(&GET_REP(dbptr, DB)->Merge(GET_REP_REF(options, WriteOptions), GET_REP_REF(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), GET_REP_REF(value, Slice))) :
+            invalid_status);
 }
 
-Status_t Merge(DB_t* dbptr, const WriteOptions_t* optionss,
-             const Slice_t* key,
-             const Slice_t* value)
+Status_t DBMerge(DB_t* dbptr, const WriteOptions_t* optionss,
+               const Slice_t* key,
+               const Slice_t* value)
 {
     return MergeWithColumnFamily(dbptr, options, &DefaultColumnFamily(dbptr), key, value);
 }
@@ -235,7 +233,7 @@ Status_t Merge(DB_t* dbptr, const WriteOptions_t* optionss,
 // options.sync=true.
 // Returns OK on success, non-OK on failure.
 // Note: consider setting options.sync = true.
-Status_t Write(DB_t* dbptr, const WriteOptions_t* optionss, WriteBatch_t* updates)
+Status_t DBWrite(DB_t* dbptr, const WriteOptions_t* optionss, WriteBatch_t* updates)
 {
     if (dbptr)
         return NewStatusTCopy(&GET_REP(dbptr)->Write(GET_REP_REF(options), GET_REP(updates)));

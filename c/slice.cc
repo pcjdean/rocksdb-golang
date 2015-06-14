@@ -13,6 +13,7 @@
 // external synchronization.
 
 #include <slice.h>
+#include "slice.h"
 
 DEFINE_C_WRAP_CONSTRUCTOR(Slice)
 DEFINE_C_WRAP_DESTRUCTOR(Slice)

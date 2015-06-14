@@ -57,6 +57,17 @@ Status_t DBPutWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
 Status_t DBPut(DB_t* dbptr, const WriteOptions_t* optionss,
                const Slice_t* key,
                const Slice_t* value);
+Status_t DBDeleteWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
+                                  const ColumnFamilyHandle_t* column_family,
+                                  const Slice_t* key);
+Status_t DBDelete(DB_t* dbptr, const WriteOptions_t* optionss, const Slice_t* key);
+Status_t DBMergeWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
+                                 const ColumnFamilyHandle_t* column_family,
+                                 const Slice_t* key,
+                                 const Slice_t* value);
+Status_t DBMerge(DB_t* dbptr, const WriteOptions_t* optionss,
+               const Slice_t* key,
+               const Slice_t* value);
 
 #ifdef __cplusplus
 }  /* end extern "C" */
