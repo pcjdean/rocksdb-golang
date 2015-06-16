@@ -13,6 +13,9 @@ extern "C" {
 
 DEFINE_C_WRAP_STRUCT(String)
 
+extern const char* StringGetCStr(String_t * str);
+extern int StringGetCStrLen(String_t * str);
+
 #ifdef __cplusplus
 }  /* end extern "C" */
 #endif

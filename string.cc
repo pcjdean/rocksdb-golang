@@ -11,3 +11,18 @@ typedef std::string String;
 DEFINE_C_WRAP_CONSTRUCTOR(String)
 DEFINE_C_WRAP_CONSTRUCTOR_MOVE(String)
 DEFINE_C_WRAP_DESTRUCTOR(String)
+
+inline const char* StringGetCStr(String_t * str)
+{
+    return ((str && GET_REP(str)) ?
+            GET_REP(str)->c_str() :
+            nullptr);
+}
+
+inline int StringGetCStrLen(String_t * str)
+{
+    return ((str && GET_REP(str)) ?
+            GET_REP(str)->length() :
+            0);
+}
+
