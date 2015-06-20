@@ -19,10 +19,16 @@ inline const char* StringGetCStr(String_t * str)
             nullptr);
 }
 
-inline int StringGetCStrLen(String_t * str)
+inline int StringGetCStrLen(String_t *str)
 {
     return ((str && GET_REP(str)) ?
             GET_REP(str)->length() :
             0);
+}
+
+inline void StringSetCStrN(String_t *str, char *cstr, int sz)
+{
+    if (str && GET_REP(str))
+        GET_REP(str)->assign(cstr, sz);
 }
 

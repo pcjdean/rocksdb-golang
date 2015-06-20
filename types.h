@@ -5,6 +5,8 @@
 #ifndef GO_ROCKSDB_INCLUDE_TYPES_H_
 #define GO_ROCKSDB_INCLUDE_TYPES_H_
 
+typedef uint64_t SequenceNumber;
+
 #define GET_MACRO3(_1,_2,_3,NAME,...) NAME
 
 #define GET_REP(x,y) ((y##*)x->rep)
@@ -14,7 +16,8 @@
     {                                                  \
         void* rep;                                     \
     } x##_t;                                           \
-    extern inline void Delete##x##T(x##_t* ptr, bool self);    
+    extern inline void Delete##x##T(x##_t* ptr, bool self);   \ 
+    extern inline void Delete##x##TArray(x##_t* ptr, bool self);    
     
 
 // Used internally by the C/C++ code
@@ -112,6 +115,15 @@
                 delete rep;                     \
             if (self)                           \
                 delete ptr;                     \
+        }                                       \
+    } 
+
+// Used externally by the calling code
+#define DEFINE_C_WRAP_DESTRUCTOR_ARRAY(x) inline void Delete##x##TArray(x##_t* ptr) \
+    { \
+        if (ptr) \
+        {                                       \
+            delete[] (x##_t*)ptr;                   \
         }                                       \
     } 
 

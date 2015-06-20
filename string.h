@@ -15,6 +15,7 @@ DEFINE_C_WRAP_STRUCT(String)
 
 extern const char* StringGetCStr(String_t * str);
 extern int StringGetCStrLen(String_t * str);
+extern void StringSetCStrN(String_t *str, char *cstr, int sz);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

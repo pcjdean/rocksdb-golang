@@ -13,6 +13,20 @@ extern "C" {
 
 DEFINE_C_WRAP_STRUCT(Status)
 
+extern bool StatusOk(Status_t *stat);
+extern bool StatusIsNotFound(Status_t *stat);
+extern bool StatusIsCorruption(Status_t *stat);
+extern bool StatusIsNotSupported(Status_t *stat);
+extern bool StatusIsInvalidArgument(Status_t *stat);
+extern bool StatusIsInvalidArgument(Status_t *stat);
+extern bool StatusIsMergeInProgress(Status_t *stat);
+extern bool StatusIsIncomplete(Status_t *stat);
+extern bool StatusIsShutdownInProgress(Status_t *stat);
+extern bool StatusIsTimedOut(Status_t *stat);
+extern bool StatusIsAborted(Status_t *stat);
+extern bool StatusIsBusy(Status_t *stat);
+extern String_t StatusToString(Status_t *stat) const;
+
 #ifdef __cplusplus
 }  /* end extern "C" */
 #endif
