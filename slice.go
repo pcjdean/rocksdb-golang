@@ -19,6 +19,16 @@ package rocksdb
 */
 import "C"
 
-type Slice struct {
+type cSlice struct {
 	slc C.Slice_t
+}
+
+func (slc *cSlice) Finalize() {
+	var cslc *C.Slice_t = unsafe.Pointer(&slc.slc)
+	C.DeleteSliceT(cslc, false)
+}
+
+func NewSliceFromBytes(bytes []byte) (slc *cSlice) {
+	slc = &cSlice{slc: C.NewSliceTRawArgs(unsafe.Pointer(&bytes[0]), len(bytes))}
+	return
 }

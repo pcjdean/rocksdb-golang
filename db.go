@@ -10,13 +10,23 @@ package rocksdb
 */
 import "C"
 
+import (
+	"runtime"
+	"unsafe"
+)
+
 type ColumnFamilyHandle struct {
 	cfh C.ColumnFamilyHandle_t
 }
 
+func (cfh *ColumnFamilyHandle) Finalize() {
+	var ccfh *C.ColumnFamilyHandle_t = unsafe.Pointer(&cfh.cfh)
+	C.DeleteColumnFamilyHandleT(ccfh, false)
+}
+
 func (cfh *ColumnFamilyHandle) GetName() string {
 	var ptr *C.ColumnFamilyHandle_t = unsafe.Pointer(&cfh.Cfh)
-	rstr := String{C.ColumnFamilyGetName(ptr)}
+	rstr := cString{C.ColumnFamilyGetName(ptr)}
 	return rstr.GoString(true);
 }
     
@@ -26,7 +36,12 @@ func (cfh *ColumnFamilyHandle) GetID() uint32 {
 }
 
 type TablePropertiesCollection struct {
-	Tpc C.TablePropertiesCollection_t
+	tpc c.TablePropertiesCollection_t
+}
+
+func (tpc *TablePropertiesCollection) Finalize() {
+	var ctpc *C.TablePropertiesCollection_t = unsafe.Pointer(&tpc.tpc)
+	C.DeleteTablePropertiesCollectionT(ctpc, false)
 }
 
 // Abstract handle to particular state of a DB.
@@ -36,8 +51,14 @@ type Snapshot struct {
 	snp C.Snapshot_t
 }
 
+func (snp *Snapshot) Finalize() {
+	var csnp *C.Snapshot_t = unsafe.Pointer(&snp.snp)
+	C.DeleteSnapshotT(csnp, false)
+}
+
 func (snp *Snapshot) GetSequenceNumber() uint64 {
-    return GET_REP(snapshot, Snapshot)->GetSequenceNumber();
+	var csnp *C.Snapshot_t = unsafe.Pointer(&snp.snp)
+	return SnapshotGetSequenceNumber(csnp)
 }
 
 // A range of keys
@@ -45,15 +66,30 @@ type Range struct {
 	rng C.Range_t
 }
 
+func (rng *Range) Finalize() {
+	var crng *C.Range_t = unsafe.Pointer(&rng.rng)
+	C.DeleteRangeT(crng, false)
+}
+
 type ColumnFamilyDescriptor struct {
 	cfd C.ColumnFamilyDescriptor_t
+}
+
+func (cfd *ColumnFamilyDescriptor) Finalize() {
+	var ccfd *C.ColumnFamilyDescriptor_t = unsafe.Pointer(&cfd.cfd)
+	C.DeleteColumnFamilyDescriptorT(ccfd, false)
 }
 
 // A DB is a persistent ordered map from keys to values.
 // A DB is safe for concurrent access from multiple threads without
 // any external synchronization.
 type DB struct {
-	rdb C.DB_t
+	db C.DB_t
+}
+
+func (db *DB) Finalize() {
+	var cdb *C.DB_t = unsafe.Pointer(&db.db)
+	C.DeleteDBT(cdb, false)
 }
 
 // Open the database with the specified "name".
@@ -61,70 +97,6 @@ type DB struct {
 // OK on success.
 // Stores nullptr in *dbptr and returns a non-OK status on error.
 // Caller should delete *dbptr when it is no longer needed.
-func Open(options *Options, name *string) (*DB, *Status) {
-	db := new DB{}
-	rstr := String{}
-	var (
-		rdb *C.DB_t = unsafe.Pointer(&db.rdb)
-		opt *C.Options_t = unsafe.Pointer(&options.opt)
-		cstr *C.String_t = unsafe.Pointer(&rstr.str)
-	)
-	rstr.SetGoString(name)
-	return db, new Status{C.DBOpen(opt, cstr, rdb)}
-}
-
-
-// Open the database for read only. All DB interfaces
-// that modify data, like put/delete, will return error.
-// If the db is opened in read only mode, then no compactions
-// will happen.
-//
-// Not supported in ROCKSDB_LITE, in which case the function will
-// return Status_t::NotSupported.
-func OpenForReadOnly(options *Options, name *string, error_if_log_file_exist bool) (*DB, *Status) {
-	db := new DB{}
-	rstr := String{}
-	var (
-		rdb *C.DB_t = unsafe.Pointer(&db.rdb)
-		opt *C.Options_t = unsafe.Pointer(&options.opt)
-		cstr *C.String_t = unsafe.Pointer(&rstr.str)
-	)
-	rstr.SetGoString(name)
-	return db, new Status{C.DBOpenForReadOnly(opt, cstr, rdb, error_if_log_file_exist)}
-}
-
-// Open the database for read only with column families. When opening DB with
-// read only, you can specify only a subset of column families in the
-// database that should be opened. However, you always need to specify default
-// column family. The default column family name is 'default' and it's stored
-// in rocksdb::kDefaultColumnFamilyName
-//
-// Not supported in ROCKSDB_LITE, in which case the function will
-// return Status_t::NotSupported.
-func OpenForReadOnlyWithColumnFamilies(options *Options, name *string, column_families []ColumnFamilyDescriptor, error_if_log_file_exist bool) (*DB, []*ColumnFamilyHandle, *Status) {
-	db := new DB{}
-	rstr := String{}
-	cfdlen = len(column_families)
-	cfds := new [cfdlen]C.ColumnFamilyDescriptor_t
-	var (
-		rdb *C.DB_t = unsafe.Pointer(&db.rdb)
-		opt *C.Options_t = unsafe.Pointer(&options.opt)
-		cstr *C.String_t = unsafe.Pointer(&rstr.str)
-		cfh *C.ColumnFamilyHandle_t
-	)
-	rstr.SetGoString(name)
-	stat := new Status{C.DBOpenForReadOnlyWithColumnFamilies(opt, cstr, cfds, cfdlen, unsafe.Pointer(&cfh), rdb, error_if_log_file_exist)}
-	if stat.Ok() && cfdlen > 0 {
-		defer C.DeleteColumnFamilyHandleTArray(cfh)
-		cfhs := make([]*ColumnFamilyHandle, cfdlen)
-		for var i = 0; i < cfdlen; i++ {
-			cfhs[i].cfh = new ColumnFamilyHandle{cfh[i]}
-		}
-	} else {
-		cfhs := nil 
-	}
-	return db, cfhs, stat
-}
 
 // Open DB with column families.
 // db_options specify database specific options
@@ -138,57 +110,136 @@ func OpenForReadOnlyWithColumnFamilies(options *Options, name *string, column_fa
 // If everything is OK, handles will on return be the same size
 // as column_families --- handles[i] will be a handle that you
 // will use to operate on column family column_family[i]
-func OpenWithColumnFamilies(options *Options, name *string, column_families []ColumnFamilyDescriptor) (*DB, []*ColumnFamilyHandle, *Status) {
-	db := new DB{}
-	rstr := String{}
-	cfdlen = len(column_families)
-	cfds := new [cfdlen]C.ColumnFamilyDescriptor_t
+func Open(options *Options, name *string, colfas ...*ColumnFamilyDescriptor) (db *DB, stat *Status, cfhs []*ColumnFamilyHandle) {
+	db := &DB{}
+	rstr := NewCStringFromString(name)
+	defer C.DeleteStringT(rstr, false)
+
+	var cfdlen int
+	if colfas {
+		colfas.([]*ColumnFamilyDescriptor)
+		cfdlen = len(colfas)
+		cfds := new [cfdlen]C.ColumnFamilyDescriptor_t
+		for var i = 0; i < cfdlen; i++ {
+			cfds[i] = column_families[i].cfd
+		}
+	}
+
 	var (
-		rdb *C.DB_t = unsafe.Pointer(&db.rdb)
+		cdb *C.DB_t = unsafe.Pointer(&db.db)
 		opt *C.Options_t = unsafe.Pointer(&options.opt)
 		cstr *C.String_t = unsafe.Pointer(&rstr.str)
 		cfh *ColumnFamilyHandle
 	)
-	rstr.SetGoString(name)
-	stat := new Status{C.DBOpenWithColumnFamilies(opt, cstr, cfds, cfdlen, unsafe.Pointer(&cfh), rdb)}
-	if stat.Ok() && cfdlen > 0 {
-		defer C.DeleteColumnFamilyHandleTArray(cfh)
-		cfhs := make([]*ColumnFamilyHandle, cfdlen)
-		for var i = 0; i < cfdlen; i++ {
-			cfhs[i].cfh = new ColumnFamilyHandle{cfh[i]}
+
+	if cfdlen > 0 {
+		stat := &Status{sta: C.DBOpenWithColumnFamilies(opt, cstr, cfds, cfdlen, unsafe.Pointer(&cfh), cdb)}
+		if stat.Ok() {
+			defer C.DeleteColumnFamilyHandleTArray(cfh)
+			cfhs := make([]*ColumnFamilyHandle, cfdlen)
+			for var i = 0; i < cfdlen; i++ {
+				cfhs[i] = &ColumnFamilyHandle{cfh: cfh[i]}
+				runtime.SetFinalizer(cfhs[i], Finalize)
+			}
 		}
 	} else {
-		cfhs := nil 
+		stat = &Status{sta: C.DBOpen(opt, cstr, cdb)}
 	}
-	return db, cfhs, stat
+
+	if stat.Ok() {
+		runtime.SetFinalizer(db, Finalize)
+	}
+
+	runtime.SetFinalizer(stat, Finalize)
+	return
+}
+
+
+// Open the database for read only. All DB interfaces
+// that modify data, like put/delete, will return error.
+// If the db is opened in read only mode, then no compactions
+// will happen.
+//
+// Not supported in ROCKSDB_LITE, in which case the function will
+// return Status_t::NotSupported.
+
+// Open the database for read only with column families. When opening DB with
+// read only, you can specify only a subset of column families in the
+// database that should be opened. However, you always need to specify default
+// column family. The default column family name is 'default' and it's stored
+// in rocksdb::kDefaultColumnFamilyName
+//
+// Not supported in ROCKSDB_LITE, in which case the function will
+// return Status_t::NotSupported.
+func OpenForReadOnlyWithColumnFamilies(options *Options, name *string, error_if_log_file_exist bool, colfas ...*ColumnFamilyDescriptor) (db *DB, cfhs []*ColumnFamilyHandle, stat *Status) {
+	db := &DB{}
+	rstr := NewCStringFromString(name)
+	defer C.DeleteStringT(rstr, false)
+
+	var cfdlen int
+	if colfas {
+		colfas.([]*ColumnFamilyDescriptor)
+		cfdlen = len(colfas)
+		cfds := new [cfdlen]C.ColumnFamilyDescriptor_t
+		for var i = 0; i < cfdlen; i++ {
+			cfds[i] = column_families[i].cfd
+		}
+	}
+
+	var (
+		cdb *C.DB_t = unsafe.Pointer(&db.db)
+		opt *C.Options_t = unsafe.Pointer(&options.opt)
+		cstr *C.String_t = unsafe.Pointer(&rstr.str)
+		cfh *C.ColumnFamilyHandle_t
+	)
+
+	if cfdlen > 0 {
+		stat := &Status{sta: C.DBOpenForReadOnlyWithColumnFamilies(opt, cstr, cfds, cfdlen, unsafe.Pointer(&cfh), cdb, error_if_log_file_exist)}
+		if stat.Ok() && cfdlen > 0 {
+			defer C.DeleteColumnFamilyHandleTArray(cfh)
+			cfhs = make([]*ColumnFamilyHandle, cfdlen)
+			for var i = 0; i < cfdlen; i++ {
+				cfhs[i] = &ColumnFamilyHandle{cfh: cfh[i]}
+				runtime.SetFinalizer(cfhs[i], Finalize)
+			}
+		}
+	} else {
+		stat = &Status{sta: C.DBOpenForReadOnly(opt, cstr, cdb, error_if_log_file_exist)}
+	}
+
+	if stat.Ok() {
+		runtime.SetFinalizer(db, Finalize)
+	}
+
+	runtime.SetFinalizer(stat, Finalize)
+	return
 }
 
 // ListColumnFamilies will open the DB specified by argument name
 // and return the list of all column families in that DB
 // through column_families argument. The ordering of
 // column families in column_families is unspecified.
-func ListColumnFamilies(dbopt *DBOptions, name *string) ([]string, *Status) {
-	rstr := String{}
+func ListColumnFamilies(dbopt *DBOptions, name *string) (cfss []string, *Status) {
+	rstr := NewCStringFromString(name)
+	defer C.DeleteStringT(rstr, false)
 	var (
 		opt *C.DBOptions_t = unsafe.Pointers(&dbopt.dbopt)
 		cstr *C.String_t = unsafe.Pointer(&rstr.str)
 		cfs *C.String_t
 		sz C.int
 	)
-	rstr.SetGoString(name)
-	stat := new Status{C.DBListColumnFamilies(opt, cstr, unsafe.Pointer(&cfs), unsafe.Pointer(&sz))}
+	stat := new Status{sta: C.DBListColumnFamilies(opt, cstr, unsafe.Pointer(&cfs), unsafe.Pointer(&sz))}
 	if stat.Ok() && sz > 0 {
 		defer C.DeleteStringTArray(cfs)
 		cfss := make([]string, sz)
 		for var i = 0; i < sz; i++ {
-			cstr := String{cfs[i]}
+			cstr := cString{cfs[i]}
 			cfss[i] = cstr.GoString()
 			defer C.DeleteStringT(cstr, false)
 		}
-	} else {
-		cfss := nil 
 	}
-	return cfss, stat
+	runtime.SetFinalizer(stat, Finalize)
+	return
 } 
 
 
@@ -201,12 +252,11 @@ func (db *DB) CreateColumnFamily(options *ColumnFamilyOptions, colfname *string)
 		cstr *C.String_t = unsafe.Pointer(&colfname.str)
 		ccfd C.ColumnFamilyHandle_t
 	)
-	stat := new Status{C.DBCreateColumnFamily(cdb, opt, cstr, unsafe.Pointer(&ccfd))}
+	stat := &Status{sta: C.DBCreateColumnFamily(cdb, opt, cstr, unsafe.Pointer(&ccfd))}
 	if stat.Ok() {
-		cfd = new ColumnFamilyHandle{ccfd}
-	} else {
-		cfd = nil
+		cfd = &ColumnFamilyHandle{cfh: ccfd}
 	}
+	runtime.SetFinalizer(stat, Finalize)
 	return
 }
 
@@ -218,7 +268,8 @@ func (db *DB) DropColumnFamily(cfd *ColumnFamilyHandle) (stat *Status) {
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
 		ccfd *C.ColumnFamilyHandle_t = unsafe.Pointers(&cfd.cfd) 
 	)
-	stat := new Status{C.DBDropColumnFamily(cdb, ccfd)}
+	stat := &Status{sta: C.DBDropColumnFamily(cdb, ccfd)}
+	runtime.SetFinalizer(stat, Finalize)
 	return
 }
 
@@ -226,29 +277,28 @@ func (db *DB) DropColumnFamily(cfd *ColumnFamilyHandle) (stat *Status) {
 // If "key" already exists, it will be overwritten.
 // Returns OK on success, and a non-OK status on error.
 // Note: consider setting options.sync = true.
-func (db *DB) putWithColumnFamily(options *WriteOptions, key []byte, value []byte, cfd *ColumnFamilyHandle) (stat *Status) {
+func (db *DB) Put(options *WriteOptions, key []byte, value []byte, cfd ...*ColumnFamilyHandle) (stat *Status) {
+	ckey := NewSliceFromBytes(key)
+	defer C.DeleteSliceT(ckey, false)
+	cval := NewSliceFromBytes(value)
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t = unsafe.Pointers(&cfd.cfd) 
+		cwopt *C.WriteOptions_t = unsafe.Pointers(&options.wopt)
+		ccfd *C.ColumnFamilyHandle_t
+		cckey *C.Slice_t = unsafe.Pointers(&ckey.slc) 
+		ccval *C.Slice_t = unsafe.Pointers(&cval.slc) 
 	)
-	stat := new Status{C.DBPutWithColumnFamily(cdb, ccfd)}
+	if cfd {
+		cfd[0].(*ColumnFamilyHandle)
+		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	}
+	if ccfd {
+		stat := &Status{sta: C.DBPutWithColumnFamily(cdb, cwopt, ccfd, cckey, ccval)}
+	} else {
+		stat := &Status{sta: C.DBPut(cdb, cwopt, cckey, ccval)}
+	}
+	runtime.SetFinalizer(stat, Finalize)
 	return
-}
-Status_t DBPutWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
-                           const ColumnFamilyHandle_t* column_family,
-                           const Slice_t* key,
-                           const Slice_t* value)
-{
-    return NewStatusTCopy(dbptr ?
-                          &GET_REP(dbptr, DB)->Put(GET_REP_REF(options, WriteOptions), GET_REP_REF(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), GET_REP_REF(value, Slice)) :
-                          &invalid_status);
-}
-
-Status_t DBPut(DB_t* dbptr, const WriteOptions_t* optionss,
-               const Slice_t* key,
-               const Slice_t* value)
-{
-    return DBPutWithColumnFamily(dbptr, options, &DBDefaultColumnFamily(dbptr), key, value);
 }
 
 // Remove the database entry (if any) for "key".  Returns OK on

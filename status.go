@@ -14,6 +14,11 @@ type Status struct {
 	sta C.Status_t
 }
 
+func (stat *Status) Finalize() {
+	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
+	C.DeleteStatusT(cstat, false)
+}
+
 // Returns true iff the status indicates success.
 func (stat *Status) Ok() bool {
 	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)

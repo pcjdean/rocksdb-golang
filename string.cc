@@ -10,6 +10,7 @@ typedef std::string String;
 
 DEFINE_C_WRAP_CONSTRUCTOR(String)
 DEFINE_C_WRAP_CONSTRUCTOR_MOVE(String)
+DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(String, const char*, size_t)
 DEFINE_C_WRAP_DESTRUCTOR(String)
 
 inline const char* StringGetCStr(String_t * str)
@@ -24,11 +25,5 @@ inline int StringGetCStrLen(String_t *str)
     return ((str && GET_REP(str)) ?
             GET_REP(str)->length() :
             0);
-}
-
-inline void StringSetCStrN(String_t *str, char *cstr, int sz)
-{
-    if (str && GET_REP(str))
-        GET_REP(str)->assign(cstr, sz);
 }
 

@@ -11,11 +11,11 @@ package rocksdb
 */
 import "C"
 
-type String struct {
+type cString struct {
 	str C.String_t
 }
 
-func (rstr *String) GoString(del bool) string {
+func (rstr *cString) GoString(del bool) string {
 	var (
 		cplustr *C.String_t = unsafe.Pointer(&rstr.str)
 		cstr *C.char = C.StringGetCStr(cplustr)
@@ -28,11 +28,9 @@ func (rstr *String) GoString(del bool) string {
 	return C.GoStringN(cstr, sz);
 }
 
-func (rstr *String) SetGoString(str *string) {
-	var (
-		cstr *C.char = C.CString(string)
-		cplustr *C.String_t = unsafe.Pointer(&rstr.str)
-	)
+func NewCStringFromString(str *string) (str *cString) {
+	var cstr *C.char = C.CString(string)
 	defer C.free(cstr)
-	C.StringSetCStrN(cplustr, cstr, len(string))
+	slc = &cString{str: C.NewStringTRawArgs(unsafe.Pointer(cstr), len(string))}
+	return
 }

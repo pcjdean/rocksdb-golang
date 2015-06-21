@@ -49,6 +49,7 @@ DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyDescriptor)
 // A DB is a persistent ordered map from keys to values.
 // A DB is safe for concurrent access from multiple threads without
 // any external synchronization.
+DEFINE_C_WRAP_DESTRUCTOR(DB)
 
 // Open the database with the specified "name".
 // Stores a pointer to a heap-allocated database in *dbptr and returns
