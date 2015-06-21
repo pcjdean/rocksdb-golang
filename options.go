@@ -18,3 +18,7 @@ type DBOptions struct {
 	dbopt C.DBOptions_t
 }
 
+type WriteOptions struct {
+	wopt C.WriteOptions_t
+}
+

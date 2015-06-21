@@ -61,8 +61,8 @@ type DB struct {
 // OK on success.
 // Stores nullptr in *dbptr and returns a non-OK status on error.
 // Caller should delete *dbptr when it is no longer needed.
-func Open(options *Options, name *string) (DB, Status) {
-	db := DB{}
+func Open(options *Options, name *string) (*DB, *Status) {
+	db := new DB{}
 	rstr := String{}
 	var (
 		rdb *C.DB_t = unsafe.Pointer(&db.rdb)
@@ -70,7 +70,7 @@ func Open(options *Options, name *string) (DB, Status) {
 		cstr *C.String_t = unsafe.Pointer(&rstr.str)
 	)
 	rstr.SetGoString(name)
-	return db, Status{C.DBOpen(opt, cstr, rdb)}
+	return db, new Status{C.DBOpen(opt, cstr, rdb)}
 }
 
 
@@ -81,8 +81,8 @@ func Open(options *Options, name *string) (DB, Status) {
 //
 // Not supported in ROCKSDB_LITE, in which case the function will
 // return Status_t::NotSupported.
-func OpenForReadOnly(options *Options, name *string, error_if_log_file_exist bool) (DB, Status) {
-	db := DB{}
+func OpenForReadOnly(options *Options, name *string, error_if_log_file_exist bool) (*DB, *Status) {
+	db := new DB{}
 	rstr := String{}
 	var (
 		rdb *C.DB_t = unsafe.Pointer(&db.rdb)
@@ -90,7 +90,7 @@ func OpenForReadOnly(options *Options, name *string, error_if_log_file_exist boo
 		cstr *C.String_t = unsafe.Pointer(&rstr.str)
 	)
 	rstr.SetGoString(name)
-	return db, Status{C.DBOpenForReadOnly(opt, cstr, rdb, error_if_log_file_exist)}
+	return db, new Status{C.DBOpenForReadOnly(opt, cstr, rdb, error_if_log_file_exist)}
 }
 
 // Open the database for read only with column families. When opening DB with
@@ -101,8 +101,8 @@ func OpenForReadOnly(options *Options, name *string, error_if_log_file_exist boo
 //
 // Not supported in ROCKSDB_LITE, in which case the function will
 // return Status_t::NotSupported.
-func OpenForReadOnlyWithColumnFamilies(options *Options, name *string, column_families []ColumnFamilyDescriptor, error_if_log_file_exist bool) (DB, []ColumnFamilyHandle, Status) {
-	db := DB{}
+func OpenForReadOnlyWithColumnFamilies(options *Options, name *string, column_families []ColumnFamilyDescriptor, error_if_log_file_exist bool) (*DB, []*ColumnFamilyHandle, *Status) {
+	db := new DB{}
 	rstr := String{}
 	cfdlen = len(column_families)
 	cfds := new [cfdlen]C.ColumnFamilyDescriptor_t
@@ -113,12 +113,12 @@ func OpenForReadOnlyWithColumnFamilies(options *Options, name *string, column_fa
 		cfh *C.ColumnFamilyHandle_t
 	)
 	rstr.SetGoString(name)
-	stat := Status{C.DBOpenForReadOnlyWithColumnFamilies(opt, cstr, cfds, cfdlen, unsafe.Pointer(&cfh), rdb, error_if_log_file_exist)}
+	stat := new Status{C.DBOpenForReadOnlyWithColumnFamilies(opt, cstr, cfds, cfdlen, unsafe.Pointer(&cfh), rdb, error_if_log_file_exist)}
 	if stat.Ok() && cfdlen > 0 {
 		defer C.DeleteColumnFamilyHandleTArray(cfh)
-		cfhs := new[cfdlen]ColumnFamilyHandle
+		cfhs := make([]*ColumnFamilyHandle, cfdlen)
 		for var i = 0; i < cfdlen; i++ {
-			cfhs[i].cfh = cfh[i]
+			cfhs[i].cfh = new ColumnFamilyHandle{cfh[i]}
 		}
 	} else {
 		cfhs := nil 
@@ -138,8 +138,8 @@ func OpenForReadOnlyWithColumnFamilies(options *Options, name *string, column_fa
 // If everything is OK, handles will on return be the same size
 // as column_families --- handles[i] will be a handle that you
 // will use to operate on column family column_family[i]
-func OpenWithColumnFamilies(options *Options, name *string, column_families []ColumnFamilyDescriptor) (DB, []ColumnFamilyHandle, Status) {
-	db := DB{}
+func OpenWithColumnFamilies(options *Options, name *string, column_families []ColumnFamilyDescriptor) (*DB, []*ColumnFamilyHandle, *Status) {
+	db := new DB{}
 	rstr := String{}
 	cfdlen = len(column_families)
 	cfds := new [cfdlen]C.ColumnFamilyDescriptor_t
@@ -150,12 +150,12 @@ func OpenWithColumnFamilies(options *Options, name *string, column_families []Co
 		cfh *ColumnFamilyHandle
 	)
 	rstr.SetGoString(name)
-	stat := Status{C.DBOpenWithColumnFamilies(opt, cstr, cfds, cfdlen, unsafe.Pointer(&cfh), rdb)}
+	stat := new Status{C.DBOpenWithColumnFamilies(opt, cstr, cfds, cfdlen, unsafe.Pointer(&cfh), rdb)}
 	if stat.Ok() && cfdlen > 0 {
 		defer C.DeleteColumnFamilyHandleTArray(cfh)
-		cfhs := make(ColumnFamilyHandle, cfdlen)
+		cfhs := make([]*ColumnFamilyHandle, cfdlen)
 		for var i = 0; i < cfdlen; i++ {
-			cfhs[i].cfh = cfh[i]
+			cfhs[i].cfh = new ColumnFamilyHandle{cfh[i]}
 		}
 	} else {
 		cfhs := nil 
@@ -167,7 +167,7 @@ func OpenWithColumnFamilies(options *Options, name *string, column_families []Co
 // and return the list of all column families in that DB
 // through column_families argument. The ordering of
 // column families in column_families is unspecified.
-func ListColumnFamilies(dbopt *DBOptions, name *string) (DB, []string, Status) {
+func ListColumnFamilies(dbopt *DBOptions, name *string) ([]string, *Status) {
 	rstr := String{}
 	var (
 		opt *C.DBOptions_t = unsafe.Pointers(&dbopt.dbopt)
@@ -176,57 +176,64 @@ func ListColumnFamilies(dbopt *DBOptions, name *string) (DB, []string, Status) {
 		sz C.int
 	)
 	rstr.SetGoString(name)
-	stat := Status{C.DBListColumnFamilies(opt, cstr, unsafe.Pointer(&cfs), unsafe.Pointer(&sz))}
+	stat := new Status{C.DBListColumnFamilies(opt, cstr, unsafe.Pointer(&cfs), unsafe.Pointer(&sz))}
 	if stat.Ok() && sz > 0 {
-		defer C.DeleteStringTArray(cfh)
-		cfss := make([]String, sz)
+		defer C.DeleteStringTArray(cfs)
+		cfss := make([]string, sz)
 		for var i = 0; i < sz; i++ {
-			cfss[i].str = cfs[i]
+			cstr := String{cfs[i]}
+			cfss[i] = cstr.GoString()
+			defer C.DeleteStringT(cstr, false)
 		}
 	} else {
 		cfss := nil 
 	}
-	return db, cfss, stat
+	return cfss, stat
 } 
-Status_t DBListColumnFamilies(DBOptions_t* db_options,
-                              const String_t* name,
-                              const String_t **column_families, int* size_col)
-{
-    std::vector<std::string> column_families_vec;
-    Status_t ret = NewStatusTCopy(&DB::ListColumnFamilies(GET_REP_REF(options, Options), GET_REP_REF(name, String), column_families_vec));
-    *size_col = column_families_vec.size();
-    *column_families = new String_t[column_families];
-    for (int j = 0; j < *size_col; j++)
-        GET_REP_REF((*column_families)[j], String) = std::move(column_families_vec[j]);
-    return ret;
-}
 
 
 // Create a column_family and return the handle of column family
 // through the argument handle.
-Status_t DBCreateColumnFamily(DB_t* dbptr, const ColumnFamilyOptions_t* options,
-                            const String_t* column_family_name,
-                            ColumnFamilyHandle_t* handle)
-{
-    return NewStatusTCopy(dbptr ?
-                          &GET_REP(dbptr, DB)->CreateColumnFamily(GET_REP_REF(options, Options), GET_REP_REF(options, ColumnFamilyOptions), GET_REP_REF(column_family_name, String), &GET_REP(handle, ColumnFamilyHandle)) :
-                          &invalid_status);
+func (db *DB) CreateColumnFamily(options *ColumnFamilyOptions, colfname *string) (cfd *ColumnFamilyHandle, stat *Status) {
+	var (
+		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		opt *C.DBOptions_t = unsafe.Pointers(&dbopt.dbopt)
+		cstr *C.String_t = unsafe.Pointer(&colfname.str)
+		ccfd C.ColumnFamilyHandle_t
+	)
+	stat := new Status{C.DBCreateColumnFamily(cdb, opt, cstr, unsafe.Pointer(&ccfd))}
+	if stat.Ok() {
+		cfd = new ColumnFamilyHandle{ccfd}
+	} else {
+		cfd = nil
+	}
+	return
 }
 
 // Drop a column family specified by column_family handle. This call
 // only records a drop record in the manifest and prevents the column
 // family from flushing and compacting.
-Status_t DBDropColumnFamily(DB_t* dbptr, const ColumnFamilyHandle_t* column_family);
-{
-    return NewStatusTCopy(dbptr ?
-                          &GET_REP(dbptr, DB)->DropColumnFamily(GET_REP(column_family, ColumnFamilyHandle)) :
-                          &invalid_status);
+func (db *DB) DropColumnFamily(cfd *ColumnFamilyHandle) (stat *Status) {
+	var (
+		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		ccfd *C.ColumnFamilyHandle_t = unsafe.Pointers(&cfd.cfd) 
+	)
+	stat := new Status{C.DBDropColumnFamily(cdb, ccfd)}
+	return
 }
 
 // Set the database entry for "key" to "value".
 // If "key" already exists, it will be overwritten.
 // Returns OK on success, and a non-OK status on error.
 // Note: consider setting options.sync = true.
+func (db *DB) putWithColumnFamily(options *WriteOptions, key []byte, value []byte, cfd *ColumnFamilyHandle) (stat *Status) {
+	var (
+		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		ccfd *C.ColumnFamilyHandle_t = unsafe.Pointers(&cfd.cfd) 
+	)
+	stat := new Status{C.DBPutWithColumnFamily(cdb, ccfd)}
+	return
+}
 Status_t DBPutWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
                            const ColumnFamilyHandle_t* column_family,
                            const Slice_t* key,
