@@ -171,7 +171,7 @@ func Open(options *Options, name *string, colfas ...*ColumnFamilyDescriptor) (db
 //
 // Not supported in ROCKSDB_LITE, in which case the function will
 // return Status_t::NotSupported.
-func OpenForReadOnlyWithColumnFamilies(options *Options, name *string, error_if_log_file_exist bool, colfas ...*ColumnFamilyDescriptor) (db *DB, cfhs []*ColumnFamilyHandle, stat *Status) {
+func OpenForReadOnly(options *Options, name *string, error_if_log_file_exist bool, colfas ...*ColumnFamilyDescriptor) (db *DB, cfhs []*ColumnFamilyHandle, stat *Status) {
 	db := &DB{}
 	rstr := NewCStringFromString(name)
 	defer C.DeleteStringT(rstr, false)
@@ -219,7 +219,7 @@ func OpenForReadOnlyWithColumnFamilies(options *Options, name *string, error_if_
 // and return the list of all column families in that DB
 // through column_families argument. The ordering of
 // column families in column_families is unspecified.
-func ListColumnFamilies(dbopt *DBOptions, name *string) (cfss []string, *Status) {
+func ListColumnFamilies(dbopt *DBOptions, name *string) (cfss []string, stat *Status) {
 	rstr := NewCStringFromString(name)
 	defer C.DeleteStringT(rstr, false)
 	var (
@@ -255,6 +255,7 @@ func (db *DB) CreateColumnFamily(options *ColumnFamilyOptions, colfname *string)
 	stat := &Status{sta: C.DBCreateColumnFamily(cdb, opt, cstr, unsafe.Pointer(&ccfd))}
 	if stat.Ok() {
 		cfd = &ColumnFamilyHandle{cfh: ccfd}
+		runtime.SetFinalizer(cfd, Finalize)
 	}
 	runtime.SetFinalizer(stat, Finalize)
 	return
@@ -281,6 +282,7 @@ func (db *DB) Put(options *WriteOptions, key []byte, value []byte, cfd ...*Colum
 	ckey := NewSliceFromBytes(key)
 	defer C.DeleteSliceT(ckey, false)
 	cval := NewSliceFromBytes(value)
+	defer C.DeleteSliceT(cval, false)
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
 		cwopt *C.WriteOptions_t = unsafe.Pointers(&options.wopt)
@@ -305,40 +307,55 @@ func (db *DB) Put(options *WriteOptions, key []byte, value []byte, cfd ...*Colum
 // success, and a non-OK status on error.  It is not an error if "key"
 // did not exist in the database.
 // Note: consider setting options.sync = true.
-Status_t DBDeleteWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
-                                  const ColumnFamilyHandle_t* column_family,
-                                  const Slice_t* key)
-{
-    return NewStatusTCopy(dbptr ?
-                          &GET_REP(dbptr, DB)->Delete(GET_REP_REF(options, WriteOptions), GET_REP_REF(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice)) :
-                          invalid_status);
-}
-
-Status_t DBDelete(DB_t* dbptr, const WriteOptions_t* optionss,
-                  const Slice_t* key)
-{
-    return DBDeleteWithColumnFamily(dbptr, options, &DBDefaultColumnFamily(dbptr), key);
+func (db *DB) Delete(options *WriteOptions, key []byte, cfd ...*ColumnFamilyHandle) (stat *Status) {
+	ckey := NewSliceFromBytes(key)
+	defer C.DeleteSliceT(ckey, false)
+	var (
+		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cwopt *C.WriteOptions_t = unsafe.Pointers(&options.wopt)
+		ccfd *C.ColumnFamilyHandle_t
+		cckey *C.Slice_t = unsafe.Pointers(&ckey.slc) 
+	)
+	if cfd {
+		cfd[0].(*ColumnFamilyHandle)
+		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	}
+	if ccfd {
+		stat := &Status{sta: C.DBDeleteWithColumnFamily(cdb, cwopt, ccfd, cckey)}
+	} else {
+		stat := &Status{sta: C.DBDelete(cdb, cwopt, cckey)}
+	}
+	runtime.SetFinalizer(stat, Finalize)
+	return
 }
 
 // Merge the database entry for "key" with "value".  Returns OK on success,
 // and a non-OK status on error. The semantics of this operation is
 // determined by the user provided merge_operator when opening DB.
 // Note: consider setting options.sync = true.
-Status_t DBMergeWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
-                                 const ColumnFamilyHandle_t* column_family,
-                                 const Slice_t* key,
-                                 const Slice_t* value)
-{
-    return NewStatusTCopy(dbptr ?
-                          &GET_REP(dbptr, DB)->Merge(GET_REP_REF(options, WriteOptions), GET_REP_REF(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), GET_REP_REF(value, Slice)) :
-                          &invalid_status);
-}
-
-Status_t DBMerge(DB_t* dbptr, const WriteOptions_t* optionss,
-               const Slice_t* key,
-               const Slice_t* value)
-{
-    return DBMergeWithColumnFamily(dbptr, options, &DBDefaultColumnFamily(dbptr), key, value);
+func (db *DB) Merge(options *WriteOptions, key []byte, value []byte, cfd ...*ColumnFamilyHandle) (stat *Status) {
+	ckey := NewSliceFromBytes(key)
+	defer C.DeleteSliceT(ckey, false)
+	cval := NewSliceFromBytes(value)
+	defer C.DeleteSliceT(cval, false)
+	var (
+		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cwopt *C.WriteOptions_t = unsafe.Pointers(&options.wopt)
+		ccfd *C.ColumnFamilyHandle_t
+		cckey *C.Slice_t = unsafe.Pointers(&ckey.slc) 
+		ccval *C.Slice_t = unsafe.Pointers(&cval.slc) 
+	)
+	if cfd {
+		cfd[0].(*ColumnFamilyHandle)
+		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	}
+	if ccfd {
+		stat := &Status{sta: C.DBMergeWithColumnFamily(cdb, cwopt, ccfd, cckey, ccval)}
+	} else {
+		stat := &Status{sta: C.DBMerge(cdb, cwopt, cckey, ccval)}
+	}
+	runtime.SetFinalizer(stat, Finalize)
+	return
 }
 
 // Apply the specified updates to the database.
@@ -346,11 +363,15 @@ Status_t DBMerge(DB_t* dbptr, const WriteOptions_t* optionss,
 // options.sync=true.
 // Returns OK on success, non-OK on failure.
 // Note: consider setting options.sync = true.
-Status_t DBWrite(DB_t* dbptr, const WriteOptions_t* optionss, WriteBatch_t* updates)
-{
-    return NewStatusTCopy(dbptr ?
-                          &GET_REP(dbptr, DB)->Write(GET_REP_REF(options, WriteOptions), GET_REP(updates, WriteBatch)) :
-                          &invalid_status);
+func (db *DB) Write(options *WriteOptions, wbt *WriteBatch) (stat *Status) {
+	var (
+		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cwopt *C.WriteOptions_t = unsafe.Pointers(&options.wopt)
+		cwbt *C.WriteBatch_t = unsafe.Pointers(&wbt.wbt)
+	)
+	stat := &Status{sta: C.DBWrite(cdb, cwopt, cwbt)}
+	runtime.SetFinalizer(stat, Finalize)
+	return
 }
 
 // If the database contains an entry for "key" store the

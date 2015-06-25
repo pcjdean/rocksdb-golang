@@ -37,3 +37,12 @@ func (wopt *WriteOptions) Finalize() {
 	C.DeleteWriteOptionsT(cwopt, false)
 }
 
+type ReadOptions struct {
+	ropt C.ReadOptions_t
+}
+
+func (ropt *ReadOptions) Finalize() {
+	var cropt *C.ReadOptions_t = unsafe.Pointer(&ropt.ropt)
+	C.DeleteReadOptionsT(cropt, false)
+}
+

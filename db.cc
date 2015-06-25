@@ -238,7 +238,7 @@ Status_t DBMerge(DB_t* dbptr, const WriteOptions_t* optionss,
 // options.sync=true.
 // Returns OK on success, non-OK on failure.
 // Note: consider setting options.sync = true.
-Status_t DBWrite(DB_t* dbptr, const WriteOptions_t* optionss, WriteBatch_t* updates)
+Status_t DBWrite(DB_t* dbptr, const WriteOptions_t* options, WriteBatch_t* updates)
 {
     return NewStatusTCopy(dbptr ?
                           &GET_REP(dbptr, DB)->Write(GET_REP_REF(options, WriteOptions), GET_REP(updates, WriteBatch)) :
