@@ -12,6 +12,7 @@ DEFINE_C_WRAP_CONSTRUCTOR(String)
 DEFINE_C_WRAP_CONSTRUCTOR_MOVE(String)
 DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(String, const char*, size_t)
 DEFINE_C_WRAP_DESTRUCTOR(String)
+DEFINE_C_WRAP_DESTRUCTOR_ARRAY(String)
 
 inline const char* StringGetCStr(String_t * str)
 {

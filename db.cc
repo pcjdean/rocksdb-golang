@@ -382,9 +382,10 @@ Iterator_t DBNewIterator(DB_t* dbptr, const ReadOptions_t* options)
 // column families. Iterators are heap allocated and need to be deleted
 // before the db is deleted
 Status_t DBNewIterators(DB_t* dbptr, const ReadOptions_t* options,
-                      const ColumnFamilyHandle_t column_families[],
-                      const int size_col,
-                      Iterator_t** values)
+                        const ColumnFamilyHandle_t column_families[],
+                        const int size_col,
+                        Iterator_t** values,
+                        int *val_sz)
 {
     Status &ret;
     if (dbptr)
@@ -394,15 +395,16 @@ Status_t DBNewIterators(DB_t* dbptr, const ReadOptions_t* options,
             column_families_vec.push_back(GET_REP(column_families[i], ColumnFamilyHandle));
         std::vector<Iterator*> values_vec;
         ret = GET_REP(dbptr, DB)->NewIterators(GET_REP_REF(options, ReadOptions), column_families_vec, &values_vec);
-        int num_val = values_vec.size();
+        *val_sz = values_vec.size();
         *values = new Iterator_t[num_val];
-        for (int j = 0; j < num_val; j++)
+        for (int j = 0; j < *val_sz; j++)
         {
             GET_REP(values[j], Iterator) = values_vec[j];
         }
     }
     else
     {
+        *val_sz = 0;
         ret = invalid_status;
     }
     return NewStatusTCopy(&ret);

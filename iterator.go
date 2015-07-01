@@ -12,10 +12,29 @@
 // non-const method, all threads accessing the same Iterator must use
 // external synchronization.
 
-#include <iterator.h>
-#include "iterator.h"
+package rocksdb
 
-DEFINE_C_WRAP_CONSTRUCTOR(Iterator)
-DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(Iterator)
-DEFINE_C_WRAP_DESTRUCTOR(Iterator)
-DEFINE_C_WRAP_DESTRUCTOR_ARRAY(Iterator)
+/*
+#include "iterator.h"
+*/
+import "C"
+
+type Iterator struct {
+	it C.Iterator_t
+	db *DB // make sure the iterator is deleted before the db
+}
+
+func (it *Iterator) finalize() {
+	var cit *C.Iterator_t = unsafe.Pointer(&it.it)
+	C.DeleteIteratorT(cit, false)
+}
+
+func newIteratorArrayFromCArray(cit *C.Iterator_t, sz uint, db *DB) (its []*Iterator) {
+	defer C.DeleteIteratorTArray(cit)
+	its := make([]*Iterator, sz)
+	for var i = 0; i < sz; i++ {
+		its[i] := &Iterator{it: (*[sz]C.Iterator_t)(unsafe.Pointer(cit))[i], db: db}
+		runtime.SetFinalizer(its[i], finalize)
+	}
+	return
+}

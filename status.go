@@ -14,9 +14,19 @@ type Status struct {
 	sta C.Status_t
 }
 
-func (stat *Status) Finalize() {
+func (stat *Status) finalize() {
 	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
 	C.DeleteStatusT(cstat, false)
+}
+
+func newStatusArrayFromCArray(csta *C.Status_t, sz uint) (stas []*Status) {
+	defer C.DeleteStatusTArray(csta)
+	stas := make([]*Status, sz)
+	for i, _ := range stas {
+		stas[i] = &Status{sta: *(*[sz]C.Status_t)(unsafe.Pointer(csta))[i]}	
+		runtime.SetFinalizer(stas[i], finalize)
+	}
+	return
 }
 
 // Returns true iff the status indicates success.
@@ -89,5 +99,5 @@ func (stat *Status) IsBusy() bool {
 func (stat *Status) ToString() String {
 	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
 	str := String{StatusToString(cstat)}
-	return str.GoString(false)
+	return str.goString(false)
 }

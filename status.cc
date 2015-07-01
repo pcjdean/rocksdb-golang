@@ -16,7 +16,7 @@
 DEFINE_C_WRAP_CONSTRUCTOR(Status)
 DEFINE_C_WRAP_DESTRUCTOR(Status)
 DEFINE_C_WRAP_CONSTRUCTOR_COPY(Status)
-
+DEFINE_C_WRAP_DESTRUCTOR_ARRAY(Status)
 
 // Returns true iff the status indicates success.
 inline bool StatusOk(Status_t *stat)

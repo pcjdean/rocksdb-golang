@@ -105,9 +105,10 @@ Iterator_t DBNewIteratorWithColumnFamily(DB_t* dbptr, const ReadOptions_t* optio
                                          ColumnFamilyHandle_t* column_family);
 Iterator_t DBNewIterator(DB_t* dbptr, const ReadOptions_t* options);
 Status_t DBNewIterators(DB_t* dbptr, const ReadOptions_t* options,
-                      const ColumnFamilyHandle_t column_families[],
-                      const int size_col,
-                      Iterator_t** values);
+                        const ColumnFamilyHandle_t column_families[],
+                        const int size_col,
+                        Iterator_t** values,
+                        int *val_sz);
 Snapshot_t DBGetSnapshot(DB_t* dbptr);
 void DBReleaseSnapshot(DB_t* dbptr, const Snapshot_t* snapshot);
 bool DBGetPropertyWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,

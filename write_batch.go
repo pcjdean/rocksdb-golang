@@ -29,7 +29,7 @@ type WriteBatch struct {
 	wbt C.WriteBatch_t
 }
 
-func (wbt *WriteBatch) Finalize() {
+func (wbt *WriteBatch) finalize() {
 	var cwbt *C.WriteBatch_t = unsafe.Pointer(&wbt.wbt)
 	C.DeleteWriteBatchT(cwbt, false)
 }
