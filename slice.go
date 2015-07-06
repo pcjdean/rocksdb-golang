@@ -23,26 +23,30 @@ type cSlice struct {
 	slc C.Slice_t
 }
 
-func (slc *cSlice) finalize() {
-	var cslc *C.Slice_t = unsafe.Pointer(&slc.slc)
-	C.DeleteSliceT(cslc, false)
-}
-
 func newSliceFromBytes(bytes []byte) (slc *cSlice) {
 	slc = &cSlice{slc: C.NewSliceTRawArgs(unsafe.Pointer(&bytes[0]), len(bytes))}
 	return
 }
 
-func newSliceFromBytesArray(bytess [][]byte) (slcs []*cSlice) {
+func (slc *cSlice) del()  {
+	C.DeleteSliceT(unsafe.Pointers(&slc.slc), false)
+}
+
+func newSlicesFromBytesArray(bytess [][]byte) (slcs []*cSlice) {
 	slcs = make([]*cSlice, len(bytess))
 	for i, bytes := range bytess {
 		slcs[i] := newSliceFromBytes(bytes)
-		runtime.SetFinalizer(slcs[i], finalize)
 	}
 	return
 }
 
-func newCArrayFromSliceArray(slcs []*cSlice) (cslcs []C.Slice_t) {
+func (slcs []*cSlice) del() {
+	for _, slc := range slcs {
+		slc.del()
+	}
+}
+
+func (slcs []*cSlice) toCArray (cslcs []C.Slice_t) {
 	cslcs = make([]C.Slice_t, len(bytess))
 	for i, slc := range slcs {
 		cslcs[i] = slc.slc

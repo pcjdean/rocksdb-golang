@@ -32,6 +32,16 @@ func (rstr *cString) goString(del bool) string {
 	}
 }
 
+func (str *cString) del()  {
+	C.DeleteStringT(unsafe.Pointers(&str.str), false)
+}
+
+func (ccstr *C.String_t) toCString() (str string) {
+	cstr := cString{str: *ccstr}
+	str = cstr.goString(true)
+	return
+}
+
 func newCStringFromString(str *string) (str *cString) {
 	var cstr *C.char = C.CString(string)
 	defer C.free(cstr)
@@ -49,8 +59,29 @@ func newStringArrayFromCArray(ccstr *C.String_t, sz uint) (strs []String) {
 	strs = make([]string, sz)
 	for var i = 0; i < sz; i++ {
 		cstr := cString{str: (*[sz]C.String_t)(unsafe.Pointer(ccstr))[i]}
-		strs[i] = cstr.goString()
-		defer C.DeleteStringT(cstr, false)
+		strs[i] = cstr.goString(true)
+	}
+	return
+}
+
+func newcStringsFromStringArray(strs []String, sz uint) (cstrs []*cString) {
+	cstrs = make([]*cString, len(strs))
+	for i, str := range strs {
+		cstrs[i] := newCStringFromString(str)
+	}
+	return
+}
+
+func (cstrs []*cString) del() {
+	for _, cstr := range cstrs {
+		cstr.del()
+	}
+}
+
+func (cstrs []*cString) toCArray (ccstrs []C.String_t) {
+	ccstrs = make([]C.String_t, len(cstrs))
+	for i, cstr := range cstrs {
+		ccstrs[i] = cstr.str
 	}
 	return
 }

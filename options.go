@@ -46,3 +46,21 @@ func (ropt *ReadOptions) finalize() {
 	C.DeleteReadOptionsT(cropt, false)
 }
 
+type FlushOptions struct {
+	fopt C.CompactionOptions_t
+}
+
+func (fopt *FlushOptions) finalize() {
+	var cfopt *C.FlushOptions_t = unsafe.Pointer(&fopt.fopt)
+	C.DeleteFlushOptionsT(cfopt, false)
+}
+
+type CompactionOptions struct {
+	copt C.CompactionOptions_t
+}
+
+func (copt *CompactionOptions) finalize() {
+	var ccopt *C.CompactionOptions_t = unsafe.Pointer(&copt.copt)
+	C.DeleteCompactionOptionsT(ccopt, false)
+}
+
