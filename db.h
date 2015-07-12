@@ -179,16 +179,16 @@ SequenceNumber DBGetLatestSequenceNumber(DB_t* dbptr);
 Status_t DBDisableFileDeletions(DB_t* dbptr);
 Status_t DBEnableFileDeletions(DB_t* dbptr, bool force);
 Status_t DBGetLiveFiles(DB_t* dbptr,
-                        const String_t live_files[],
+                        const String_t **live_files,
                         int* n,
                         uint64_t* manifest_file_size,
                         bool flush_memtable);
-Status_t DBGetSortedWalFiles(DB_t* dbptr, LogFile_t files[], int* n);
+Status_t DBGetSortedWalFiles(DB_t* dbptr, LogFile_t **files, int* n);
 Status_t DBGetUpdatesSince(DB_t* dbptr, SequenceNumber seq_number,
                            TransactionLogIterator_t* iter,
                            const TransactionLogIterator_ReadOptions_t* read_options);
 Status_t DBDeleteFile(DB_t* dbptr, String_t* name);
-void DBGetLiveFilesMetaData(DB_t* dbptr, LiveFileMetaData_t metadata[], int* n);
+void DBGetLiveFilesMetaData(DB_t* dbptr, LiveFileMetaData_t **metadata, int* n);
 void DBGetColumnFamilyMetaDataWithColumnFamily(DB_t* dbptr, 
                                                ColumnFamilyHandle_t* column_family,
                                                ColumnFamilyMetaData_t* metadata);

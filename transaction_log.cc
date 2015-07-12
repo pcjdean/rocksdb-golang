@@ -10,6 +10,7 @@ typedef TransactionLogIterator::ReadOptions TransactionLogIterator_ReadOptions;
 DEFINE_C_WRAP_CONSTRUCTOR(LogFile)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(LogFile)
 DEFINE_C_WRAP_DESTRUCTOR(LogFile)
+DEFINE_C_WRAP_DESTRUCTOR_ARRAY(LogFile)
 
 DEFINE_C_WRAP_CONSTRUCTOR(TransactionLogIterator)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(TransactionLogIterator)

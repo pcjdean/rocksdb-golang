@@ -19,6 +19,12 @@ func (opt *Options) finalize() {
 	C.DeleteOptionsT(copt, false)
 }
 
+func (copt *C.Options_t) toOptions() (opt *Options) {
+	opt = &Options{opt: *copt}	
+	runtime.SetFinalizer(opt, finalize)
+	return
+}
+
 type DBOptions struct {
 	dbopt C.DBOptions_t
 }
@@ -26,6 +32,12 @@ type DBOptions struct {
 func (dbopt *DBOptions) finalize() {
 	var cdbopt *C.DBOptions_t = unsafe.Pointer(&dbopt.dbopt)
 	C.DeleteDBOptionsT(cdbopt, false)
+}
+
+func (cdbopt *C.DBOptions_t) toDBOptions() (dbopt *DBOptions) {
+	dbopt = &DBOptions{dbopt: *cdbopt}	
+	runtime.SetFinalizer(dbopt, finalize)
+	return
 }
 
 type WriteOptions struct {

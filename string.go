@@ -36,7 +36,7 @@ func (str *cString) del()  {
 	C.DeleteStringT(unsafe.Pointers(&str.str), false)
 }
 
-func (ccstr *C.String_t) toCString() (str string) {
+func (ccstr *C.String_t) cToString() (str string) {
 	cstr := cString{str: *ccstr}
 	str = cstr.goString(true)
 	return

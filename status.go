@@ -19,6 +19,12 @@ func (stat *Status) finalize() {
 	C.DeleteStatusT(cstat, false)
 }
 
+func (csta *C.Status_t) toStatus() (sta *Status) {
+	sta = &Status{sta: *csta}	
+	runtime.SetFinalizer(sta, finalize)
+	return
+}
+
 func newStatusArrayFromCArray(csta *C.Status_t, sz uint) (stas []*Status) {
 	defer C.DeleteStatusTArray(csta)
 	stas := make([]*Status, sz)

@@ -25,3 +25,9 @@ func (env *Env) finalize() {
 	var cenv *C.Env_t = unsafe.Pointer(&env.env)
 	C.DeleteEnvT(cenv, false)
 }
+
+func (cenv *C.Env_t) toEnv() (env *Env) {
+	env = &Env{env: *cenv}	
+	runtime.SetFinalizer(env, finalize)
+	return
+}

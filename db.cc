@@ -312,7 +312,7 @@ Status_t* DBMultiGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
         ret = new Status_t[size_keys];
         for (int j = 0; j < size_keys; j++)
         {
-            GET_REP_REF(values[j], String) = std::move(values_vec[j]);
+            GET_REP_REF((*values)[j], String) = std::move(values_vec[j]);
             *ret[j] = NewStatusTCopy(&ret_vec[j]);
         }
     }
@@ -399,7 +399,7 @@ Status_t DBNewIterators(DB_t* dbptr, const ReadOptions_t* options,
         *values = new Iterator_t[num_val];
         for (int j = 0; j < *val_sz; j++)
         {
-            GET_REP(values[j], Iterator) = values_vec[j];
+            GET_REP((*values)[j], Iterator) = values_vec[j];
         }
     }
     else
@@ -823,7 +823,7 @@ Status_t DBEnableFileDeletions(DB_t* dbptr, bool force)
 // for new data that arrived to already-flushed column families while other
 // column families were flushing
 Status_t DBGetLiveFiles(DB_t* dbptr,
-                        const String_t live_files[],
+                        const String_t **live_files,
                         int* n,
                         uint64_t* manifest_file_size,
                         bool flush_memtable)
@@ -834,9 +834,9 @@ Status_t DBGetLiveFiles(DB_t* dbptr,
         std::vector<std::string> live_files_vec;
         ret = GET_REP(dbptr, DB)->GetLiveFiles(live_files_vec, manifest_file_size, flush_memtable);
         *n = live_files_vec.size();
-        live_files = new String_t[*n];
+        *live_files = new String_t[*n];
         for (int j = 0; j < *n; j++)
-            GET_REP_REF(live_files[j], String) = std::move(live_files_vec[j]);
+            GET_REP_REF((*live_files)[j], String) = std::move(live_files_vec[j]);
     }
     else
     {
@@ -846,7 +846,7 @@ Status_t DBGetLiveFiles(DB_t* dbptr,
 }
 
 // Retrieve the sorted list of all wal files with earliest file first
-Status_t DBGetSortedWalFiles(DB_t* dbptr, LogFile_t files[], int* n)
+Status_t DBGetSortedWalFiles(DB_t* dbptr, LogFile_t **files, int* n)
 {
     Status &ret;
     if (dbptr)
@@ -854,9 +854,9 @@ Status_t DBGetSortedWalFiles(DB_t* dbptr, LogFile_t files[], int* n)
         VectorLogPtr files_vec;
         ret = GET_REP(dbptr, DB)->GetSortedWalFiles(files_vec);
         *n = files_vec.size();
-        files = new LogFile_t[*n];
+        *files = new LogFile_t[*n];
         for (int j = 0; j < *n; j++)
-            GET_REP(files[j]) = files_vec[j].release();
+            GET_REP((*files)[j]) = files_vec[j].release();
     }
     else
     {

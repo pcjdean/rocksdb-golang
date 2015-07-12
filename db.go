@@ -1,4 +1,3 @@
-// Copyright (c) 2015, Dean ChaoJun Pan.  All rights reserved.
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
@@ -35,6 +34,12 @@ func (cfh *ColumnFamilyHandle) GetID() uint32 {
 	return C.ColumnFamilyGetID(ptr)
 }
 
+func (ccfh *C.ColumnFamilyHandle_t) toColumnFamilyHandle() (cfh *ColumnFamilyHandle) {
+	cfh = &ColumnFamilyHandle{cfh: *ccfh}	
+	runtime.SetFinalizer(cfh, finalize)
+	return
+}
+
 func newColumnFamilyHandleArrayFromCArray(cfh *C.ColumnFamilyHandle_t, sz uint) (cfhs []*ColumnFamilyHandle) {
 	defer C.DeleteColumnFamilyHandleTArray(cfh)
 	cfhs = make([]*ColumnFamilyHandle, sz)
@@ -67,6 +72,12 @@ func (tpc *TablePropertiesCollection) finalize() {
 	C.DeleteTablePropertiesCollectionT(ctpc, false)
 }
 
+func (ctpc *C.TablePropertiesCollection_t) toTablePropertiesCollection() (tpc *TablePropertiesCollection) {
+	tpc = &TablePropertiesCollection{tpc: *ctpc}	
+	runtime.SetFinalizer(tpc, finalize)
+	return
+}
+
 // Abstract handle to particular state of a DB.
 // A Snapshot is an immutable object and can therefore be safely
 // accessed from multiple threads without any external synchronization.
@@ -77,6 +88,12 @@ type Snapshot struct {
 func (snp *Snapshot) finalize() {
 	var csnp *C.Snapshot_t = unsafe.Pointer(&snp.snp)
 	C.DeleteSnapshotT(csnp, false)
+}
+
+func (csnp *C.OSnapshot_t) toSnapshot() (snp *Snapshot) {
+	snp = &Snapshot{snp: *csnp}	
+	runtime.SetFinalizer(snp, finalize)
+	return
 }
 
 func (snp *Snapshot) GetSequenceNumber() uint64 {
@@ -174,19 +191,18 @@ func Open(options *Options, name *string, cfds ...*ColumnFamilyDescriptor) (db *
 	)
 
 	if ccfds {
-		stat = &Status{sta: C.DBOpenWithColumnFamilies(opt, cstr, unsafe.Pointers(&ccfds[0]), len(ccfds), unsafe.Pointer(&cfh), cdb)}
+		stat = C.DBOpenWithColumnFamilies(opt, cstr, unsafe.Pointers(&ccfds[0]), len(ccfds), unsafe.Pointer(&cfh), cdb).toStatus()
 		if stat.Ok() {
 			cfhs = newColumnFamilyHandleArrayFromCArray(cfh)
 		}
 	} else {
-		stat = &Status{sta: C.DBOpen(opt, cstr, cdb)}
+		stat = C.DBOpen(opt, cstr, cdb).toStatus()
 	}
 
 	if stat.Ok() {
 		runtime.SetFinalizer(db, finalize)
 	}
 
-	runtime.SetFinalizer(stat, finalize)
 	return
 }
 
@@ -227,19 +243,17 @@ func OpenForReadOnly(options *Options, name *string, cfds ...*ColumnFamilyDescri
 	}
 
 	if ccfds {
-		stat = &Status{sta: C.DBOpenForReadOnlyWithColumnFamilies(opt, cstr, unsafe.Pointers(&ccfds[0]), len(ccfds), unsafe.Pointer(&cfh), cdb, cflg)}
+		stat = C.DBOpenForReadOnlyWithColumnFamilies(opt, cstr, unsafe.Pointers(&ccfds[0]), len(ccfds), unsafe.Pointer(&cfh), cdb, cflg).toStatus()
 		if stat.Ok() && cfdlen > 0 {
 			cfhs = newColumnFamilyHandleArrayFromCArray(cfh)
 		}
 	} else {
-		stat = &Status{sta: C.DBOpenForReadOnly(opt, cstr, cdb, cflg)}
+		stat = C.DBOpenForReadOnly(opt, cstr, cdb, cflg).toStatus()
 	}
 
 	if stat.Ok() {
 		runtime.SetFinalizer(db, finalize)
 	}
-
-	runtime.SetFinalizer(stat, finalize)
 	return
 }
 
@@ -258,11 +272,10 @@ func ListColumnFamilies(dbopt *DBOptions, name *string) (cfss []string, stat *St
 		sz C.int
 	)
 
-	stat = &Status{sta: C.DBListColumnFamilies(opt, cstr, unsafe.Pointer(&cfs), unsafe.Pointer(&sz))}
+	stat = C.DBListColumnFamilies(opt, cstr, unsafe.Pointer(&cfs), unsafe.Pointer(&sz)).toStatus()
 	if stat.Ok() && sz > 0 {
 		cfss = newStringArrayFromCArray(cfs, sz)
 	}
-	runtime.SetFinalizer(stat, finalize)
 	return
 } 
 
@@ -277,12 +290,10 @@ func (db *DB) CreateColumnFamily(options *ColumnFamilyOptions, colfname *string)
 		ccfd C.ColumnFamilyHandle_t
 	)
 
-	stat = &Status{sta: C.DBCreateColumnFamily(cdb, opt, cstr, unsafe.Pointer(&ccfd))}
+	stat = C.DBCreateColumnFamily(cdb, opt, cstr, unsafe.Pointer(&ccfd)).toStatus()
 	if stat.Ok() {
-		cfd = &ColumnFamilyHandle{cfh: ccfd}
-		runtime.SetFinalizer(cfd, finalize)
+		cfd = ccfd.toColumnFamilyHandle()
 	}
-	runtime.SetFinalizer(stat, finalize)
 	return
 }
 
@@ -294,8 +305,7 @@ func (db *DB) DropColumnFamily(cfd *ColumnFamilyHandle) (stat *Status) {
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
 		ccfd *C.ColumnFamilyHandle_t = unsafe.Pointers(&cfd.cfd) 
 	)
-	stat = &Status{sta: C.DBDropColumnFamily(cdb, ccfd)}
-	runtime.SetFinalizer(stat, finalize)
+	stat = C.DBDropColumnFamily(cdb, ccfd).toStatus()
 	return
 }
 
@@ -323,11 +333,10 @@ func (db *DB) Put(options *WriteOptions, key []byte, val []byte, cfd ...*ColumnF
 	}
 
 	if ccfd {
-		stat = &Status{sta: C.DBPutWithColumnFamily(cdb, cwopt, ccfd, cckey, ccval)}
+		stat = C.DBPutWithColumnFamily(cdb, cwopt, ccfd, cckey, ccval).toStatus()
 	} else {
-		stat = &Status{sta: C.DBPut(cdb, cwopt, cckey, ccval)}
+		stat = C.DBPut(cdb, cwopt, cckey, ccval).toStatus()
 	}
-	runtime.SetFinalizer(stat, finalize)
 	return
 }
 
@@ -352,11 +361,10 @@ func (db *DB) Delete(options *WriteOptions, key []byte, cfd ...*ColumnFamilyHand
 	}
 
 	if ccfd {
-		stat = &Status{sta: C.DBDeleteWithColumnFamily(cdb, cwopt, ccfd, cckey)}
+		stat = C.DBDeleteWithColumnFamily(cdb, cwopt, ccfd, cckey).toStatus()
 	} else {
-		stat = &Status{sta: C.DBDelete(cdb, cwopt, cckey)}
+		stat = C.DBDelete(cdb, cwopt, cckey).toStatus()
 	}
-	runtime.SetFinalizer(stat, finalize)
 	return
 }
 
@@ -384,11 +392,10 @@ func (db *DB) Merge(options *WriteOptions, key []byte, val []byte, cfd ...*Colum
 	}
 
 	if ccfd {
-		stat = &Status{sta: C.DBMergeWithColumnFamily(cdb, cwopt, ccfd, cckey, ccval)}
+		stat = C.DBMergeWithColumnFamily(cdb, cwopt, ccfd, cckey, ccval).toStatus()
 	} else {
-		stat = &Status{sta: C.DBMerge(cdb, cwopt, cckey, ccval)}
+		stat = C.DBMerge(cdb, cwopt, cckey, ccval).toStatus()
 	}
-	runtime.SetFinalizer(stat, finalize)
 	return
 }
 
@@ -403,8 +410,7 @@ func (db *DB) Write(options *WriteOptions, wbt *WriteBatch) (stat *Status) {
 		cwopt *C.WriteOptions_t = unsafe.Pointers(&options.wopt)
 		cwbt *C.WriteBatch_t = unsafe.Pointers(&wbt.wbt)
 	)
-	stat = &Status{sta: C.DBWrite(cdb, cwopt, cwbt)}
-	runtime.SetFinalizer(stat, finalize)
+	stat = C.DBWrite(cdb, cwopt, cwbt).toStatus()
 	return
 }
 
@@ -434,12 +440,11 @@ func (db *DB) Get(options *ReadOptions, key []byte, cfd ...*ColumnFamilyHandle) 
 	}
 
 	if ccfd {
-		stat = &Status{sta: C.DBGetWithColumnFamily(cdb, cropt, ccfd, cckey, ccval)}
+		stat = C.DBGetWithColumnFamily(cdb, cropt, ccfd, cckey, ccval).toStatus()
 	} else {
-		stat = &Status{sta: C.DBGet(cdb, cropt, cckey, ccval)}
+		stat = C.DBGet(cdb, cropt, cckey, ccval).toStatus()
 	}
 	val = cval.goString(true)
-	runtime.SetFinalizer(stat, finalize)
 	return
 }
 
@@ -519,6 +524,7 @@ func (db *DB) NewIterator(options *ReadOptions, cfd ...*ColumnFamilyHandle) (it 
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
 		cropt *C.ReadOptions_t = unsafe.Pointers(&options.ropt)
 		ccfd *C.ColumnFamilyHandle_t
+		cit C.Iterator_t
 	)
 
 	if cfd {
@@ -527,11 +533,11 @@ func (db *DB) NewIterator(options *ReadOptions, cfd ...*ColumnFamilyHandle) (it 
 	}
 
 	if ccfd {
-		it = &Iterator{it: C.DBNewIteratorWithColumnFamily(cdb, cropt, ccfd), db: db}
+		cit = C.DBNewIteratorWithColumnFamily(cdb, cropt, ccfd)
 	} else {
-		it = &Iterator{it: C.DBNewIterator(cdb, cropt), db: db}
+		cit = C.DBNewIterator(cdb, cropt)
 	}
-	runtime.SetFinalizer(it, finalize)
+	it = cit.toIterator()
 	return
 }
 
@@ -549,9 +555,8 @@ func (db *DB) NewIterators(options *ReadOptions, cfhs []*ColumnFamilyHandle) (va
 	)
 
 	ccfhs[0].(*C.ColumnFamilyHandle_t)
-	stat = &Status{sta: C.DBNewIterators(cdb, cropt, unsafe.Pointers(&ccfhs[0]), len(ccfhs), unsafe.Pointers(&ccvals), unsafe.Pointers(&valsz))}
+	stat = C.DBNewIterators(cdb, cropt, unsafe.Pointers(&ccfhs[0]), len(ccfhs), unsafe.Pointers(&ccvals), unsafe.Pointers(&valsz)).toStatus()
 	vals = newIteratorArrayFromCArray(ccvals, valsz, db)
-	runtime.SetFinalizer(stat, finalize)
 	return
 }
 
@@ -564,9 +569,9 @@ func (db *DB) NewIterators(options *ReadOptions, cfhs []*ColumnFamilyHandle) (va
 // not support snapshot.
 func (db *DB) GetSnapshot() (snp *Snapshot) {
 	var cdb *C.DB_t = unsafe.Pointers(&db.db)
+	var csnp *C.Snapshot_t = C.DBGetSnapshot(cdb)
 
-	snp = &Snapshot{snp: C.DBGetSnapshot(cdb)}
-	runtime.SetFinalizer(snp, finalize)
+	snp = csnp.toSnapshot()
 	return
 }
 
@@ -770,15 +775,14 @@ func (db *DB) CompactRange(begin []byte, end []byte, cfd ...*ColumnFamilyHandle,
 	}
 
 	if ccfd {
-		stat = &Status{sta: C.DBCompactRangeWithColumnFamily(cdb, ccfd, unsafe.Pointers(&cbegin[0]), unsafe.Pointers(&cend[0]), credl, ctarl, ctpi)}
+		stat = C.DBCompactRangeWithColumnFamily(cdb, ccfd, unsafe.Pointers(&cbegin[0]), unsafe.Pointers(&cend[0]), credl, ctarl, ctpi).toStatus()
 	} else {
-		stat = &Status{sta: C.DBCompactRange(cdb, unsafe.Pointers(&cbegin[0]), unsafe.Pointers(&cend[0]), credl, ctarl, ctpi)}
+		stat = C.DBCompactRange(cdb, unsafe.Pointers(&cbegin[0]), unsafe.Pointers(&cend[0]), credl, ctarl, ctpi).toStatus()
 	}
-	runtime.SetFinalizer(stat, finalize)
 	return
 }
 
-func (db *DB) SetOptions(opts []string, cfhs ...*ColumnFamilyHandle) (stat Status) {
+func (db *DB) SetOptions(opts []string, cfhs ...*ColumnFamilyHandle) (stat *Status) {
 	copts := newcStringsFromStringArray(opts)
 	defer copts.del()
 	ccopts := copts.toCArray()
@@ -794,9 +798,9 @@ func (db *DB) SetOptions(opts []string, cfhs ...*ColumnFamilyHandle) (stat Statu
 	}
 
 	if ccfd {
-		stat = &Status{sta: C.DBSetOptionsWithColumnFamily(cdb, ccfd, unsafe.Pointers(&ccopts[0]), len(ccopts))}
+		stat = C.DBSetOptionsWithColumnFamily(cdb, ccfd, unsafe.Pointers(&ccopts[0]), len(ccopts)).toStatus()
 	} else {
-		stat = &Status{sta: C.DBSetOptions(cdb, unsafe.Pointers(&ccopts[0]), len(ccopts))}
+		stat = C.DBSetOptions(cdb, unsafe.Pointers(&ccopts[0]), len(ccopts)).toStatus()
 	}
 	return
 }
@@ -829,9 +833,9 @@ func (db *DB) CompactFiles(options *CompactionOptions, files []string, level int
 	}
 
 	if ccfd {
-		stat = &Status{sta: C.DBCompactFilesWithColumnFamily(cdb, ccopt, ccfd, unsafe.Pointers(&ccfiles[0]), len(ccfiles), level, cpid)}
+		stat = C.DBCompactFilesWithColumnFamily(cdb, ccopt, ccfd, unsafe.Pointers(&ccfiles[0]), len(ccfiles), level, cpid).toStatus()
 	} else {
-		stat = &Status{sta: C.DBCompactFilesWithColumnFamily(cdb, ccopt, unsafe.Pointers(&ccfiles[0]), len(ccfiles), level, cpid)}
+		stat = C.DBCompactFilesWithColumnFamily(cdb, ccopt, unsafe.Pointers(&ccfiles[0]), len(ccfiles), level, cpid).toStatus()
 	}
 	return
 }
@@ -904,7 +908,7 @@ func (db *DB) GetName() (name string) {
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
 		cname C.String_t = C.DBGetName(cdb)
 	)
-	name = cname.toCString()
+	name = cname.cToString()
 	return
 }
 
@@ -912,9 +916,9 @@ func (db *DB) GetName() (name string) {
 func (db *DB) GetEnv() (env *Env) {
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cenv C.Env_t = C.DBGetEnv(cdb)
 	)
-	env = &Env{env: C.DBGetEnv(cdb)}
-	runtime.SetFinalizer(env, finalize)
+	env = cenv.toEnv()
 	return
 }
 
@@ -940,22 +944,21 @@ func (db *DB) GetOptions(cfd ...*ColumnFamilyHandle) (opt *Options) {
 		copt = C.DBGetOptions(cdb)
 	}
 
-	opt = &Options{opt: copt}
-	runtime.SetFinalizer(opt, finalize)
+	opt = copt.toOptions()
 	return
 }
 
 func (db *DB) GetDBOptions() (dbopt *DBOptions) {
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cdbopt C.DBOptions = C.DBGetDBOptions(cdb)
 	)
-	dbopt = &Env{dbopt: C.DBGetDBOptions(cdb)}
-	runtime.SetFinalizer(dbopt, finalize)
+	dbopt = cdbopt.toDBOptions()
 	return
 }
 
 // Flush all mem-table data.
-func (db *DB) Flush(options *FlushOptions, cfhs ...*ColumnFamilyHandle) (stat Status) {
+func (db *DB) Flush(options *FlushOptions, cfhs ...*ColumnFamilyHandle) (stat *Status) {
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
 		ccfd *C.ColumnFamilyHandle_t
@@ -968,9 +971,9 @@ func (db *DB) Flush(options *FlushOptions, cfhs ...*ColumnFamilyHandle) (stat St
 	}
 
 	if ccfd {
-		stat = &Status{sta: C.DBFlushWithColumnFamily(cdb, cfopt, ccfd)}
+		stat = C.DBFlushWithColumnFamily(cdb, cfopt, ccfd).toStatus()
 	} else {
-		stat = &Status{sta: C.DBFlush(cdb, cfopt)}
+		stat = C.DBFlush(cdb, cfopt).toStatus()
 	}
 	return
 }
@@ -984,218 +987,39 @@ func (db *DB) GetLatestSequenceNumber() (sqnum SequenceNumber) {
 	return
 }
 
-#ifndef ROCKSDB_LITE
-
-// Prevent file deletions. Compactions will continue to occur,
-// but no obsolete files will be deleted. Calling this multiple
-// times have the same effect as calling it once.
-Status_t DBDisableFileDeletions(DB_t* dbptr)
-{
-    return NewStatusTCopy(dbptr ?
-                          &GET_REP(dbptr, DB)->DisableFileDeletions() :
-                          &invalid_status);
-}
-
-// Allow compactions to delete obsolete files.
-// If force == true, the call to EnableFileDeletions() will guarantee that
-// file deletions are enabled after the call, even if DisableFileDeletions()
-// was called multiple times before.
-// If force == false, EnableFileDeletions will only enable file deletion
-// after it's been called at least as many times as DisableFileDeletions(),
-// enabling the two methods to be called by two threads concurrently without
-// synchronization -- i.e., file deletions will be enabled only after both
-// threads call EnableFileDeletions()
-Status_t DBEnableFileDeletions(DB_t* dbptr, bool force)
-{
-    return NewStatusTCopy(dbptr ?
-                          &GET_REP(dbptr, DB)->EnableFileDeletions(force) :
-                          &invalid_status);
-}
-
-// GetLiveFiles followed by GetSortedWalFiles can generate a lossless backup
-
-// Retrieve the list of all files in the database. The files are
-// relative to the dbname and are not absolute paths. The valid size of the
-// manifest file is returned in manifest_file_size. The manifest file is an
-// ever growing file, but only the portion specified by manifest_file_size is
-// valid for this snapshot.
-// Setting flush_memtable to true does Flush before recording the live files.
-// Setting flush_memtable to false is useful when we don't want to wait for
-// flush which may have to wait for compaction to complete taking an
-// indeterminate time.
-//
-// In case you have multiple column families, even if flush_memtable is true,
-// you still need to call GetSortedWalFiles after GetLiveFiles to compensate
-// for new data that arrived to already-flushed column families while other
-// column families were flushing
-Status_t DBGetLiveFiles(DB_t* dbptr,
-                        const String_t live_files[],
-                        int* n,
-                        uint64_t* manifest_file_size,
-                        bool flush_memtable)
-{
-    Status &ret;
-    if (dbptr)
-    {
-        std::vector<std::string> live_files_vec;
-        ret = GET_REP(dbptr, DB)->GetLiveFiles(live_files_vec, manifest_file_size, flush_memtable);
-        *n = live_files_vec.size();
-        live_files = new String_t[*n];
-        for (int j = 0; j < *n; j++)
-            GET_REP_REF(live_files[j], String) = std::move(live_files_vec[j]);
-    }
-    else
-    {
-        ret = invalid_status;
-    }
-    return NewStatusTCopy(&ret);
-}
-
-// Retrieve the sorted list of all wal files with earliest file first
-Status_t DBGetSortedWalFiles(DB_t* dbptr, LogFile_t files[], int* n)
-{
-    Status &ret;
-    if (dbptr)
-    {
-        VectorLogPtr files_vec;
-        ret = GET_REP(dbptr, DB)->GetSortedWalFiles(files_vec);
-        *n = files_vec.size();
-        files = new LogFile_t[*n];
-        for (int j = 0; j < *n; j++)
-            GET_REP(files[j]) = files_vec[j].release();
-    }
-    else
-    {
-        ret = invalid_status;
-    }
-    return NewStatusTCopy(&ret);
-}
-
-// Sets iter to an iterator that is positioned at a write-batch containing
-// seq_number. If the sequence number is non existent, it returns an iterator
-// at the first available seq_no after the requested seq_no
-// Returns Status_t::OK if iterator is valid
-// Must set WAL_ttl_seconds or WAL_size_limit_MB to large values to
-// use this api, else the WAL files will get
-// cleared aggressively and the iterator might keep getting invalid before
-// an update is read.
-Status_t DBGetUpdatesSince(DB_t* dbptr, SequenceNumber seq_number,
-                           TransactionLogIterator_t* iter,
-                           const TransactionLogIterator_ReadOptions_t* read_options)
-{
-    Status &ret;
-    if (dbptr)
-    {
-        unique_ptr<TransactionLogIterator> iter_ptr;
-        if (GET_REP(read_options, TransactionLogIterator_ReadOptions) == NULL)
-            GET_REP(read_options, TransactionLogIterator_ReadOptions) = &TransactionLogIterator::ReadOptions();
-        ret = GET_REP(dbptr, DB)->GetUpdatesSince(seq_number, &iter_ptr, GET_REP_REF(read_options, TransactionLogIterator_ReadOptions));
-        GET_REP(iter, TransactionLogIterator) = iter_ptr.release();
-    }
-    {
-        ret = invalid_status;
-    }
-    return NewStatusTCopy(&ret);
-}
-
-// Delete the file name from the db directory and update the internal state to
-// reflect that. Supports deletion of sst and log files only. 'name' must be
-// path relative to the db directory. eg. 000001.sst, /archive/000003.log
-Status_t DBDeleteFile(DB_t* dbptr, String_t* name)
-{
-    return NewStatusTCopy(dbptr ?
-                          &GET_REP(dbptr, DB)->DeleteFile(GET_REP_REF(name, String) :
-                          &invalid_status);
-}
-
-// Returns a list of all table files with their level, start key
-// and end key
-void DBGetLiveFilesMetaData(DB_t* dbptr, LiveFileMetaData_t metadata[], int* n)
-{
-    if (dbptr)
-    {
-        std::vector<LiveFileMetaData> metadata_vec;
-        GET_REP(dbptr, DB)->GetLiveFilesMetaData(&metadata_vec);
-        *n = metadata_vec.size();
-        metadata = new LiveFileMetaData_t[*n];
-        for (int j = 0; j < *n; j++)
-            GET_REP_REF(metadata[j], LiveFileMetaData) = metadata_vec[j];
-    }
-}
-
-// Obtains the meta data of the specified column family of the DB.
-// Status_t::NotFound() will be returned if the current DB does not have
-// any column family match the specified name.
-//
-// If cf_name is not specified, then the metadata of the default
-// column family will be returned.
-void DBGetColumnFamilyMetaDataWithColumnFamily(DB_t* dbptr, 
-                                               ColumnFamilyHandle_t* column_family,
-                                               ColumnFamilyMetaData_t* metadata)
-{
-    if (dbptr)
-    {
-        GET_REP(dbptr, DB)->GetColumnFamilyMetaData(GET_REP(column_family, ColumnFamilyHandle), GET_REP(metadata, ColumnFamilyMetaData));
-    }
-}
-
-// Get the metadata of the default column family.
-void DBGetColumnFamilyMetaData(DB_t* dbptr, 
-                               ColumnFamilyMetaData_t* metadata)
-{
-    DBGetColumnFamilyMetaDataWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr), metadata);
-}
-#endif  // ROCKSDB_LITE
-
 // Sets the globally unique ID created at database creation time by invoking
 // Env::GenerateUniqueId(), in identity. Returns Status_t::OK if identity could
 // be set properly
-Status_t DBGetDbIdentity(DB_t* dbptr, String_t* identity)
-{
-    return NewStatusTCopy(dbptr ?
-                          &GET_REP(dbptr, DB)->GetDbIdentity(GET_REP_REF(identity, String)) :
-                          &invalid_status);
+func (db *DB) GetDbIdentity() (id string, stat *Status) {
+	var (
+		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cid C.String_t
+	)
+	stat = C.DBGetDbIdentity(cdb, unsafe.Pointers(&cid)).toStatus()
+	id = cid.cToString()
+	return
 }
 
 // Returns default column family handle
-ColumnFamilyHandle_t DBDefaultColumnFamily(DB_t* dbptr)
-{
-    ColumnFamilyHandle_t cf_handle;
-    cf_handle.rep = dbptr ? GET_REP(dbptr, DB)->DefaultColumnFamily() : nullptr; 
-    return cf_handle;
+func (db *DB) DefaultColumnFamily() (cfd *ColumnFamilyHandle) {
+	var (
+		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		ccfd C.ColumnFamilyHandle_t = C.DBDefaultColumnFamily(cdb)
+	)
+	cfd = ccfd.toColumnFamilyHandle()
+	return
 }
-
-#ifndef ROCKSDB_LITE
-Status_t DBGetPropertiesOfAllTablesWithColumnFamily(DB_t* dbptr, 
-                                                    ColumnFamilyHandle_t* column_family,
-                                                    TablePropertiesCollection_t* props)
-{
-    return NewStatusTCopy(dbptr ?
-                          &GET_REP(dbptr, DB)->GetPropertiesOfAllTables(GET_REP(column_family, ColumnFamilyHandle), GET_REP(props, TablePropertiesCollection)) :
-                          &invalid_status);
-}
-
-Status_t DBGetPropertiesOfAllTables(DB_t* dbptr, 
-                                    TablePropertiesCollection_t* props)
-{
-    return DBGetPropertiesOfAllTablesWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr), props);
-}
-#endif  // ROCKSDB_LITE
 
 // Destroy the contents of the specified database.
 // Be very careful using this method.
-Status_t DBDestroyDB(const String_t* name, const Options_t* options)
-{
-    return NewStatusTCopy(&DestroyDB(GET_REP_REF(name, String), GET_REP_REF(options, Options)));
-}
+func DestroyDB(name string, opt Options) (stat *Status) {
+	cname := newCStringFromString(name)
 
-#ifndef ROCKSDB_LITE
-// If a DB cannot be opened, you may attempt to call this method to
-// resurrect as much of the contents of the database as possible.
-// Some data may be lost, so be careful when calling this function
-// on a database that contains important information.
-Status_t DBRepairDB(const String_t* dbname, const Options_t* options)
-{
-    return NewStatusTCopy(&RepairDB(GET_REP_REF(dbname, String), GET_REP_REF(options, Options)));
+	var (
+		ccname *C.String_t = unsafe.Pointers(&cname.str)
+		copt C.Options_t = unsafe.Pointers(&opt.opt)
+	)
+
+	stat = C.DBDestroyDB(ccname, copt).toStatus()
+	return
 }
-#endif
