@@ -21,7 +21,7 @@ func (logf *LogFile) finalize() {
 func newLogFileArrayFromCArray(clogfs *C.LogFile_t, sz uint) (logfs []*LogFile) {
 	defer C.DeleteLogFileTArray(clogfs)
 	logfs = make([]*LogFile, sz)
-	for var i = 0; i < sz; i++ {
+	for i := 0; i < sz; i++ {
 		logf := &LogFile{logf: (*[sz]C.LogFile_t)(unsafe.Pointer(clogfs))[i]}
 		logfs[i] = logf
 		runtime.SetFinalizer(logf, finalize)

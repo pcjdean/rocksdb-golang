@@ -43,7 +43,7 @@ func (ccfh *C.ColumnFamilyHandle_t) toColumnFamilyHandle() (cfh *ColumnFamilyHan
 func newColumnFamilyHandleArrayFromCArray(cfh *C.ColumnFamilyHandle_t, sz uint) (cfhs []*ColumnFamilyHandle) {
 	defer C.DeleteColumnFamilyHandleTArray(cfh)
 	cfhs = make([]*ColumnFamilyHandle, sz)
-	for var i = 0; i < sz; i++ {
+	for i := 0; i < sz; i++ {
 		cfhs[i] = &ColumnFamilyHandle{cfh: (*[sz]C.String_t)(unsafe.Pointer(cfh))[i]}
 		runtime.SetFinalizer(cfhs[i], finalize)
 	}
@@ -56,7 +56,7 @@ func newCArrayFromColumnFamilyHandleArray(cfhs ...*ColumnFamilyHandle) (ccfhs []
 		cfhs.([]*ColumnFamilyHandle)
 		cfhlen = len(cfhs)
 		ccfhs = make([]C.ColumnFamilyHandle_t, cfhlen)
-		for var i = 0; i < cfhlen; i++ {
+		for i := 0; i < cfhlen; i++ {
 			ccfhs[i] = cfhs[i].cfh
 		}
 	}
@@ -117,7 +117,7 @@ func newCArrayFromRangeArray(rngs ...*Range) (crngs []C.Range_t) {
 		rngs.([]*Range)
 		sz = len(rngs)
 		crngs = make([]C.Range_t, sz)
-		for var i = 0; i < sz; i++ {
+		for i := 0; i < sz; i++ {
 			crngs[i] = rngs[i].rng
 		}
 	}
@@ -139,7 +139,7 @@ func newCArrayFromColumnFamilyDescriptorArray(cfds ...*ColumnFamilyDescriptor) (
 		cfds.([]*ColumnFamilyDescriptor)
 		cfdlen = len(cfds)
 		ccfds = make([]C.ColumnFamilyDescriptor_t, cfdlen)
-		for var i = 0; i < cfdlen; i++ {
+		for i := 0; i < cfdlen; i++ {
 			ccfds[i] = cfds[i].cfd
 		}
 	}
@@ -930,12 +930,12 @@ func (db *DB) GetOptions(cfd ...*ColumnFamilyHandle) (opt *Options) {
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
 		ccfd *C.ColumnFamilyHandle_t
+		copt C.Options_t
 	)
 
 	if cfd {
 		cfd[0].(*ColumnFamilyHandle)
 		ccfd = unsafe.Pointers(&cfd[0].cfd)
-		copt C.String_t
 	}
 
 	if ccfd {

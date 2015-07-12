@@ -36,8 +36,8 @@ func (lfmd *LiveFileMetaData) finalize() {
 func newLiveFileMetaDataArrayFromCArray(clfmd *C.LiveFileMetaData_t, sz uint) (lfmds []*LiveFileMetaData) {
 	defer C.DeleteLiveFileMetaDataTArray(clfmd)
 	lfmds := make([]*LiveFileMetaData, sz)
-	for var i = 0; i < sz; i++ {
-		lfmds[i] := &LiveFileMetaData{lfmd: (*[sz]C.LiveFileMetaData_t)(unsafe.Pointer(clfmd))[i]}
+	for i := 0; i < sz; i++ {
+		lfmds[i] = &LiveFileMetaData{lfmd: (*[sz]C.LiveFileMetaData_t)(unsafe.Pointer(clfmd))[i]}
 		runtime.SetFinalizer(lfmds[i], finalize)
 	}
 	return

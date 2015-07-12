@@ -6,6 +6,7 @@
 package rocksdb
 
 /*
+#cgo CFLAGS: -DPNG_DEBUG=1
 #cgo LDFLAGS: -lrocksdb -lstdc++ -lz -lrt
 #include "db.h"
 */
@@ -37,7 +38,7 @@ func (db *DB) DisableFileDeletions() (stat *Status) {
 // enabling the two methods to be called by two threads concurrently without
 // synchronization -- i.e., file deletions will be enabled only after both
 // threads call EnableFileDeletions()
-func (db *DB) EnableFileDeletions() (force ...bool) (stat *Status)  {
+func (db *DB) EnableFileDeletions(force ...bool) (stat *Status) {
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
 		cforce C.bool = true
@@ -67,7 +68,7 @@ func (db *DB) EnableFileDeletions() (force ...bool) (stat *Status)  {
 // you still need to call GetSortedWalFiles after GetLiveFiles to compensate
 // for new data that arrived to already-flushed column families while other
 // column families were flushing
-func (db *DB) GetLiveFiles() (flush_memtable ...bool) (files []string, fileSz uint64, stat *Status) {
+func (db *DB) GetLiveFiles(flush_memtable ...bool) (files []string, fileSz uint64, stat *Status) {
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
 		cflhmem C.bool = true
@@ -124,7 +125,7 @@ func (db *DB) GetUpdatesSince(sqn SequenceNumber, tranropt ...TransactionLogIter
 // Delete the file name from the db directory and update the internal state to
 // reflect that. Supports deletion of sst and log files only. 'name' must be
 // path relative to the db directory. eg. 000001.sst, /archive/000003.log
-func (db *DB) DeleteFile() (name string, stat *Status) {
+func (db *DB) DeleteFile(name string) (stat *Status) {
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
 		cname C.String_t

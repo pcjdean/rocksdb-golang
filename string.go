@@ -57,7 +57,7 @@ func newCString() (str *cString) {
 func newStringArrayFromCArray(ccstr *C.String_t, sz uint) (strs []String) {
 	defer C.DeleteStringTArray(cstr)
 	strs = make([]string, sz)
-	for var i = 0; i < sz; i++ {
+	for i := 0; i < sz; i++ {
 		cstr := cString{str: (*[sz]C.String_t)(unsafe.Pointer(ccstr))[i]}
 		strs[i] = cstr.goString(true)
 	}
@@ -67,7 +67,7 @@ func newStringArrayFromCArray(ccstr *C.String_t, sz uint) (strs []String) {
 func newcStringsFromStringArray(strs []String, sz uint) (cstrs []*cString) {
 	cstrs = make([]*cString, len(strs))
 	for i, str := range strs {
-		cstrs[i] := newCStringFromString(str)
+		cstrs[i] = newCStringFromString(str)
 	}
 	return
 }

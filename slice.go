@@ -35,7 +35,7 @@ func (slc *cSlice) del()  {
 func newSlicesFromBytesArray(bytess [][]byte) (slcs []*cSlice) {
 	slcs = make([]*cSlice, len(bytess))
 	for i, bytes := range bytess {
-		slcs[i] := newSliceFromBytes(bytes)
+		slcs[i] = newSliceFromBytes(bytes)
 	}
 	return
 }
