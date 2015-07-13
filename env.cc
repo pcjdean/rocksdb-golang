@@ -10,7 +10,7 @@
 // All Env implementations are safe for concurrent access from
 // multiple threads without any external synchronization.
 
-#include <env.h>
+#include <rocksdb/env.h>
 #include "env.h"
 
 DEFINE_C_WRAP_CONSTRUCTOR(Env)

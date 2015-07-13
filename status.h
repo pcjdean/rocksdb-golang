@@ -6,6 +6,7 @@
 #define GO_ROCKSDB_INCLUDE_STATUS_H_
 
 #include "types.h"
+#include "string.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,7 +26,7 @@ extern bool StatusIsShutdownInProgress(Status_t *stat);
 extern bool StatusIsTimedOut(Status_t *stat);
 extern bool StatusIsAborted(Status_t *stat);
 extern bool StatusIsBusy(Status_t *stat);
-extern String_t StatusToString(Status_t *stat) const;
+extern String_t StatusToString(Status_t *stat);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

@@ -13,6 +13,7 @@
 #include "write_batch.h"
 #include "iterator.h"
 #include "env.h"
+#include "metadata.h"
 #include "transaction_log.h"
 
 #ifdef __cplusplus
@@ -35,7 +36,7 @@ extern Range_t NewRangeTFromSlices(Slice_t* start, Slice_t* limit);
 DEFINE_C_WRAP_STRUCT(DB)
 Status_t DBOpen(const Options_t* options,
                 const String_t* name,
-                DB_t* dbptr)
+                DB_t* dbptr);
 Status_t DBOpenForReadOnly(const Options_t* options,
                            const String_t* name, DB_t* dbptr,
                            bool error_if_log_file_exist);
@@ -92,12 +93,12 @@ Status_t* DBMultiGet(DB_t* dbptr, const ReadOptions_t* options,
                      const Slice_t keys[],
                      const int size_keys,
                      String_t** values);
-bool DBKeyMayExistWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options
+bool DBKeyMayExistWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
                                    ColumnFamilyHandle_t* column_family,
                                    const Slice_t* key,
                                    String_t* value,
                                    bool* value_found);
-bool DBKeyMayExist(DB_t* dbptr, const ReadOptions_t* options
+bool DBKeyMayExist(DB_t* dbptr, const ReadOptions_t* options,
                    const Slice_t* key,
                    String_t* value,
                    bool* value_found);
@@ -112,7 +113,7 @@ Status_t DBNewIterators(DB_t* dbptr, const ReadOptions_t* options,
 Snapshot_t DBGetSnapshot(DB_t* dbptr);
 void DBReleaseSnapshot(DB_t* dbptr, const Snapshot_t* snapshot);
 bool DBGetPropertyWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
-                                   ColumnFamilyHandle_t* column_family
+                                   ColumnFamilyHandle_t* column_family,
                                    const Slice_t* property, String_t* value);
 bool DBGetProperty(DB_t* dbptr, const ReadOptions_t* options,
                    const Slice_t* property, String_t* value);
@@ -138,7 +139,7 @@ Status_t DBCompactRange(DB_t* dbptr,
                         bool reduce_level, int target_level,
                         uint32_t target_path_id);
 Status_t DBSetOptionsWithColumnFamily(DB_t* dbptr, 
-                                      ColumnFamilyHandle_t* column_family
+                                      ColumnFamilyHandle_t* column_family,
                                       const String_t new_options[],
                                       int n);
 Status_t DBSetOptions(DB_t* dbptr, 
@@ -168,7 +169,7 @@ String_t DBGetName(DB_t* dbptr);
 Env_t DBGetEnv(DB_t* dbptr);
 Options_t DBGetOptionsWithColumnFamily(DB_t* dbptr, 
                                        ColumnFamilyHandle_t* column_family);
-Options_t DBGetOptions(DB_t* dbptr) const;
+Options_t DBGetOptions(DB_t* dbptr);
 DBOptions_t DBGetDBOptions(DB_t* dbptr);
 Status_t DBFlushWithColumnFamily(DB_t* dbptr, 
                                  const FlushOptions_t* options,

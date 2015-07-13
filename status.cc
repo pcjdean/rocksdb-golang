@@ -10,7 +10,7 @@
 // non-const method, all threads accessing the same Status must use
 // external synchronization.
 
-#include <status.h>
+#include <rocksdb/status.h>
 #include "status.h"
 
 DEFINE_C_WRAP_CONSTRUCTOR(Status)

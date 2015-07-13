@@ -90,7 +90,7 @@ func (snp *Snapshot) finalize() {
 	C.DeleteSnapshotT(csnp, false)
 }
 
-func (csnp *C.OSnapshot_t) toSnapshot() (snp *Snapshot) {
+func (csnp *C.Snapshot_t) toSnapshot() (snp *Snapshot) {
 	snp = &Snapshot{snp: *csnp}	
 	runtime.SetFinalizer(snp, finalize)
 	return
@@ -424,7 +424,7 @@ func (db *DB) Write(options *WriteOptions, wbt *WriteBatch) (stat *Status) {
 func (db *DB) Get(options *ReadOptions, key []byte, cfd ...*ColumnFamilyHandle) (val string, stat *Status) {
 	ckey := newSliceFromBytes(key)
 	defer ckey.del()
-	cval := C.newCString()
+	cval := newCString()
 
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
@@ -489,7 +489,7 @@ func (db *DB) MultiGet(options *ReadOptions, keys [][]byte, cfhs ...*ColumnFamil
 func (db *DB) KeyMayExist(options *ReadOptions, key []byte, cfd ...*ColumnFamilyHandle) (res bool, valfound bool, val string) {
 	ckey := newSliceFromBytes(key)
 	defer ckey.del()
-	cval := C.newCString()
+	cval := newCString()
 
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
@@ -626,7 +626,7 @@ func (db *DB) ReleaseSnapshot(snp *Snapshot) {
 func (db *DB) GetProperty(options *ReadOptions, prop []byte, cfd ...*ColumnFamilyHandle) (val string, res bool) {
 	cprop := newSliceFromBytes(prop)
 	defer cprop.del()
-	cval := C.newCString()
+	cval := newCString()
 
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
@@ -757,7 +757,7 @@ func (db *DB) CompactRange(begin []byte, end []byte, cfd ...*ColumnFamilyHandle,
 		ccfd *C.ColumnFamilyHandle_t
 		credl C.bool 
 		ctarl C.int = -1
-		ctpi C.uint32 
+		ctpi C.uint32_t 
 	)
 
 	if cfd {
@@ -771,7 +771,7 @@ func (db *DB) CompactRange(begin []byte, end []byte, cfd ...*ColumnFamilyHandle,
 		ctarl = C.int(target_level[0])
 	}
 	if target_path_id {
-		ctpi = C.uint32(target_path_id[0])
+		ctpi = C.uint32_t(target_path_id[0])
 	}
 
 	if ccfd {
@@ -951,7 +951,7 @@ func (db *DB) GetOptions(cfd ...*ColumnFamilyHandle) (opt *Options) {
 func (db *DB) GetDBOptions() (dbopt *DBOptions) {
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cdbopt C.DBOptions = C.DBGetDBOptions(cdb)
+		cdbopt C.DBOptions_t = C.DBGetDBOptions(cdb)
 	)
 	dbopt = cdbopt.toDBOptions()
 	return

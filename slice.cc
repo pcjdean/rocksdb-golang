@@ -12,7 +12,7 @@
 // non-const method, all threads accessing the same Slice must use
 // external synchronization.
 
-#include <slice.h>
+#include <rocksdb/slice.h>
 #include "slice.h"
 
 DEFINE_C_WRAP_CONSTRUCTOR(Slice)

@@ -2,7 +2,7 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <db.h>
+#include <rocksdb/db.h>
 #include "db.h"
 
 using namespace rocksdb;
@@ -735,7 +735,7 @@ Options_t DBGetOptionsWithColumnFamily(DB_t* dbptr,
         return NewOptionsT(nullptr);
 }
 
-Options_t DBGetOptions(DB_t* dbptr) const
+Options_t DBGetOptions(DB_t* dbptr)
 {
     return DBGetOptionsWithColumnFamily(dbptr, &DBDefaultColumnFamily(dbptr));
 }

@@ -12,7 +12,7 @@
 // non-const method, all threads accessing the same Iterator must use
 // external synchronization.
 
-#include <iterator.h>
+#include <rocksdb/iterator.h>
 #include "iterator.h"
 
 DEFINE_C_WRAP_CONSTRUCTOR(Iterator)

@@ -15,7 +15,7 @@
 package rocksdb
 
 /*
-#include "options.h"
+#include "slice.h"
 */
 import "C"
 

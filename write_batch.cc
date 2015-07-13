@@ -18,7 +18,7 @@
 // non-const method, all threads accessing the same WriteBatch must use
 // external synchronization.
 
-#include <write_batch.h>
+#include <rocksdb/write_batch.h>
 #include "write_batch.h"
 
 DEFINE_C_WRAP_CONSTRUCTOR(WriteBatch)
