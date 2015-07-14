@@ -12,7 +12,13 @@ extern "C" {
 #endif
 
 DEFINE_C_WRAP_STRUCT(ColumnFamilyMetaData)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(ColumnFamilyMetaData)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(ColumnFamilyMetaData)
+
 DEFINE_C_WRAP_STRUCT(LiveFileMetaData)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(LiveFileMetaData)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(LiveFileMetaData)
+DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(LiveFileMetaData)
 
 #ifdef __cplusplus
 }  /* end extern "C" */

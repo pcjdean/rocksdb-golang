@@ -12,6 +12,9 @@ extern "C" {
 #endif
 
 DEFINE_C_WRAP_STRUCT(WriteBatch)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(WriteBatch)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(WriteBatch)
+DEFINE_C_WRAP_CONSTRUCTOR_COPY_DEC(WriteBatch)
 
 #ifdef __cplusplus
 }  /* end extern "C" */

@@ -12,8 +12,21 @@ extern "C" {
 #endif
 
 DEFINE_C_WRAP_STRUCT(LogFile)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(LogFile)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(LogFile)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(LogFile)
+DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(LogFile)
+
 DEFINE_C_WRAP_STRUCT(TransactionLogIterator)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(TransactionLogIterator)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(TransactionLogIterator)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(TransactionLogIterator)
+
 DEFINE_C_WRAP_STRUCT(TransactionLogIterator_ReadOptions)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(TransactionLogIterator_ReadOptions)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(TransactionLogIterator_ReadOptions)
+DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(TransactionLogIterator_ReadOptions, bool)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(TransactionLogIterator_ReadOptions)
 
 #ifdef __cplusplus
 }  /* end extern "C" */

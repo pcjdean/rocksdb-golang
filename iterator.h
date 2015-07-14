@@ -13,6 +13,10 @@ extern "C" {
 #endif
 
 DEFINE_C_WRAP_STRUCT(Iterator)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(Iterator)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(Iterator)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(Iterator)
+DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(Iterator)
 
 #ifdef __cplusplus
 }  /* end extern "C" */

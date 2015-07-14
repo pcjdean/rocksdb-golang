@@ -12,6 +12,12 @@ extern "C" {
 #endif
 
 DEFINE_C_WRAP_STRUCT(String)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(String)
+DEFINE_C_WRAP_CONSTRUCTOR_MOVE_DEC(String)
+DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(String, const char*, size_t)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(String)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(String)
+DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(String)
 
 extern const char* StringGetCStr(String_t * str);
 extern int StringGetCStrLen(String_t * str);

@@ -12,6 +12,10 @@ extern "C" {
 #endif
 
 DEFINE_C_WRAP_STRUCT(Slice)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(Slice)
+DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(Slice, const char*, size_t)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(Slice)
+DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(Slice)
 
 #ifdef __cplusplus
 }  /* end extern "C" */

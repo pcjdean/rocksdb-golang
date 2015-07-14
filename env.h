@@ -12,6 +12,9 @@ extern "C" {
 #endif
 
 DEFINE_C_WRAP_STRUCT(Env)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(Env)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(Env)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(Env)
 
 #ifdef __cplusplus
 }  /* end extern "C" */

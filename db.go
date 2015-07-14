@@ -4,6 +4,7 @@
 package rocksdb
 
 /*
+#cgo CPPFLAGS: -std=c++11
 #cgo LDFLAGS: -lrocksdb -lstdc++ -lz -lrt
 #include "db.h"
 */

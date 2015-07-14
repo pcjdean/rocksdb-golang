@@ -50,7 +50,7 @@ func newCStringFromString(str *string) (str *cString) {
 }
 
 func newCString() (str *cString) {
-	str = &cString{str: C.NewStringTArgs()}
+	str = &cString{str: C.NewStringTDefault()}
 	return
 }
 

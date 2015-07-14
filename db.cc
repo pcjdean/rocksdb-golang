@@ -263,7 +263,7 @@ Status_t DBGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
         std::string str_val;
         ret = GET_REP(dbptr, DB)->Get(GET_REP_REF(options, ReadOptions), GET_REP(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), &str_val);
         if (!str_val.empty())
-            GET_REP_REF(value) = std::move(str_val);
+            GET_REP_REF(value, String) = std::move(str_val);
         
     }
     else

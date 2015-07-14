@@ -21,19 +21,36 @@ extern "C" {
 #endif
 
 DEFINE_C_WRAP_STRUCT(ColumnFamilyHandle)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(ColumnFamilyHandle)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(ColumnFamilyHandle)
+DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(ColumnFamilyHandle)
 extern String_t ColumnFamilyGetName(ColumnFamilyHandle_t* column_family);
 extern uint32_t ColumnFamilyGetID(ColumnFamilyHandle_t* column_family);
 
 DEFINE_C_WRAP_STRUCT(TablePropertiesCollection)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(TablePropertiesCollection)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(TablePropertiesCollection)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(TablePropertiesCollection)
+
 DEFINE_C_WRAP_STRUCT(ColumnFamilyDescriptor)
+DEFINE_C_WRAP_CONSTRUCTOR_ARGS_DEC(ColumnFamilyDescriptor, String, ColumnFamilyOptions)
+// DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(ColumnFamilyDescriptor, String, ColumnFamilyOptions)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(ColumnFamilyDescriptor, kDefaultColumnFamilyName, ColumnFamilyOptions())
+DEFINE_C_WRAP_DESTRUCTOR_DEC(ColumnFamilyDescriptor)
 
 DEFINE_C_WRAP_STRUCT(Snapshot)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(Snapshot)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(Snapshot)
 extern SequenceNumber SnapshotGetSequenceNumber(Snapshot_t* snapshot);
 
 DEFINE_C_WRAP_STRUCT(Range)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(Range)
+DEFINE_C_WRAP_CONSTRUCTOR_ARGS_DEC(Range, Slice, Slice)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(Range)
 extern Range_t NewRangeTFromSlices(Slice_t* start, Slice_t* limit);
 
 DEFINE_C_WRAP_STRUCT(DB)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(DB)
 Status_t DBOpen(const Options_t* options,
                 const String_t* name,
                 DB_t* dbptr);

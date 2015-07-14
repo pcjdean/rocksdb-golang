@@ -13,6 +13,10 @@ extern "C" {
 #endif
 
 DEFINE_C_WRAP_STRUCT(Status)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(Status)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(Status)
+DEFINE_C_WRAP_CONSTRUCTOR_COPY_DEC(Status)
+DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(Status)
 
 extern bool StatusOk(Status_t *stat);
 extern bool StatusIsNotFound(Status_t *stat);
