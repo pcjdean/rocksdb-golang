@@ -162,6 +162,7 @@ Status_t DBListColumnFamilies(DBOptions_t* db_options,
     *column_families = new String_t[*size_col];
     for (int j = 0; j < *size_col; j++)
     {
+        (*column_families)[j].rep = new String();
         String* rstr = GET_REP(&(*column_families)[j], String);
         *rstr = std::move(column_families_vec[j]);
     }
@@ -342,6 +343,7 @@ Status_t* DBMultiGetWithColumnFamily(const DB_t* dbptr, const ReadOptions_t* opt
         ret = new Status_t[size_keys];
         for (int j = 0; j < size_keys; j++)
         {
+            (*values)[j].rep = new String();
             GET_REP_REF(&(*values)[j], String) = std::move(values_vec[j]);
             ret[j] = NewStatusTCopy(&ret_vec[j]);
         }
@@ -361,7 +363,9 @@ Status_t* DBMultiGet(const DB_t* dbptr, const ReadOptions_t* options,
 {
     ColumnFamilyHandle_t *column_families = new ColumnFamilyHandle_t[size_keys];
     std::fill_n(column_families, size_keys, DBDefaultColumnFamily(dbptr));
-    return DBMultiGetWithColumnFamily(dbptr, options, column_families, 1, keys, size_keys, values);
+    Status_t* ret = DBMultiGetWithColumnFamily(dbptr, options, column_families, 1, keys, size_keys, values);
+    delete []column_families;
+    return ret;
 }
 
 // If the key definitely does not exist in the database, then this method
@@ -888,7 +892,10 @@ Status_t DBGetLiveFiles(const DB_t* dbptr,
         *n = live_files_vec.size();
         *live_files = new String_t[*n];
         for (int j = 0; j < *n; j++)
+        {
+            (*live_files)[j].rep = new String();
             GET_REP_REF(&(*live_files)[j], String) = std::move(live_files_vec[j]);
+        }
     }
     else
     {
@@ -964,7 +971,10 @@ void DBGetLiveFilesMetaData(const DB_t* dbptr, LiveFileMetaData_t metadata[], in
         *n = metadata_vec.size();
         metadata = new LiveFileMetaData_t[*n];
         for (int j = 0; j < *n; j++)
+        {
+            metadata[j] = new LiveFileMetaData();
             GET_REP_REF(&metadata[j], LiveFileMetaData) = metadata_vec[j];
+        }
     }
 }
 
