@@ -5,6 +5,8 @@
 #include <rocksdb/metadata.h>
 #include "metadata.h"
 
+using namespace rocksdb;
+
 DEFINE_C_WRAP_CONSTRUCTOR(ColumnFamilyMetaData)
 DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyMetaData)
 

@@ -5,7 +5,15 @@
 #ifndef GO_ROCKSDB_INCLUDE_TRANSACTION_LOG_ITERATOR_H_
 #define GO_ROCKSDB_INCLUDE_TRANSACTION_LOG_ITERATOR_H_
 
+#ifdef __cplusplus
+#include <rocksdb/transaction_log.h>
+#endif
+
 #include "types.h"
+
+#ifdef __cplusplus
+typedef rocksdb::TransactionLogIterator::ReadOptions TransactionLogIterator_ReadOptions;
+#endif
 
 #ifdef __cplusplus
 extern "C" {

@@ -8,6 +8,10 @@
 #include "types.h"
 
 #ifdef __cplusplus
+typedef std::string String;
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 

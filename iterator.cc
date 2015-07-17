@@ -15,7 +15,8 @@
 #include <rocksdb/iterator.h>
 #include "iterator.h"
 
+using namespace rocksdb;
+
 DEFINE_C_WRAP_CONSTRUCTOR(Iterator)
-DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(Iterator)
 DEFINE_C_WRAP_DESTRUCTOR(Iterator)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY(Iterator)

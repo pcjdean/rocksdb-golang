@@ -21,6 +21,8 @@
 #include <rocksdb/write_batch.h>
 #include "write_batch.h"
 
+using namespace rocksdb;
+
 DEFINE_C_WRAP_CONSTRUCTOR(WriteBatch)
 DEFINE_C_WRAP_DESTRUCTOR(WriteBatch)
 DEFINE_C_WRAP_CONSTRUCTOR_COPY(WriteBatch)

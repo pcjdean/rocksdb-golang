@@ -5,6 +5,11 @@
 #ifndef GO_ROCKSDB_INCLUDE_OPTIONS_H_
 #define GO_ROCKSDB_INCLUDE_OPTIONS_H_
 
+#ifdef __cplusplus
+#include <rocksdb/options.h>
+using namespace rocksdb;
+#endif
+
 #include "types.h"
 
 #ifdef __cplusplus
@@ -25,18 +30,24 @@ DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(ColumnFamilyOptions)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(ColumnFamilyOptions)
 
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(DBOptions)
-// DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(DBOptions, Options)
+#ifdef __cplusplus
+DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(DBOptions, const Options&)
+#endif
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(DBOptions)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(DBOptions)
 
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(Options)
 DEFINE_C_WRAP_CONSTRUCTOR_ARGS_DEC(Options, DBOptions, ColumnFamilyOptions)
-// DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(Options, DBOptions, ColumnFamilyOptions)
+#ifdef __cplusplus
+DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(Options, const DBOptions&, const ColumnFamilyOptions&)
+#endif
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(Options)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(Options)
 
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(ReadOptions)
-// DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(ReadOptions, bool, bool)
+#ifdef __cplusplus
+DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(ReadOptions, bool, bool)
+#endif
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(ReadOptions)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(ReadOptions)
 

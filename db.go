@@ -4,7 +4,7 @@
 package rocksdb
 
 /*
-#cgo CPPFLAGS: -std=c++11
+#cgo CXXFLAGS: -std=c++11
 #cgo LDFLAGS: -lrocksdb -lstdc++ -lz -lrt
 #include "db.h"
 */
@@ -84,15 +84,17 @@ func (ctpc *C.TablePropertiesCollection_t) toTablePropertiesCollection() (tpc *T
 // accessed from multiple threads without any external synchronization.
 type Snapshot struct {
 	snp C.Snapshot_t
+	db *DB
 }
 
 func (snp *Snapshot) finalize() {
-	var csnp *C.Snapshot_t = unsafe.Pointer(&snp.snp)
-	C.DeleteSnapshotT(csnp, false)
+	if snp.db {
+		snp.db.ReleaseSnapshot(snp)
+	}
 }
 
-func (csnp *C.Snapshot_t) toSnapshot() (snp *Snapshot) {
-	snp = &Snapshot{snp: *csnp}	
+func (csnp *C.Snapshot_t) toSnapshot(db *DB) (snp *Snapshot) {
+	snp = &Snapshot{snp: *csnp, db: db}	
 	runtime.SetFinalizer(snp, finalize)
 	return
 }
@@ -572,13 +574,18 @@ func (db *DB) GetSnapshot() (snp *Snapshot) {
 	var cdb *C.DB_t = unsafe.Pointers(&db.db)
 	var csnp *C.Snapshot_t = C.DBGetSnapshot(cdb)
 
-	snp = csnp.toSnapshot()
+	snp = csnp.toSnapshot(db)
 	return
 }
 
 // Release a previously acquired snapshot.  The caller must not
 // use "snapshot" after this call.
 func (db *DB) ReleaseSnapshot(snp *Snapshot) {
+	if snp.db != db {
+		panic("ReleaseSnapshot error!")
+	}
+	snp.db = nil
+
 	var (
 		cdb *C.DB_t = unsafe.Pointers(&db.db)
 		csnp *C.Snapshot_t = unsafe.Pointers(&snp.snp)

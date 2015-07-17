@@ -9,7 +9,7 @@
 #include "slice.h"
 #include "options.h"
 #include "status.h"
-#include "string.h"
+#include "cstring.h"
 #include "write_batch.h"
 #include "iterator.h"
 #include "env.h"
@@ -40,7 +40,6 @@ DEFINE_C_WRAP_DESTRUCTOR_DEC(ColumnFamilyDescriptor)
 
 DEFINE_C_WRAP_STRUCT(Snapshot)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(Snapshot)
-DEFINE_C_WRAP_DESTRUCTOR_DEC(Snapshot)
 extern SequenceNumber SnapshotGetSequenceNumber(Snapshot_t* snapshot);
 
 DEFINE_C_WRAP_STRUCT(Range)
@@ -69,155 +68,155 @@ Status_t DBOpenWithColumnFamilies(const Options_t* options, const String_t* name
 Status_t DBListColumnFamilies(DBOptions_t* db_options,
                               const String_t* name,
                               const String_t **column_families, int* size_col);
-Status_t DBCreateColumnFamily(DB_t* dbptr, const ColumnFamilyOptions_t* options,
+Status_t DBCreateColumnFamily(const DB_t* dbptr, const ColumnFamilyOptions_t* options,
                             const String_t* column_family_name,
                             ColumnFamilyHandle_t* handle);
-Status_t DBDropColumnFamily(DB_t* dbptr, const ColumnFamilyHandle_t* column_family);
-Status_t DBPutWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
+Status_t DBDropColumnFamily(const DB_t* dbptr, const ColumnFamilyHandle_t* column_family);
+Status_t DBPutWithColumnFamily(const DB_t* dbptr, const WriteOptions_t* options,
                            const ColumnFamilyHandle_t* column_family,
                            const Slice_t* key,
                            const Slice_t* value);
-Status_t DBPut(DB_t* dbptr, const WriteOptions_t* optionss,
+Status_t DBPut(const DB_t* dbptr, const WriteOptions_t* optionss,
                const Slice_t* key,
                const Slice_t* value);
-Status_t DBDeleteWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
+Status_t DBDeleteWithColumnFamily(const DB_t* dbptr, const WriteOptions_t* options,
                                   const ColumnFamilyHandle_t* column_family,
                                   const Slice_t* key);
-Status_t DBDelete(DB_t* dbptr, const WriteOptions_t* optionss, const Slice_t* key);
-Status_t DBMergeWithColumnFamily(DB_t* dbptr, const WriteOptions_t* options,
+Status_t DBDelete(const DB_t* dbptr, const WriteOptions_t* optionss, const Slice_t* key);
+Status_t DBMergeWithColumnFamily(const DB_t* dbptr, const WriteOptions_t* options,
                                  const ColumnFamilyHandle_t* column_family,
                                  const Slice_t* key,
                                  const Slice_t* value);
-Status_t DBMerge(DB_t* dbptr, const WriteOptions_t* optionss,
+Status_t DBMerge(const DB_t* dbptr, const WriteOptions_t* optionss,
                const Slice_t* key,
                const Slice_t* value);
-Status_t DBWrite(DB_t* dbptr, const WriteOptions_t* optionss, WriteBatch_t* updates);
-Status_t DBGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
+Status_t DBWrite(const DB_t* dbptr, const WriteOptions_t* optionss, WriteBatch_t* updates);
+Status_t DBGetWithColumnFamily(const DB_t* dbptr, const ReadOptions_t* options,
                                const ColumnFamilyHandle_t* column_family,
                                const Slice_t* key,
                                const String_t* value);
-Status_t DBGet(DB_t* dbptr, const ReadOptions_t* options,
+Status_t DBGet(const DB_t* dbptr, const ReadOptions_t* options,
                const Slice_t* key,
                const String_t* value);
 
-Status_t* DBMultiGetWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
+Status_t* DBMultiGetWithColumnFamily(const DB_t* dbptr, const ReadOptions_t* options,
                                      const ColumnFamilyHandle_t column_families[],
                                      const int size_col,
                                      const Slice_t keys[],
                                      const int size_keys,
                                      String_t** values);
-Status_t* DBMultiGet(DB_t* dbptr, const ReadOptions_t* options,
+Status_t* DBMultiGet(const DB_t* dbptr, const ReadOptions_t* options,
                      const Slice_t keys[],
                      const int size_keys,
                      String_t** values);
-bool DBKeyMayExistWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
-                                   ColumnFamilyHandle_t* column_family,
+bool DBKeyMayExistWithColumnFamily(const DB_t* dbptr, const ReadOptions_t* options,
+                                   const ColumnFamilyHandle_t* column_family,
                                    const Slice_t* key,
                                    String_t* value,
                                    bool* value_found);
-bool DBKeyMayExist(DB_t* dbptr, const ReadOptions_t* options,
+bool DBKeyMayExist(const DB_t* dbptr, const ReadOptions_t* options,
                    const Slice_t* key,
                    String_t* value,
                    bool* value_found);
-Iterator_t DBNewIteratorWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
-                                         ColumnFamilyHandle_t* column_family);
-Iterator_t DBNewIterator(DB_t* dbptr, const ReadOptions_t* options);
-Status_t DBNewIterators(DB_t* dbptr, const ReadOptions_t* options,
+Iterator_t DBNewIteratorWithColumnFamily(const DB_t* dbptr, const ReadOptions_t* options,
+                                         const ColumnFamilyHandle_t* column_family);
+Iterator_t DBNewIterator(const DB_t* dbptr, const ReadOptions_t* options);
+Status_t DBNewIterators(const DB_t* dbptr, const ReadOptions_t* options,
                         const ColumnFamilyHandle_t column_families[],
                         const int size_col,
                         Iterator_t** values,
                         int *val_sz);
-Snapshot_t DBGetSnapshot(DB_t* dbptr);
-void DBReleaseSnapshot(DB_t* dbptr, const Snapshot_t* snapshot);
-bool DBGetPropertyWithColumnFamily(DB_t* dbptr, const ReadOptions_t* options,
-                                   ColumnFamilyHandle_t* column_family,
+Snapshot_t DBGetSnapshot(const DB_t* dbptr);
+void DBReleaseSnapshot(const DB_t* dbptr, const Snapshot_t* snapshot);
+bool DBGetPropertyWithColumnFamily(const DB_t* dbptr, const ReadOptions_t* options,
+                                   const ColumnFamilyHandle_t* column_family,
                                    const Slice_t* property, String_t* value);
-bool DBGetProperty(DB_t* dbptr, const ReadOptions_t* options,
+bool DBGetProperty(const DB_t* dbptr, const ReadOptions_t* options,
                    const Slice_t* property, String_t* value);
-bool DBGetIntPropertyWithColumnFamily(DB_t* dbptr, 
-                                      ColumnFamilyHandle_t* column_family,
+bool DBGetIntPropertyWithColumnFamily(const DB_t* dbptr, 
+                                      const ColumnFamilyHandle_t* column_family,
                                       const Slice_t* property, uint64_t* value);
-bool DBGetIntProperty(DB_t* dbptr, 
+bool DBGetIntProperty(const DB_t* dbptr, 
                       const Slice_t* property, uint64_t* value);
-void DBGetApproximateSizesWithColumnFamily(DB_t* dbptr, 
-                                           ColumnFamilyHandle_t* column_family,
+void DBGetApproximateSizesWithColumnFamily(const DB_t* dbptr, 
+                                           const ColumnFamilyHandle_t* column_family,
                                            const Range_t* range, int n,
                                            uint64_t* sizes);
-void DBGetApproximateSizes(DB_t* dbptr, 
+void DBGetApproximateSizes(const DB_t* dbptr, 
                            const Range_t* range, int n,
                            uint64_t* sizes);
-Status_t DBCompactRangeWithColumnFamily(DB_t* dbptr, 
-                                        ColumnFamilyHandle_t* column_family,
+Status_t DBCompactRangeWithColumnFamily(const DB_t* dbptr, 
+                                        const ColumnFamilyHandle_t* column_family,
                                         const Slice_t* begin, const Slice_t* end,
                                         bool reduce_level, int target_level,
                                         uint32_t target_path_id);
-Status_t DBCompactRange(DB_t* dbptr, 
+Status_t DBCompactRange(const DB_t* dbptr, 
                         const Slice_t* begin, const Slice_t* end,
                         bool reduce_level, int target_level,
                         uint32_t target_path_id);
-Status_t DBSetOptionsWithColumnFamily(DB_t* dbptr, 
-                                      ColumnFamilyHandle_t* column_family,
+Status_t DBSetOptionsWithColumnFamily(const DB_t* dbptr, 
+                                      const ColumnFamilyHandle_t* column_family,
                                       const String_t new_options[],
                                       int n);
-Status_t DBSetOptions(DB_t* dbptr, 
+Status_t DBSetOptions(const DB_t* dbptr, 
                       const String_t new_options[],
                       const int n);
-Status_t DBCompactFilesWithColumnFamily(DB_t* dbptr, 
-                                        const CompactionOptions_t compact_options,
-                                        ColumnFamilyHandle_t* column_family,
+Status_t DBCompactFilesWithColumnFamily(const DB_t* dbptr, 
+                                        const CompactionOptions_t* compact_options,
+                                        const ColumnFamilyHandle_t* column_family,
                                         const String_t input_file_names[],
                                         const int n,
                                         const int output_level, const int output_path_id);
-Status_t DBCompactFiles(DB_t* dbptr, 
-                        const CompactionOptions_t compact_options,
+Status_t DBCompactFiles(const DB_t* dbptr, 
+                        const CompactionOptions_t* compact_options,
                         const String_t input_file_names[],
                         const int n,
                         const int output_level, const int output_path_id);
-int DBNumberLevelsWithColumnFamily(DB_t* dbptr, 
-                                   ColumnFamilyHandle_t* column_family);
-int DBNumberLevels(DB_t* dbptr);
-int DBMaxMemCompactionLevelWithColumnFamily(DB_t* dbptr, 
-                                            ColumnFamilyHandle_t* column_family);
-int DBMaxMemCompactionLevel(DB_t* dbptr);
-int DBLevel0StopWriteTriggerWithColumnFamily(DB_t* dbptr, 
-                                             ColumnFamilyHandle_t* column_family);
-int DBLevel0StopWriteTrigger(DB_t* dbptr);
-String_t DBGetName(DB_t* dbptr);
-Env_t DBGetEnv(DB_t* dbptr);
-Options_t DBGetOptionsWithColumnFamily(DB_t* dbptr, 
-                                       ColumnFamilyHandle_t* column_family);
-Options_t DBGetOptions(DB_t* dbptr);
-DBOptions_t DBGetDBOptions(DB_t* dbptr);
-Status_t DBFlushWithColumnFamily(DB_t* dbptr, 
+int DBNumberLevelsWithColumnFamily(const DB_t* dbptr, 
+                                   const ColumnFamilyHandle_t* column_family);
+int DBNumberLevels(const DB_t* dbptr);
+int DBMaxMemCompactionLevelWithColumnFamily(const DB_t* dbptr, 
+                                            const ColumnFamilyHandle_t* column_family);
+int DBMaxMemCompactionLevel(const DB_t* dbptr);
+int DBLevel0StopWriteTriggerWithColumnFamily(const DB_t* dbptr, 
+                                             const ColumnFamilyHandle_t* column_family);
+int DBLevel0StopWriteTrigger(const DB_t* dbptr);
+String_t DBGetName(const DB_t* dbptr);
+Env_t DBGetEnv(const DB_t* dbptr);
+Options_t DBGetOptionsWithColumnFamily(const DB_t* dbptr, 
+                                       const ColumnFamilyHandle_t* column_family);
+Options_t DBGetOptions(const DB_t* dbptr);
+DBOptions_t DBGetDBOptions(const DB_t* dbptr);
+Status_t DBFlushWithColumnFamily(const DB_t* dbptr, 
                                  const FlushOptions_t* options,
-                                 ColumnFamilyHandle_t* column_family);
-Status_t DBFlush(DB_t* dbptr, 
+                                 const ColumnFamilyHandle_t* column_family);
+Status_t DBFlush(const DB_t* dbptr, 
                  const FlushOptions_t* options);
-SequenceNumber DBGetLatestSequenceNumber(DB_t* dbptr);
-Status_t DBDisableFileDeletions(DB_t* dbptr);
-Status_t DBEnableFileDeletions(DB_t* dbptr, bool force);
-Status_t DBGetLiveFiles(DB_t* dbptr,
+SequenceNumber DBGetLatestSequenceNumber(const DB_t* dbptr);
+Status_t DBDisableFileDeletions(const DB_t* dbptr);
+Status_t DBEnableFileDeletions(const DB_t* dbptr, bool force);
+Status_t DBGetLiveFiles(const DB_t* dbptr,
                         const String_t **live_files,
                         int* n,
                         uint64_t* manifest_file_size,
                         bool flush_memtable);
-Status_t DBGetSortedWalFiles(DB_t* dbptr, LogFile_t **files, int* n);
-Status_t DBGetUpdatesSince(DB_t* dbptr, SequenceNumber seq_number,
+Status_t DBGetSortedWalFiles(const DB_t* dbptr, LogFile_t **files, int* n);
+Status_t DBGetUpdatesSince(const DB_t* dbptr, SequenceNumber seq_number,
                            TransactionLogIterator_t* iter,
                            const TransactionLogIterator_ReadOptions_t* read_options);
-Status_t DBDeleteFile(DB_t* dbptr, String_t* name);
-void DBGetLiveFilesMetaData(DB_t* dbptr, LiveFileMetaData_t **metadata, int* n);
-void DBGetColumnFamilyMetaDataWithColumnFamily(DB_t* dbptr, 
-                                               ColumnFamilyHandle_t* column_family,
+Status_t DBDeleteFile(const DB_t* dbptr, String_t* name);
+void DBGetLiveFilesMetaData(const DB_t* dbptr, LiveFileMetaData_t **metadata, int* n);
+void DBGetColumnFamilyMetaDataWithColumnFamily(const DB_t* dbptr, 
+                                               const ColumnFamilyHandle_t* column_family,
                                                ColumnFamilyMetaData_t* metadata);
-void DBGetColumnFamilyMetaData(DB_t* dbptr, 
+void DBGetColumnFamilyMetaData(const DB_t* dbptr, 
                                ColumnFamilyMetaData_t* metadata);
-Status_t DBGetDbIdentity(DB_t* dbptr, String_t* identity);
-ColumnFamilyHandle_t DBDefaultColumnFamily(DB_t* dbptr);
-Status_t DBGetPropertiesOfAllTablesWithColumnFamily(DB_t* dbptr, 
-                                                    ColumnFamilyHandle_t* column_family,
+Status_t DBGetDbIdentity(const DB_t* dbptr, String_t* identity);
+ColumnFamilyHandle_t DBDefaultColumnFamily(const DB_t* dbptr);
+Status_t DBGetPropertiesOfAllTablesWithColumnFamily(const DB_t* dbptr, 
+                                                    const ColumnFamilyHandle_t* column_family,
                                                     TablePropertiesCollection_t* props);
-Status_t DBGetPropertiesOfAllTables(DB_t* dbptr, 
+Status_t DBGetPropertiesOfAllTables(const DB_t* dbptr, 
                                     TablePropertiesCollection_t* props);
 Status_t DBDestroyDB(const String_t* name, const Options_t* options);
 Status_t DBRepairDB(const String_t* dbname, const Options_t* options);

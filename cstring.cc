@@ -4,9 +4,7 @@
 //
 
 #include <string>
-#include "string.h"
-
-typedef std::string String;
+#include "cstring.h"
 
 DEFINE_C_WRAP_CONSTRUCTOR(String)
 DEFINE_C_WRAP_CONSTRUCTOR_MOVE(String)
@@ -17,15 +15,15 @@ DEFINE_C_WRAP_DESTRUCTOR_ARRAY(String)
 
 inline const char* StringGetCStr(String_t * str)
 {
-    return ((str && GET_REP(str)) ?
-            GET_REP(str)->c_str() :
+    return ((str && GET_REP(str, String)) ?
+            GET_REP(str, String)->c_str() :
             nullptr);
 }
 
 inline int StringGetCStrLen(String_t *str)
 {
-    return ((str && GET_REP(str)) ?
-            GET_REP(str)->length() :
+    return ((str && GET_REP(str, String)) ?
+            GET_REP(str, String)->length() :
             0);
 }
 

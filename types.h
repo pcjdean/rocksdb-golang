@@ -8,12 +8,15 @@
 #include <stdint.h>
 
 typedef uint64_t SequenceNumber;
-typedef char bool;
 typedef uint64_t size_t;
+
+#ifndef __cplusplus
+typedef char bool;
+#endif
 
 #define GET_MACRO3(_1,_2,_3,NAME,...) NAME
 
-#define GET_REP(x,y) ((y*)x->rep)
+#define GET_REP(x,y) ((y*)((x)->rep))
 #define GET_REP_REF(x,y) (*GET_REP(x, y))
 
 #define DEFINE_C_WRAP_STRUCT(x) typedef struct x##_t   \
@@ -55,7 +58,7 @@ typedef uint64_t size_t;
 #define DEFINE_C_WRAP_CONSTRUCTOR_MOVE_DEC_R(x) inline x##_t New##x##TMove(void* ptr)
 #define DEFINE_C_WRAP_CONSTRUCTOR_MOVE_BODY(x) { \
         x##_t wrap_t; \
-            wrap_t.rep = (void*)new x(std::move(*(x##*)ptr)); \
+            wrap_t.rep = (void*)new x(std::move(*(x*)ptr)); \
             return wrap_t;                              \
     }                                                   
 

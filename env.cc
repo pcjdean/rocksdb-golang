@@ -13,6 +13,7 @@
 #include <rocksdb/env.h>
 #include "env.h"
 
+using namespace rocksdb;
+
 DEFINE_C_WRAP_CONSTRUCTOR(Env)
-DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(Env)
 DEFINE_C_WRAP_DESTRUCTOR(Env)

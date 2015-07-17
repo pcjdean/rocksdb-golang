@@ -2,7 +2,6 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <rocksdb/options.h>
 #include "options.h"
 
 DEFINE_C_WRAP_CONSTRUCTOR(ColumnFamilyOptions)

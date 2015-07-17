@@ -13,6 +13,8 @@
 #include <rocksdb/status.h>
 #include "status.h"
 
+using namespace rocksdb;
+
 DEFINE_C_WRAP_CONSTRUCTOR(Status)
 DEFINE_C_WRAP_DESTRUCTOR(Status)
 DEFINE_C_WRAP_CONSTRUCTOR_COPY(Status)

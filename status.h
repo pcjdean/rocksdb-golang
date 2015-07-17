@@ -6,7 +6,7 @@
 #define GO_ROCKSDB_INCLUDE_STATUS_H_
 
 #include "types.h"
-#include "string.h"
+#include "cstring.h"
 
 #ifdef __cplusplus
 extern "C" {
