@@ -12,6 +12,7 @@ static const Status invalid_status = Status::InvalidArgument("Invalid database p
 
 DEFINE_C_WRAP_CONSTRUCTOR(ColumnFamilyHandle)
 DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyHandle)
+DEFINE_C_WRAP_DESTRUCTOR_ARRAY(ColumnFamilyHandle)
 String_t ColumnFamilyGetName(const ColumnFamilyHandle_t* column_family)
 {
     const std::string& name_str = GET_REP(column_family, ColumnFamilyHandle)->GetName();

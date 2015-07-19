@@ -6,7 +6,7 @@
 package rocksdb
 
 type finalizer interface {
-	func finalize()
+	finalize()
 }
 
 func finalize(obj *finalizer) {
@@ -14,9 +14,9 @@ func finalize(obj *finalizer) {
 }
 
 func newUint64ArrayFromCArray(cuints *C.uint64_t, sz uint) (vals []uint64) {
-	defer C.Deleteuint64TArray(cuint)
+	defer C.Deleteuint64TArray(cuints)
 	vals = make([]uint64, sz)
-	for var i = 0; i < sz; i++ {
+	for i := 0; i < sz; i++ {
 		vals[i] = (*[sz]C.uint64_t)(unsafe.Pointer(cuints))[i]
 	}
 	return

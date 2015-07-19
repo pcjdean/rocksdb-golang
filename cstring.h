@@ -23,9 +23,8 @@ DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(String)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(String)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(String)
 
-extern const char* StringGetCStr(String_t * str);
-extern int StringGetCStrLen(String_t * str);
-extern void StringSetCStrN(String_t *str, char *cstr, int sz);
+const char* StringGetCStr(String_t * str);
+int StringGetCStrLen(String_t * str);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

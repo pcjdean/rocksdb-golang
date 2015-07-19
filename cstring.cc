@@ -13,14 +13,14 @@ DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(String)
 DEFINE_C_WRAP_DESTRUCTOR(String)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY(String)
 
-inline const char* StringGetCStr(String_t * str)
+const char* StringGetCStr(String_t * str)
 {
     return ((str && GET_REP(str, String)) ?
             GET_REP(str, String)->c_str() :
             nullptr);
 }
 
-inline int StringGetCStrLen(String_t *str)
+int StringGetCStrLen(String_t *str)
 {
     return ((str && GET_REP(str, String)) ?
             GET_REP(str, String)->length() :

@@ -24,8 +24,8 @@ DEFINE_C_WRAP_STRUCT(ColumnFamilyHandle)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(ColumnFamilyHandle)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(ColumnFamilyHandle)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(ColumnFamilyHandle)
-extern String_t ColumnFamilyGetName(ColumnFamilyHandle_t* column_family);
-extern uint32_t ColumnFamilyGetID(ColumnFamilyHandle_t* column_family);
+String_t ColumnFamilyGetName(const ColumnFamilyHandle_t* column_family);
+uint32_t ColumnFamilyGetID(const ColumnFamilyHandle_t* column_family);
 
 DEFINE_C_WRAP_STRUCT(TablePropertiesCollection)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(TablePropertiesCollection)
@@ -40,13 +40,13 @@ DEFINE_C_WRAP_DESTRUCTOR_DEC(ColumnFamilyDescriptor)
 
 DEFINE_C_WRAP_STRUCT(Snapshot)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(Snapshot)
-extern SequenceNumber SnapshotGetSequenceNumber(Snapshot_t* snapshot);
+SequenceNumber SnapshotGetSequenceNumber(Snapshot_t* snapshot);
 
 DEFINE_C_WRAP_STRUCT(Range)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(Range)
 DEFINE_C_WRAP_CONSTRUCTOR_ARGS_DEC(Range, Slice, Slice)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(Range)
-extern Range_t NewRangeTFromSlices(Slice_t* start, Slice_t* limit);
+Range_t NewRangeTFromSlices(Slice_t* start, Slice_t* limit);
 
 DEFINE_C_WRAP_STRUCT(DB)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(DB)
@@ -128,11 +128,9 @@ Status_t DBNewIterators(const DB_t* dbptr, const ReadOptions_t* options,
                         int *val_sz);
 Snapshot_t DBGetSnapshot(const DB_t* dbptr);
 void DBReleaseSnapshot(const DB_t* dbptr, const Snapshot_t* snapshot);
-bool DBGetPropertyWithColumnFamily(const DB_t* dbptr, const ReadOptions_t* options,
-                                   const ColumnFamilyHandle_t* column_family,
+bool DBGetPropertyWithColumnFamily(const DB_t* dbptr, const ColumnFamilyHandle_t* column_family,
                                    const Slice_t* property, String_t* value);
-bool DBGetProperty(const DB_t* dbptr, const ReadOptions_t* options,
-                   const Slice_t* property, String_t* value);
+bool DBGetProperty(const DB_t* dbptr, const Slice_t* property, String_t* value);
 bool DBGetIntPropertyWithColumnFamily(const DB_t* dbptr, 
                                       const ColumnFamilyHandle_t* column_family,
                                       const Slice_t* property, uint64_t* value);
