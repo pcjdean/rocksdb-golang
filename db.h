@@ -67,7 +67,7 @@ Status_t DBOpenWithColumnFamilies(const Options_t* options, const String_t* name
                                 ColumnFamilyHandle_t **handles, DB_t* dbptr);
 Status_t DBListColumnFamilies(DBOptions_t* db_options,
                               const String_t* name,
-                              const String_t **column_families, int* size_col);
+                              String_t **column_families, int* size_col);
 Status_t DBCreateColumnFamily(const DB_t* dbptr, const ColumnFamilyOptions_t* options,
                             const String_t* column_family_name,
                             ColumnFamilyHandle_t* handle);
@@ -196,7 +196,7 @@ SequenceNumber DBGetLatestSequenceNumber(const DB_t* dbptr);
 Status_t DBDisableFileDeletions(const DB_t* dbptr);
 Status_t DBEnableFileDeletions(const DB_t* dbptr, bool force);
 Status_t DBGetLiveFiles(const DB_t* dbptr,
-                        const String_t **live_files,
+                        String_t **live_files,
                         int* n,
                         uint64_t* manifest_file_size,
                         bool flush_memtable);

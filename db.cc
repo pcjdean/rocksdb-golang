@@ -153,7 +153,7 @@ Status_t DBOpenWithColumnFamilies(const Options_t* options, const String_t* name
 // column families in column_families is unspecified.
 Status_t DBListColumnFamilies(DBOptions_t* db_options,
                               const String_t* name,
-                              const String_t **column_families, int* size_col)
+                              String_t **column_families, int* size_col)
 {
     std::vector<std::string> column_families_vec;
     Status stat = DB::ListColumnFamilies(GET_REP_REF(db_options, Options), GET_REP_REF(name, String), &column_families_vec);
@@ -879,7 +879,7 @@ Status_t DBEnableFileDeletions(const DB_t* dbptr, bool force)
 // for new data that arrived to already-flushed column families while other
 // column families were flushing
 Status_t DBGetLiveFiles(const DB_t* dbptr,
-                        const String_t **live_files,
+                        String_t **live_files,
                         int* n,
                         uint64_t* manifest_file_size,
                         bool flush_memtable)
@@ -962,18 +962,18 @@ Status_t DBDeleteFile(const DB_t* dbptr, String_t* name)
 
 // Returns a list of all table files with their level, start key
 // and end key
-void DBGetLiveFilesMetaData(const DB_t* dbptr, LiveFileMetaData_t metadata[], int* n)
+void DBGetLiveFilesMetaData(const DB_t* dbptr, LiveFileMetaData_t** metadata, int* n)
 {
     if (dbptr)
     {
         std::vector<LiveFileMetaData> metadata_vec;
         GET_REP(dbptr, DB)->GetLiveFilesMetaData(&metadata_vec);
         *n = metadata_vec.size();
-        metadata = new LiveFileMetaData_t[*n];
+        *metadata = new LiveFileMetaData_t[*n];
         for (int j = 0; j < *n; j++)
         {
-            metadata[j] = new LiveFileMetaData();
-            GET_REP_REF(&metadata[j], LiveFileMetaData) = metadata_vec[j];
+            (*metadata)[j].rep = new LiveFileMetaData();
+            GET_REP_REF(&(*metadata)[j], LiveFileMetaData) = metadata_vec[j];
         }
     }
 }

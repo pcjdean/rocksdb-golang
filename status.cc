@@ -12,6 +12,7 @@
 
 #include <rocksdb/status.h>
 #include "status.h"
+#include "cstring.h"
 
 using namespace rocksdb;
 
@@ -23,78 +24,78 @@ DEFINE_C_WRAP_DESTRUCTOR_ARRAY(Status)
 // Returns true iff the status indicates success.
 inline bool StatusOk(Status_t *stat)
 {
-    return ((stat && GET_REP(stat)) ?
-            GET_REP(stat)->ok() :
+    return ((stat && GET_REP(stat, Status)) ?
+            GET_REP(stat, Status)->ok() :
             false);
 }
 
 // Returns true iff the status indicates a NotFound error.
 inline bool StatusIsNotFound(Status_t *stat)
 {
-    return ((stat && GET_REP(stat)) ?
-            GET_REP(stat)->IsNotFound() :
+    return ((stat && GET_REP(stat, Status)) ?
+            GET_REP(stat, Status)->IsNotFound() :
             false);
 }
 
 // Returns true iff the status indicates a Corruption error.
 inline bool StatusIsCorruption(Status_t *stat)
 {
-    return ((stat && GET_REP(stat)) ?
-            GET_REP(stat)->IsCorruption() :
+    return ((stat && GET_REP(stat, Status)) ?
+            GET_REP(stat, Status)->IsCorruption() :
             false);
 }
 
 // Returns true iff the status indicates a NotSupported error.
 inline bool StatusIsNotSupported(Status_t *stat)
 {
-    return ((stat && GET_REP(stat)) ?
-            GET_REP(stat)->IsNotSupported() :
+    return ((stat && GET_REP(stat, Status)) ?
+            GET_REP(stat, Status)->IsNotSupported() :
             false);
 }
 
 // Returns true iff the status indicates an IOError.
 inline bool StatusIsInvalidArgument(Status_t *stat)
 {
-    return ((stat && GET_REP(stat)) ?
-            GET_REP(stat)->IsIOError() :
+    return ((stat && GET_REP(stat, Status)) ?
+            GET_REP(stat, Status)->IsIOError() :
             false);
 }
 
 // Returns true iff the status indicates an MergeInProgress.
 inline bool StatusIsMergeInProgress(Status_t *stat)
 {
-    return ((stat && GET_REP(stat)) ?
-            GET_REP(stat)->IsMergeInProgress() :
+    return ((stat && GET_REP(stat, Status)) ?
+            GET_REP(stat, Status)->IsMergeInProgress() :
             false);
 }
 
 // Returns true iff the status indicates Incomplete
 inline bool StatusIsIncomplete(Status_t *stat)
 {
-    return ((stat && GET_REP(stat)) ?
-            GET_REP(stat)->IsIncomplete() :
+    return ((stat && GET_REP(stat, Status)) ?
+            GET_REP(stat, Status)->IsIncomplete() :
             false);
 }
 
 // Returns true iff the status indicates Shutdown In progress
 inline bool StatusIsShutdownInProgress(Status_t *stat)
 {
-    return ((stat && GET_REP(stat)) ?
-            GET_REP(stat)->IsShutdownInProgress() :
+    return ((stat && GET_REP(stat, Status)) ?
+            GET_REP(stat, Status)->IsShutdownInProgress() :
             false);
 }
 
 inline bool StatusIsTimedOut(Status_t *stat)
 {
-    return ((stat && GET_REP(stat)) ?
-            GET_REP(stat)->IsTimedOut() :
+    return ((stat && GET_REP(stat, Status)) ?
+            GET_REP(stat, Status)->IsTimedOut() :
             false);
 }
 
 inline bool StatusIsAborted(Status_t *stat)
 {
-    return ((stat && GET_REP(stat)) ?
-            GET_REP(stat)->IsAborted() :
+    return ((stat && GET_REP(stat, Status)) ?
+            GET_REP(stat, Status)->IsAborted() :
             false);
 }
 
@@ -102,15 +103,15 @@ inline bool StatusIsAborted(Status_t *stat)
 // temporarily could not be acquired.
 inline bool StatusIsBusy(Status_t *stat)
 {
-    return ((stat && GET_REP(stat)) ?
-            GET_REP(stat)->IsBusy() :
+    return ((stat && GET_REP(stat, Status)) ?
+            GET_REP(stat, Status)->IsBusy() :
             false);
 }
 
 // Return a string representation of this status suitable for printing.
 // Returns the string "OK" for success.
-inline String_t StatusToString(Status_t *stat) const
+inline String_t StatusToString(Status_t *stat)
 {
-    return NewStringTmove(stat->ToString());
+    return NewStringTMove(GET_REP(stat, Status)->ToString());
 }
 
