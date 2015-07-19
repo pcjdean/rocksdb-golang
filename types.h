@@ -27,7 +27,7 @@ typedef char bool;
     
 
 // Used internally by the C/C++ code
-#define DEFINE_C_WRAP_CONSTRUCTOR_DEC_R(x) extern inline x##_t New##x##T(void* ptr)
+#define DEFINE_C_WRAP_CONSTRUCTOR_DEC_R(x) x##_t New##x##T(void* ptr)
 #define DEFINE_C_WRAP_CONSTRUCTOR_BODY(x) { \
         x##_t wrap_t; \
             wrap_t.rep = (void*)ptr;            \
@@ -35,13 +35,13 @@ typedef char bool;
     }                                           
 
 #define DEFINE_C_WRAP_CONSTRUCTOR_DEC(x) DEFINE_C_WRAP_CONSTRUCTOR_DEC_R(x);
-#define DEFINE_C_WRAP_CONSTRUCTOR(x) DEFINE_C_WRAP_CONSTRUCTOR_DEC_R(x) \
+#define DEFINE_C_WRAP_CONSTRUCTOR(x) extern inline DEFINE_C_WRAP_CONSTRUCTOR_DEC_R(x) \
     DEFINE_C_WRAP_CONSTRUCTOR_BODY(x)
 
 
 
 // Used internally by the C/C++ code
-#define DEFINE_C_WRAP_CONSTRUCTOR_COPY_DEC_R(x) extern inline x##_t New##x##TCopy(void* ptr)
+#define DEFINE_C_WRAP_CONSTRUCTOR_COPY_DEC_R(x)  x##_t New##x##TCopy(void* ptr)
 #define DEFINE_C_WRAP_CONSTRUCTOR_COPY_BODY(x) { \
         x##_t wrap_t; \
             wrap_t.rep = (void*)new x(*(x*)ptr);      \
@@ -49,13 +49,13 @@ typedef char bool;
     }                                           
 
 #define DEFINE_C_WRAP_CONSTRUCTOR_COPY_DEC(x) DEFINE_C_WRAP_CONSTRUCTOR_COPY_DEC_R(x);
-#define DEFINE_C_WRAP_CONSTRUCTOR_COPY(x) DEFINE_C_WRAP_CONSTRUCTOR_COPY_DEC_R(x) \
+#define DEFINE_C_WRAP_CONSTRUCTOR_COPY(x) extern inline DEFINE_C_WRAP_CONSTRUCTOR_COPY_DEC_R(x) \
     DEFINE_C_WRAP_CONSTRUCTOR_COPY_BODY(x)
 
 
 
 // Used internally by the C/C++ code
-#define DEFINE_C_WRAP_CONSTRUCTOR_MOVE_DEC_R(x) extern inline x##_t New##x##TMove(void* ptr)
+#define DEFINE_C_WRAP_CONSTRUCTOR_MOVE_DEC_R(x) x##_t New##x##TMove(void* ptr)
 #define DEFINE_C_WRAP_CONSTRUCTOR_MOVE_BODY(x) { \
         x##_t wrap_t; \
             wrap_t.rep = (void*)new x(std::move(*(x*)ptr)); \
@@ -63,13 +63,13 @@ typedef char bool;
     }                                                   
 
 #define DEFINE_C_WRAP_CONSTRUCTOR_MOVE_DEC(x) DEFINE_C_WRAP_CONSTRUCTOR_MOVE_DEC_R(x);
-#define DEFINE_C_WRAP_CONSTRUCTOR_MOVE(x) DEFINE_C_WRAP_CONSTRUCTOR_MOVE_DEC_R(x) \
+#define DEFINE_C_WRAP_CONSTRUCTOR_MOVE(x) extern inline DEFINE_C_WRAP_CONSTRUCTOR_MOVE_DEC_R(x) \
     DEFINE_C_WRAP_CONSTRUCTOR_MOVE_BODY(x)
 
 
 
 // Used externally by the calling code
-#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS0_DEC_R(x) extern inline x##_t New##x##TArgs()
+#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS0_DEC_R(x) x##_t New##x##TArgs()
 #define DEFINE_C_WRAP_CONSTRUCTOR_ARGS0_BODY(x) { \
         x##_t wrap_t; \
             wrap_t.rep = (void*)new x();        \
@@ -77,12 +77,12 @@ typedef char bool;
     }                                           
 
 #define DEFINE_C_WRAP_CONSTRUCTOR_ARGS0_DEC(x) DEFINE_C_WRAP_CONSTRUCTOR_ARGS0_DEC_R(x);
-#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS0(x) DEFINE_C_WRAP_CONSTRUCTOR_ARGS0_DEC_R(x) \
+#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS0(x) extern inline DEFINE_C_WRAP_CONSTRUCTOR_ARGS0_DEC_R(x) \
     DEFINE_C_WRAP_CONSTRUCTOR_ARGS0_BODY(x)
 
 
 
-#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS1_DEC_R(x,a) extern inline x##_t New##x##TArgs(a##_t* ptr_a)
+#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS1_DEC_R(x,a) x##_t New##x##TArgs(a##_t* ptr_a)
 #define DEFINE_C_WRAP_CONSTRUCTOR_ARGS1_BODY(x,a) { \
         x##_t wrap_t; \
             wrap_t.rep = (void*)new x(GET_REP_REF(ptr_a, a));   \
@@ -90,12 +90,12 @@ typedef char bool;
     }      
 
 #define DEFINE_C_WRAP_CONSTRUCTOR_ARGS1_DEC(x,a) DEFINE_C_WRAP_CONSTRUCTOR_ARGS1_DEC_R(x,a);
-#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS1(x,a) DEFINE_C_WRAP_CONSTRUCTOR_ARGS1_DEC_R(x,a) \
+#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS1(x,a) extern inline DEFINE_C_WRAP_CONSTRUCTOR_ARGS1_DEC_R(x,a) \
     DEFINE_C_WRAP_CONSTRUCTOR_ARGS1_BODY(x,a)
 
                                                      
 
-#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS2_DEC_R(x,a,b) extern inline x##_t New##x##TArgs(a##_t* ptr_a, b##_t* ptr_b)
+#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS2_DEC_R(x,a,b) x##_t New##x##TArgs(a##_t* ptr_a, b##_t* ptr_b)
 #define DEFINE_C_WRAP_CONSTRUCTOR_ARGS2_BODY(x,a,b) { \
         x##_t wrap_t; \
             wrap_t.rep = (void*)new x(GET_REP_REF(ptr_a, a), GET_REP_REF(ptr_b, b)); \
@@ -103,7 +103,7 @@ typedef char bool;
     }                                                                   
 
 #define DEFINE_C_WRAP_CONSTRUCTOR_ARGS2_DEC(x,a,b) DEFINE_C_WRAP_CONSTRUCTOR_ARGS2_DEC_R(x,a,b);
-#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS2(x,a,b) DEFINE_C_WRAP_CONSTRUCTOR_ARGS2_DEC_R(x,a,b) \
+#define DEFINE_C_WRAP_CONSTRUCTOR_ARGS2(x,a,b) extern inline DEFINE_C_WRAP_CONSTRUCTOR_ARGS2_DEC_R(x,a,b) \
     DEFINE_C_WRAP_CONSTRUCTOR_ARGS2_BODY(x,a,b)
 
 
@@ -115,14 +115,14 @@ typedef char bool;
 
 
 // Used internally by the calling code
-#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0_DEC_R(x) extern inline x##_t New##x##TRawArgs()
+#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0_DEC_R(x)  x##_t New##x##TRawArgs()
 #define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0_DEC(x) DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0_DEC_R(x);
-#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0(x) DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0_DEC_R(x) \
+#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0(x) extern inline DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0_DEC_R(x) \
     DEFINE_C_WRAP_CONSTRUCTOR_ARGS0_BODY(x)
 
 
 
-#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1_DEC_R(x,a) extern inline x##_t New##x##TRawArgs(a _a)
+#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1_DEC_R(x,a) x##_t New##x##TRawArgs(a _a)
 #define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1_BODY(x,a) { \
         x##_t wrap_t; \
             wrap_t.rep = (void*)new x(_a);      \
@@ -130,12 +130,12 @@ typedef char bool;
     } 
                                           
 #define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1_DEC(x,a) DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1_DEC_R(x,a);
-#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1(x,a) DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1_DEC_R(x,a) \
+#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1(x,a) extern inline DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1_DEC_R(x,a) \
     DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1_BODY(x,a)
 
 
 
-#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2_DEC_R(x,a,b) extern inline x##_t New##x##TRawArgs(a _a, b _b)
+#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2_DEC_R(x,a,b) x##_t New##x##TRawArgs(a _a, b _b)
 #define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2_BODY(x,a,b)  { \
         x##_t wrap_t; \
             wrap_t.rep = (void*)new x(_a, _b);  \
@@ -143,7 +143,7 @@ typedef char bool;
     } 
                                           
 #define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2_DEC(x,a,b) DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2_DEC_R(x,a,b);
-#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2(x,a,b) DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2_DEC_R(x,a,b) \
+#define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2(x,a,b) extern inline DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2_DEC_R(x,a,b) \
     DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2_BODY(x,a,b)
 
 
@@ -153,31 +153,31 @@ typedef char bool;
 #define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(...) GET_MACRO3(__VA_ARGS__, DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2, DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1, DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0)(__VA_ARGS__)
 
 // Used externally by the calling code. But it's implemented inernally.
-#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0_DEC_R(x) extern inline x##_t New##x##TDefault()
+#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0_DEC_R(x) x##_t New##x##TDefault()
 #define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0_DEC(x) DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0_DEC_R(x);
-#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0(x) DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0_DEC_R(x) \
+#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0(x) extern inline DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0_DEC_R(x) \
     DEFINE_C_WRAP_CONSTRUCTOR_ARGS0_BODY(x)
 
 
 
-#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1_DEC_R(x,a) extern inline x##_t New##x##TDefault()
+#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1_DEC_R(x,a)  x##_t New##x##TDefault()
 #define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1_BODY(x,a) { \
         return New##x##TRawArgs(a);             \
     }    
                                        
 #define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1_DEC(x,a) DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1_DEC_R(x,a);
-#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1(x,a) DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1_DEC_R(x,a) \
+#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1(x,a) extern inline DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1_DEC_R(x,a) \
     DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT1_BODY(x,a)
 
 
 
-#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2_DEC_R(x,a,b) extern inline x##_t New##x##TDefault()
+#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2_DEC_R(x,a,b) x##_t New##x##TDefault()
 #define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2_BODY(x,a,b) { \
         return New##x##TRawArgs(a, b);          \
     } 
                                           
 #define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2_DEC(x,a,b) DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2_DEC_R(x,a,b);
-#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2(x,a,b) DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2_DEC_R(x,a,b) \
+#define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2(x,a,b) extern inline DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2_DEC_R(x,a,b) \
     DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT2_BODY(x,a,b)
 
 // Used externally by the calling code
@@ -187,7 +187,7 @@ typedef char bool;
 
 
 // Used externally by the calling code
-#define DEFINE_C_WRAP_DESTRUCTOR_DEC_R(x) extern inline void Delete##x##T(x##_t* ptr, bool self)
+#define DEFINE_C_WRAP_DESTRUCTOR_DEC_R(x)  void Delete##x##T(x##_t* ptr, bool self)
 #define DEFINE_C_WRAP_DESTRUCTOR_BODY(x) { \
         if (ptr) \
         {                                       \
@@ -200,13 +200,13 @@ typedef char bool;
     } 
 
 #define DEFINE_C_WRAP_DESTRUCTOR_DEC(x) DEFINE_C_WRAP_DESTRUCTOR_DEC_R(x);
-#define DEFINE_C_WRAP_DESTRUCTOR(x) DEFINE_C_WRAP_DESTRUCTOR_DEC_R(x) \
+#define DEFINE_C_WRAP_DESTRUCTOR(x) extern inline DEFINE_C_WRAP_DESTRUCTOR_DEC_R(x) \
     DEFINE_C_WRAP_DESTRUCTOR_BODY(x)
 
 
 
 // Used externally by the calling code
-#define DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC_R(x) extern inline void Delete##x##TArray(x##_t* ptr)
+#define DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC_R(x) void Delete##x##TArray(x##_t* ptr)
 #define DEFINE_C_WRAP_DESTRUCTOR_ARRAY_BODY(x) { \
         if (ptr) \
         {                                       \
@@ -215,7 +215,7 @@ typedef char bool;
     } 
 
 #define DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(x) DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC_R(x);
-#define DEFINE_C_WRAP_DESTRUCTOR_ARRAY(x) DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC_R(x) \
+#define DEFINE_C_WRAP_DESTRUCTOR_ARRAY(x) extern inline DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC_R(x) \
     DEFINE_C_WRAP_DESTRUCTOR_ARRAY_BODY(x)
 
 

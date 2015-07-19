@@ -112,6 +112,7 @@ inline bool StatusIsBusy(Status_t *stat)
 // Returns the string "OK" for success.
 inline String_t StatusToString(Status_t *stat)
 {
-    return NewStringTMove(GET_REP(stat, Status)->ToString());
+    String str = GET_REP(stat, Status)->ToString();
+    return NewStringTMove(&str);
 }
 
