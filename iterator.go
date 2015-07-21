@@ -37,7 +37,7 @@ func (cit *C.Iterator_t) toIterator(db *DB) (it *Iterator) {
 
 func newIteratorArrayFromCArray(cit *C.Iterator_t, sz uint, db *DB) (its []*Iterator) {
 	defer C.DeleteIteratorTArray(cit)
-	its := make([]*Iterator, sz)
+	its = make([]*Iterator, sz)
 	for i := 0; i < sz; i++ {
 		its[i] = &Iterator{it: (*[sz]C.Iterator_t)(unsafe.Pointer(cit))[i], db: db}
 		runtime.SetFinalizer(its[i], finalize)

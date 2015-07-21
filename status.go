@@ -27,7 +27,7 @@ func (csta *C.Status_t) toStatus() (sta *Status) {
 
 func newStatusArrayFromCArray(csta *C.Status_t, sz uint) (stas []*Status) {
 	defer C.DeleteStatusTArray(csta)
-	stas := make([]*Status, sz)
+	stas = make([]*Status, sz)
 	for i, _ := range stas {
 		stas[i] = &Status{sta: *(*[sz]C.Status_t)(unsafe.Pointer(csta))[i]}	
 		runtime.SetFinalizer(stas[i], finalize)
@@ -102,7 +102,7 @@ func (stat *Status) IsBusy() bool {
 
 // Return a string representation of this status suitable for printing.
 // Returns the string "OK" for success.
-func (stat *Status) ToString() String {
+func (stat *Status) ToString() string {
 	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
 	str := String{StatusToString(cstat)}
 	return str.goString(false)

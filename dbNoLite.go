@@ -13,7 +13,6 @@ package rocksdb
 import "C"
 
 import (
-	"runtime"
 	"unsafe"
 )
 

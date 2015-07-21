@@ -5,6 +5,15 @@
 
 package rocksdb
 
+/*
+#include "types.h"
+*/
+import "C"
+
+type SequenceNumber uint64
+
+const arrayDimenMax = 0xFFFFFFFF
+
 type finalizer interface {
 	finalize()
 }
@@ -18,6 +27,15 @@ func newUint64ArrayFromCArray(cuints *C.uint64_t, sz uint) (vals []uint64) {
 	vals = make([]uint64, sz)
 	for i := 0; i < sz; i++ {
 		vals[i] = (*[sz]C.uint64_t)(unsafe.Pointer(cuints))[i]
+	}
+	return
+}
+
+func toCBool(b bool) (ret C.bool) {
+	if b {
+		ret = C.enum_bool_t.true
+	} else {
+		ret = C.enum_bool_t.false
 	}
 	return
 }

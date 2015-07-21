@@ -12,6 +12,11 @@ typedef uint64_t size_t;
 
 #ifndef __cplusplus
 typedef char bool;
+
+enum bool_t {
+    false, true
+};
+    
 #endif
 
 #define GET_MACRO3(_1,_2,_3,NAME,...) NAME
@@ -219,7 +224,16 @@ typedef char bool;
     DEFINE_C_WRAP_DESTRUCTOR_ARRAY_BODY(x)
 
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(uint64)
+
+#ifdef __cplusplus
+}  /* end extern "C" */
+#endif
 
 
 #endif //  GO_ROCKSDB_INCLUDE_TYPES_H_

@@ -11,29 +11,34 @@ package rocksdb
 */
 import "C"
 
+import (
+	"unsafe"
+)
+
 type cString struct {
 	str C.String_t
 }
 
-func (rstr *cString) goString(del bool) string {
+type cStringPtrAry []*cString
+
+func (rstr *cString) goString(del bool) (str string) {
 	var (
-		cplustr *C.String_t = unsafe.Pointer(&rstr.str)
+		cplustr *C.String_t = &rstr.str
 		cstr *C.char = C.StringGetCStr(cplustr)
 		sz C.int = C.StringGetCStrLen(cplustr)
 	)
 	if del {
-		defer C.DeleteStringT(cplustr, C.bool(false))
+		defer C.DeleteStringT(cplustr, toCBool(false))
 	}
 
-	if cstr && sz > 0 {
-		return C.GoStringN(cstr, sz);
-	} else {
-		return nil
+	if unsafe.Pointer(cstr) != nil && sz > 0 {
+		str = C.GoStringN(cstr, sz);
 	}
+	return
 }
 
 func (str *cString) del()  {
-	C.DeleteStringT(unsafe.Pointers(&str.str), false)
+	C.DeleteStringT(&str.str, toCBool(false))
 }
 
 func (ccstr *C.String_t) cToString() (str string) {
@@ -42,10 +47,10 @@ func (ccstr *C.String_t) cToString() (str string) {
 	return
 }
 
-func newCStringFromString(str *string) (str *cString) {
-	var cstr *C.char = C.CString(string)
-	defer C.free(cstr)
-	slc = &cString{str: C.NewStringTRawArgs(unsafe.Pointer(cstr), len(string))}
+func newCStringFromString(str *string) (cstr *cString) {
+	var ccstr *C.char = C.CString(*str)
+	defer C.free(unsafe.Pointer(ccstr))
+	cstr = &cString{str: C.NewStringTRawArgs(ccstr, C.uint64_t(len(*str)))}
 	return
 }
 
@@ -54,31 +59,31 @@ func newCString() (str *cString) {
 	return
 }
 
-func newStringArrayFromCArray(ccstr *C.String_t, sz uint) (strs []String) {
-	defer C.DeleteStringTArray(cstr)
+func newStringArrayFromCArray(ccstr *C.String_t, sz uint) (strs []string) {
+	defer C.DeleteStringTArray(ccstr)
 	strs = make([]string, sz)
-	for i := 0; i < sz; i++ {
-		cstr := cString{str: (*[sz]C.String_t)(unsafe.Pointer(ccstr))[i]}
+	for i := uint(0); i < sz; i++ {
+		cstr := cString{str: (*[arrayDimenMax]C.String_t)(unsafe.Pointer(ccstr))[i]}
 		strs[i] = cstr.goString(true)
 	}
 	return
 }
 
-func newcStringsFromStringArray(strs []String, sz uint) (cstrs []*cString) {
+func newcStringsFromStringArray(strs []string, sz uint) (cstrs []*cString) {
 	cstrs = make([]*cString, len(strs))
 	for i, str := range strs {
-		cstrs[i] = newCStringFromString(str)
+		cstrs[i] = newCStringFromString(&str)
 	}
 	return
 }
 
-func (cstrs []*cString) del() {
+func (cstrs cStringPtrAry) del() {
 	for _, cstr := range cstrs {
 		cstr.del()
 	}
 }
 
-func (cstrs []*cString) toCArray (ccstrs []C.String_t) {
+func (cstrs cStringPtrAry) toCArray (ccstrs []C.String_t) {
 	ccstrs = make([]C.String_t, len(cstrs))
 	for i, cstr := range cstrs {
 		ccstrs[i] = cstr.str

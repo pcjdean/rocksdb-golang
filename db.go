@@ -20,19 +20,19 @@ type ColumnFamilyHandle struct {
 }
 
 func (cfh *ColumnFamilyHandle) finalize() {
-	var ccfh *C.ColumnFamilyHandle_t = unsafe.Pointer(&cfh.cfh)
-	C.DeleteColumnFamilyHandleT(ccfh, false)
+	var ccfh *C.ColumnFamilyHandle_t = &cfh.cfh
+	C.DeleteColumnFamilyHandleT(ccfh, toCBool(false))
 }
 
 func (cfh *ColumnFamilyHandle) GetName() string {
-	var ptr *C.ColumnFamilyHandle_t = unsafe.Pointer(&cfh.Cfh)
+	var ptr *C.ColumnFamilyHandle_t = &cfh.cfh
 	rstr := cString{C.ColumnFamilyGetName(ptr)}
 	return rstr.goString(true);
 }
     
 func (cfh *ColumnFamilyHandle) GetID() uint32 {
-	var ptr *C.ColumnFamilyHandle_t = unsafe.Pointer(&cfh.Cfh)
-	return C.ColumnFamilyGetID(ptr)
+	var ptr *C.ColumnFamilyHandle_t = &cfh.cfh
+	return uint32(C.ColumnFamilyGetID(ptr))
 }
 
 func (ccfh *C.ColumnFamilyHandle_t) toColumnFamilyHandle() (cfh *ColumnFamilyHandle) {
@@ -44,8 +44,8 @@ func (ccfh *C.ColumnFamilyHandle_t) toColumnFamilyHandle() (cfh *ColumnFamilyHan
 func newColumnFamilyHandleArrayFromCArray(cfh *C.ColumnFamilyHandle_t, sz uint) (cfhs []*ColumnFamilyHandle) {
 	defer C.DeleteColumnFamilyHandleTArray(cfh)
 	cfhs = make([]*ColumnFamilyHandle, sz)
-	for i := 0; i < sz; i++ {
-		cfhs[i] = &ColumnFamilyHandle{cfh: (*[sz]C.String_t)(unsafe.Pointer(cfh))[i]}
+	for i := uint(0); i < sz; i++ {
+		cfhs[i] = &ColumnFamilyHandle{cfh: (*[arrayDimenMax]C.ColumnFamilyHandle_t)(unsafe.Pointer(cfh))[i]}
 		runtime.SetFinalizer(cfhs[i], finalize)
 	}
 	return
@@ -53,8 +53,7 @@ func newColumnFamilyHandleArrayFromCArray(cfh *C.ColumnFamilyHandle_t, sz uint) 
 
 func newCArrayFromColumnFamilyHandleArray(cfhs ...*ColumnFamilyHandle) (ccfhs []C.ColumnFamilyHandle_t) {
 	var cfhlen int
-	if cfhs {
-		cfhs.([]*ColumnFamilyHandle)
+	if cfhs != nil {
 		cfhlen = len(cfhs)
 		ccfhs = make([]C.ColumnFamilyHandle_t, cfhlen)
 		for i := 0; i < cfhlen; i++ {
@@ -65,12 +64,12 @@ func newCArrayFromColumnFamilyHandleArray(cfhs ...*ColumnFamilyHandle) (ccfhs []
 }
 
 type TablePropertiesCollection struct {
-	tpc c.TablePropertiesCollection_t
+	tpc C.TablePropertiesCollection_t
 }
 
 func (tpc *TablePropertiesCollection) finalize() {
-	var ctpc *C.TablePropertiesCollection_t = unsafe.Pointer(&tpc.tpc)
-	C.DeleteTablePropertiesCollectionT(ctpc, false)
+	var ctpc *C.TablePropertiesCollection_t = &tpc.tpc
+	C.DeleteTablePropertiesCollectionT(ctpc, toCBool(false))
 }
 
 func (ctpc *C.TablePropertiesCollection_t) toTablePropertiesCollection() (tpc *TablePropertiesCollection) {
@@ -88,7 +87,7 @@ type Snapshot struct {
 }
 
 func (snp *Snapshot) finalize() {
-	if snp.db {
+	if snp.db != nil {
 		snp.db.ReleaseSnapshot(snp)
 	}
 }
@@ -99,9 +98,9 @@ func (csnp *C.Snapshot_t) toSnapshot(db *DB) (snp *Snapshot) {
 	return
 }
 
-func (snp *Snapshot) GetSequenceNumber() uint64 {
-	var csnp *C.Snapshot_t = unsafe.Pointer(&snp.snp)
-	return SnapshotGetSequenceNumber(csnp)
+func (snp *Snapshot) GetSequenceNumber() SequenceNumber {
+	var csnp *C.Snapshot_t = &snp.snp
+	return SequenceNumber(C.SnapshotGetSequenceNumber(csnp))
 }
 
 // A range of keys
@@ -110,14 +109,13 @@ type Range struct {
 }
 
 func (rng *Range) finalize() {
-	var crng *C.Range_t = unsafe.Pointer(&rng.rng)
-	C.DeleteRangeT(crng, false)
+	var crng *C.Range_t = &rng.rng
+	C.DeleteRangeT(crng, toCBool(false))
 }
 
 func newCArrayFromRangeArray(rngs ...*Range) (crngs []C.Range_t) {
 	var sz int
-	if rngs {
-		rngs.([]*Range)
+	if rngs != nil {
 		sz = len(rngs)
 		crngs = make([]C.Range_t, sz)
 		for i := 0; i < sz; i++ {
@@ -132,14 +130,13 @@ type ColumnFamilyDescriptor struct {
 }
 
 func (cfd *ColumnFamilyDescriptor) finalize() {
-	var ccfd *C.ColumnFamilyDescriptor_t = unsafe.Pointer(&cfd.cfd)
-	C.DeleteColumnFamilyDescriptorT(ccfd, false)
+	var ccfd *C.ColumnFamilyDescriptor_t = &cfd.cfd
+	C.DeleteColumnFamilyDescriptorT(ccfd, toCBool(false))
 }
 
 func newCArrayFromColumnFamilyDescriptorArray(cfds ...*ColumnFamilyDescriptor) (ccfds []C.ColumnFamilyDescriptor_t) {
 	var cfdlen int
-	if cfds {
-		cfds.([]*ColumnFamilyDescriptor)
+	if cfds != nil {
 		cfdlen = len(cfds)
 		ccfds = make([]C.ColumnFamilyDescriptor_t, cfdlen)
 		for i := 0; i < cfdlen; i++ {
@@ -157,8 +154,8 @@ type DB struct {
 }
 
 func (db *DB) finalize() {
-	var cdb *C.DB_t = unsafe.Pointer(&db.db)
-	C.DeleteDBT(cdb, false)
+	var cdb *C.DB_t = &db.db
+	C.DeleteDBT(cdb, toCBool(false))
 }
 
 // Open the database with the specified "name".
@@ -187,19 +184,21 @@ func Open(options *Options, name *string, cfds ...*ColumnFamilyDescriptor) (db *
 	ccfds := newCArrayFromColumnFamilyDescriptorArray(cfds...)
 
 	var (
-		cdb *C.DB_t = unsafe.Pointer(&db.db)
-		opt *C.Options_t = unsafe.Pointer(&options.opt)
-		cstr *C.String_t = unsafe.Pointer(&rstr.str)
-		cfh *ColumnFamilyHandle
+		cdb *C.DB_t = &db.db
+		opt *C.Options_t = &options.opt
+		cstr *C.String_t = &rstr.str
+		cfh *C.ColumnFamilyHandle_t
 	)
 
-	if ccfds {
-		stat = C.DBOpenWithColumnFamilies(opt, cstr, unsafe.Pointers(&ccfds[0]), len(ccfds), unsafe.Pointer(&cfh), cdb).toStatus()
+	if ccfds != nil {
+		cstat := C.DBOpenWithColumnFamilies(opt, cstr, &ccfds[0], C.int(len(ccfds)), &cfh, cdb)
+		stat = cstat.toStatus()
 		if stat.Ok() {
-			cfhs = newColumnFamilyHandleArrayFromCArray(cfh)
+			cfhs = newColumnFamilyHandleArrayFromCArray(cfh, uint(len(ccfds)))
 		}
 	} else {
-		stat = C.DBOpen(opt, cstr, cdb).toStatus()
+		cstat := C.DBOpen(opt, cstr, cdb)
+		stat = cstat.toStatus()
 	}
 
 	if stat.Ok() {
@@ -238,7 +237,7 @@ func OpenForReadOnly(options *Options, name *string, cfds ...*ColumnFamilyDescri
 		opt *C.Options_t = unsafe.Pointer(&options.opt)
 		cstr *C.String_t = unsafe.Pointer(&rstr.str)
 		cfh *C.ColumnFamilyHandle_t
-		cflg C.bool = false
+		cflg C.bool = toCBool(false)
 	)
 
 	if error_if_log_file_exist {
@@ -246,9 +245,9 @@ func OpenForReadOnly(options *Options, name *string, cfds ...*ColumnFamilyDescri
 	}
 
 	if ccfds {
-		stat = C.DBOpenForReadOnlyWithColumnFamilies(opt, cstr, unsafe.Pointers(&ccfds[0]), len(ccfds), unsafe.Pointer(&cfh), cdb, cflg).toStatus()
+		stat = C.DBOpenForReadOnlyWithColumnFamilies(opt, cstr, &ccfds[0], len(ccfds), &cfh, cdb, cflg).toStatus()
 		if stat.Ok() && cfdlen > 0 {
-			cfhs = newColumnFamilyHandleArrayFromCArray(cfh)
+			cfhs = newColumnFamilyHandleArrayFromCArray(cfh, uint(len(ccfds)))
 		}
 	} else {
 		stat = C.DBOpenForReadOnly(opt, cstr, cdb, cflg).toStatus()

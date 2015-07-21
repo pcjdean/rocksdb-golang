@@ -39,7 +39,7 @@ func (tranit *TransactionLogIterator) finalize() {
 }
 
 func (ctranit *C.TransactionLogIterator_t) toTransactionLogIterator() (tranit *TransactionLogIterator) {
-	tranit := &TransactionLogIterator{tranit: *ctranit}
+	tranit = &TransactionLogIterator{tranit: *ctranit}
 	runtime.SetFinalizer(tranit, finalize)
 	return
 }
