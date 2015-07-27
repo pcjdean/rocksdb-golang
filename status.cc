@@ -22,7 +22,7 @@ DEFINE_C_WRAP_CONSTRUCTOR_COPY(Status)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY(Status)
 
 // Returns true iff the status indicates success.
-inline bool StatusOk(Status_t *stat)
+bool StatusOk(Status_t *stat)
 {
     return ((stat && GET_REP(stat, Status)) ?
             GET_REP(stat, Status)->ok() :
@@ -30,7 +30,7 @@ inline bool StatusOk(Status_t *stat)
 }
 
 // Returns true iff the status indicates a NotFound error.
-inline bool StatusIsNotFound(Status_t *stat)
+bool StatusIsNotFound(Status_t *stat)
 {
     return ((stat && GET_REP(stat, Status)) ?
             GET_REP(stat, Status)->IsNotFound() :
@@ -38,7 +38,7 @@ inline bool StatusIsNotFound(Status_t *stat)
 }
 
 // Returns true iff the status indicates a Corruption error.
-inline bool StatusIsCorruption(Status_t *stat)
+bool StatusIsCorruption(Status_t *stat)
 {
     return ((stat && GET_REP(stat, Status)) ?
             GET_REP(stat, Status)->IsCorruption() :
@@ -46,7 +46,7 @@ inline bool StatusIsCorruption(Status_t *stat)
 }
 
 // Returns true iff the status indicates a NotSupported error.
-inline bool StatusIsNotSupported(Status_t *stat)
+bool StatusIsNotSupported(Status_t *stat)
 {
     return ((stat && GET_REP(stat, Status)) ?
             GET_REP(stat, Status)->IsNotSupported() :
@@ -54,7 +54,7 @@ inline bool StatusIsNotSupported(Status_t *stat)
 }
 
 // Returns true iff the status indicates an IOError.
-inline bool StatusIsInvalidArgument(Status_t *stat)
+bool StatusIsInvalidArgument(Status_t *stat)
 {
     return ((stat && GET_REP(stat, Status)) ?
             GET_REP(stat, Status)->IsIOError() :
@@ -62,7 +62,7 @@ inline bool StatusIsInvalidArgument(Status_t *stat)
 }
 
 // Returns true iff the status indicates an MergeInProgress.
-inline bool StatusIsMergeInProgress(Status_t *stat)
+bool StatusIsMergeInProgress(Status_t *stat)
 {
     return ((stat && GET_REP(stat, Status)) ?
             GET_REP(stat, Status)->IsMergeInProgress() :
@@ -70,7 +70,7 @@ inline bool StatusIsMergeInProgress(Status_t *stat)
 }
 
 // Returns true iff the status indicates Incomplete
-inline bool StatusIsIncomplete(Status_t *stat)
+bool StatusIsIncomplete(Status_t *stat)
 {
     return ((stat && GET_REP(stat, Status)) ?
             GET_REP(stat, Status)->IsIncomplete() :
@@ -78,21 +78,21 @@ inline bool StatusIsIncomplete(Status_t *stat)
 }
 
 // Returns true iff the status indicates Shutdown In progress
-inline bool StatusIsShutdownInProgress(Status_t *stat)
+bool StatusIsShutdownInProgress(Status_t *stat)
 {
     return ((stat && GET_REP(stat, Status)) ?
             GET_REP(stat, Status)->IsShutdownInProgress() :
             false);
 }
 
-inline bool StatusIsTimedOut(Status_t *stat)
+bool StatusIsTimedOut(Status_t *stat)
 {
     return ((stat && GET_REP(stat, Status)) ?
             GET_REP(stat, Status)->IsTimedOut() :
             false);
 }
 
-inline bool StatusIsAborted(Status_t *stat)
+bool StatusIsAborted(Status_t *stat)
 {
     return ((stat && GET_REP(stat, Status)) ?
             GET_REP(stat, Status)->IsAborted() :
@@ -101,7 +101,7 @@ inline bool StatusIsAborted(Status_t *stat)
 
 // Returns true iff the status indicates that a resource is Busy and
 // temporarily could not be acquired.
-inline bool StatusIsBusy(Status_t *stat)
+bool StatusIsBusy(Status_t *stat)
 {
     return ((stat && GET_REP(stat, Status)) ?
             GET_REP(stat, Status)->IsBusy() :
@@ -110,7 +110,7 @@ inline bool StatusIsBusy(Status_t *stat)
 
 // Return a string representation of this status suitable for printing.
 // Returns the string "OK" for success.
-inline String_t StatusToString(Status_t *stat)
+String_t StatusToString(Status_t *stat)
 {
     String str = GET_REP(stat, Status)->ToString();
     return NewStringTMove(&str);

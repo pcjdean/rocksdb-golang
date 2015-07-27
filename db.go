@@ -134,13 +134,49 @@ func (cfd *ColumnFamilyDescriptor) finalize() {
 	C.DeleteColumnFamilyDescriptorT(ccfd, toCBool(false))
 }
 
-func newCArrayFromColumnFamilyDescriptorArray(cfds ...*ColumnFamilyDescriptor) (ccfds []C.ColumnFamilyDescriptor_t) {
+func newCArrayFromColumnFamilyDescriptorArray(cfds ...interface{}) (ccfds []C.ColumnFamilyDescriptor_t) {
 	var cfdlen int
 	if cfds != nil {
 		cfdlen = len(cfds)
-		ccfds = make([]C.ColumnFamilyDescriptor_t, cfdlen)
+		n := 0
+
 		for i := 0; i < cfdlen; i++ {
-			ccfds[i] = cfds[i].cfd
+			v, ok := cfds[i].(*ColumnFamilyDescriptor)
+			if ok {
+				if cfds == nil {
+					ccfds = make([]C.ColumnFamilyDescriptor_t, cfdlen)
+				}
+				ccfds[i] = v.cfd
+				n++
+			}
+		}
+
+		if 0 < n && cfdlen != n {
+			ccfds = ccfds[:n]
+		}
+	}
+	return
+}
+
+func newCArrayFromColumnFamilyHandleInterface(cfhs ...interface{}) (ccfhs []C.ColumnFamilyHandle_t) {
+	var cfhlen int
+	if cfhs != nil {
+		cfhlen = len(cfhs)
+		n := 0
+
+		for i := 0; i < cfhlen; i++ {
+			v, ok := cfhs[i].(*ColumnFamilyHandle)
+			if ok {
+				if cfhs == nil {
+					ccfhs = make([]C.ColumnFamilyHandle_t, cfhlen)
+				}
+				ccfhs[i] = v.cfh
+				n++
+			}
+		}
+
+		if 0 < n && cfhlen != n {
+			ccfhs = ccfhs[:n]
 		}
 	}
 	return
@@ -181,7 +217,15 @@ func Open(options *Options, name *string, cfds ...*ColumnFamilyDescriptor) (db *
 	rstr := newCStringFromString(name)
 	defer rstr.del()
 
-	ccfds := newCArrayFromColumnFamilyDescriptorArray(cfds...)
+	var ccfds []C.ColumnFamilyDescriptor_t
+
+	if cfds != nil {
+		s := make([]interface{}, len(cfds))
+		for i, v := range cfds {
+			s[i] = v
+		}
+		ccfds = newCArrayFromColumnFamilyDescriptorArray(s...)
+	}
 
 	var (
 		cdb *C.DB_t = &db.db
@@ -225,7 +269,7 @@ func Open(options *Options, name *string, cfds ...*ColumnFamilyDescriptor) (db *
 //
 // Not supported in ROCKSDB_LITE, in which case the function will
 // return Status_t::NotSupported.
-func OpenForReadOnly(options *Options, name *string, cfds ...*ColumnFamilyDescriptor, error_if_log_file_exist ...bool) (db *DB, cfhs []*ColumnFamilyHandle, stat *Status) {
+func OpenForReadOnly(options *Options, name *string, cfds ...interface{}) (db *DB, cfhs []*ColumnFamilyHandle, stat *Status) {
 	db = &DB{}
 	rstr := newCStringFromString(name)
 	defer rstr.del()
@@ -233,24 +277,31 @@ func OpenForReadOnly(options *Options, name *string, cfds ...*ColumnFamilyDescri
 	ccfds := newCArrayFromColumnFamilyDescriptorArray(cfds...)
 
 	var (
-		cdb *C.DB_t = unsafe.Pointer(&db.db)
-		opt *C.Options_t = unsafe.Pointer(&options.opt)
-		cstr *C.String_t = unsafe.Pointer(&rstr.str)
+		cdb *C.DB_t = &db.db
+		opt *C.Options_t = &options.opt
+		cstr *C.String_t = &rstr.str
 		cfh *C.ColumnFamilyHandle_t
 		cflg C.bool = toCBool(false)
 	)
 
-	if error_if_log_file_exist {
-		cflg = C.bool(error_if_log_file_exist[0])
+	if cfds != nil {
+		n:= len(cfds)
+		v, ok := cfds[n].(bool)
+		if ok {
+			cflg = toCBool(v)
+		}
 	}
 
-	if ccfds {
-		stat = C.DBOpenForReadOnlyWithColumnFamilies(opt, cstr, &ccfds[0], len(ccfds), &cfh, cdb, cflg).toStatus()
+	if ccfds != nil {
+		cfdlen := len(ccfds)
+		cstat := C.DBOpenForReadOnlyWithColumnFamilies(opt, cstr, &ccfds[0], C.int(cfdlen), &cfh, cdb, cflg)
+		stat = cstat.toStatus()
 		if stat.Ok() && cfdlen > 0 {
-			cfhs = newColumnFamilyHandleArrayFromCArray(cfh, uint(len(ccfds)))
+			cfhs = newColumnFamilyHandleArrayFromCArray(cfh, uint(cfdlen))
 		}
 	} else {
-		stat = C.DBOpenForReadOnly(opt, cstr, cdb, cflg).toStatus()
+		cstat := C.DBOpenForReadOnly(opt, cstr, cdb, cflg)
+		stat = cstat.toStatus()
 	}
 
 	if stat.Ok() {
@@ -268,15 +319,16 @@ func ListColumnFamilies(dbopt *DBOptions, name *string) (cfss []string, stat *St
 	defer rstr.del()
 
 	var (
-		opt *C.DBOptions_t = unsafe.Pointers(&dbopt.dbopt)
-		cstr *C.String_t = unsafe.Pointer(&rstr.str)
+		opt *C.DBOptions_t = &dbopt.dbopt
+		cstr *C.String_t = &rstr.str
 		cfs *C.String_t
 		sz C.int
 	)
 
-	stat = C.DBListColumnFamilies(opt, cstr, unsafe.Pointer(&cfs), unsafe.Pointer(&sz)).toStatus()
+	cstat := C.DBListColumnFamilies(opt, cstr, &cfs, &sz)
+	stat = cstat.toStatus()
 	if stat.Ok() && sz > 0 {
-		cfss = newStringArrayFromCArray(cfs, sz)
+		cfss = newStringArrayFromCArray(cfs, uint(sz))
 	}
 	return
 } 
@@ -285,14 +337,16 @@ func ListColumnFamilies(dbopt *DBOptions, name *string) (cfss []string, stat *St
 // Create a column_family and return the handle of column family
 // through the argument handle.
 func (db *DB) CreateColumnFamily(options *ColumnFamilyOptions, colfname *string) (cfd *ColumnFamilyHandle, stat *Status) {
+	cstr := newCStringFromString(colfname)
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		opt *C.DBOptions_t = unsafe.Pointers(&dbopt.dbopt)
-		cstr *C.String_t = unsafe.Pointer(&colfname.str)
+		cdb *C.DB_t = &db.db
+		opt *C.ColumnFamilyOptions_t = &options.cfopt
+		ccstr *C.String_t = &cstr.str
 		ccfd C.ColumnFamilyHandle_t
 	)
 
-	stat = C.DBCreateColumnFamily(cdb, opt, cstr, unsafe.Pointer(&ccfd)).toStatus()
+	cstat := C.DBCreateColumnFamily(cdb, opt, ccstr, &ccfd)
+	stat = cstat.toStatus()
 	if stat.Ok() {
 		cfd = ccfd.toColumnFamilyHandle()
 	}
@@ -302,12 +356,13 @@ func (db *DB) CreateColumnFamily(options *ColumnFamilyOptions, colfname *string)
 // Drop a column family specified by column_family handle. This call
 // only records a drop record in the manifest and prevents the column
 // family from flushing and compacting.
-func (db *DB) DropColumnFamily(cfd *ColumnFamilyHandle) (stat *Status) {
+func (db *DB) DropColumnFamily(cfh *ColumnFamilyHandle) (stat *Status) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t = unsafe.Pointers(&cfd.cfd) 
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t = &cfh.cfh 
 	)
-	stat = C.DBDropColumnFamily(cdb, ccfd).toStatus()
+	cstat := C.DBDropColumnFamily(cdb, ccfh)
+	stat = cstat.toStatus()
 	return
 }
 
@@ -315,30 +370,31 @@ func (db *DB) DropColumnFamily(cfd *ColumnFamilyHandle) (stat *Status) {
 // If "key" already exists, it will be overwritten.
 // Returns OK on success, and a non-OK status on error.
 // Note: consider setting options.sync = true.
-func (db *DB) Put(options *WriteOptions, key []byte, val []byte, cfd ...*ColumnFamilyHandle) (stat *Status) {
+func (db *DB) Put(options *WriteOptions, key, val []byte, cfh ...*ColumnFamilyHandle) (stat *Status) {
 	ckey := newSliceFromBytes(key)
 	defer ckey.del()
 	cval := newSliceFromBytes(val)
 	defer cval.del()
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cwopt *C.WriteOptions_t = unsafe.Pointers(&options.wopt)
-		ccfd *C.ColumnFamilyHandle_t
-		cckey *C.Slice_t = unsafe.Pointers(&ckey.slc) 
-		ccval *C.Slice_t = unsafe.Pointers(&cval.slc) 
+		cdb *C.DB_t = &db.db
+		cwopt *C.WriteOptions_t = &options.wopt
+		ccfh *C.ColumnFamilyHandle_t
+		cckey *C.Slice_t = &ckey.slc 
+		ccval *C.Slice_t = &cval.slc 
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		stat = C.DBPutWithColumnFamily(cdb, cwopt, ccfd, cckey, ccval).toStatus()
+	var cstat C.Status_t
+	if ccfh != nil {
+		cstat = C.DBPutWithColumnFamily(cdb, cwopt, ccfh, cckey, ccval)
 	} else {
-		stat = C.DBPut(cdb, cwopt, cckey, ccval).toStatus()
+		cstat = C.DBPut(cdb, cwopt, cckey, ccval)
 	}
+	stat = cstat.toStatus()
 	return
 }
 
@@ -346,27 +402,28 @@ func (db *DB) Put(options *WriteOptions, key []byte, val []byte, cfd ...*ColumnF
 // success, and a non-OK status on error.  It is not an error if "key"
 // did not exist in the database.
 // Note: consider setting options.sync = true.
-func (db *DB) Delete(options *WriteOptions, key []byte, cfd ...*ColumnFamilyHandle) (stat *Status) {
+func (db *DB) Delete(options *WriteOptions, key []byte, cfh ...*ColumnFamilyHandle) (stat *Status) {
 	ckey := newSliceFromBytes(key)
 	defer ckey.del()
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cwopt *C.WriteOptions_t = unsafe.Pointers(&options.wopt)
-		ccfd *C.ColumnFamilyHandle_t
-		cckey *C.Slice_t = unsafe.Pointers(&ckey.slc) 
+		cdb *C.DB_t = &db.db
+		cwopt *C.WriteOptions_t = &options.wopt
+		ccfh *C.ColumnFamilyHandle_t
+		cckey *C.Slice_t = &ckey.slc 
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		stat = C.DBDeleteWithColumnFamily(cdb, cwopt, ccfd, cckey).toStatus()
+	var cstat C.Status_t
+	if ccfh != nil {
+		cstat = C.DBDeleteWithColumnFamily(cdb, cwopt, ccfh, cckey)
 	} else {
-		stat = C.DBDelete(cdb, cwopt, cckey).toStatus()
+		cstat = C.DBDelete(cdb, cwopt, cckey)
 	}
+	stat = cstat.toStatus()
 	return
 }
 
@@ -374,30 +431,31 @@ func (db *DB) Delete(options *WriteOptions, key []byte, cfd ...*ColumnFamilyHand
 // and a non-OK status on error. The semantics of this operation is
 // determined by the user provided merge_operator when opening DB.
 // Note: consider setting options.sync = true.
-func (db *DB) Merge(options *WriteOptions, key []byte, val []byte, cfd ...*ColumnFamilyHandle) (stat *Status) {
+func (db *DB) Merge(options *WriteOptions, key []byte, val []byte, cfh ...*ColumnFamilyHandle) (stat *Status) {
 	ckey := newSliceFromBytes(key)
 	defer ckey.del()
 	cval := newSliceFromBytes(val)
 	defer cval.del()
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cwopt *C.WriteOptions_t = unsafe.Pointers(&options.wopt)
-		ccfd *C.ColumnFamilyHandle_t
-		cckey *C.Slice_t = unsafe.Pointers(&ckey.slc) 
-		ccval *C.Slice_t = unsafe.Pointers(&cval.slc) 
+		cdb *C.DB_t = &db.db
+		cwopt *C.WriteOptions_t = &options.wopt
+		ccfh *C.ColumnFamilyHandle_t
+		cckey *C.Slice_t = &ckey.slc 
+		ccval *C.Slice_t = &cval.slc 
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		stat = C.DBMergeWithColumnFamily(cdb, cwopt, ccfd, cckey, ccval).toStatus()
+	var cstat C.Status_t
+	if ccfh != nil {
+		cstat = C.DBMergeWithColumnFamily(cdb, cwopt, ccfh, cckey, ccval)
 	} else {
-		stat = C.DBMerge(cdb, cwopt, cckey, ccval).toStatus()
+		cstat = C.DBMerge(cdb, cwopt, cckey, ccval)
 	}
+	stat = cstat.toStatus()
 	return
 }
 
@@ -408,11 +466,12 @@ func (db *DB) Merge(options *WriteOptions, key []byte, val []byte, cfd ...*Colum
 // Note: consider setting options.sync = true.
 func (db *DB) Write(options *WriteOptions, wbt *WriteBatch) (stat *Status) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cwopt *C.WriteOptions_t = unsafe.Pointers(&options.wopt)
-		cwbt *C.WriteBatch_t = unsafe.Pointers(&wbt.wbt)
+		cdb *C.DB_t = &db.db
+		cwopt *C.WriteOptions_t = &options.wopt
+		cwbt *C.WriteBatch_t = &wbt.wbt
 	)
-	stat = C.DBWrite(cdb, cwopt, cwbt).toStatus()
+	cstat := C.DBWrite(cdb, cwopt, cwbt)
+	stat = cstat.toStatus()
 	return
 }
 
@@ -423,30 +482,31 @@ func (db *DB) Write(options *WriteOptions, wbt *WriteBatch) (stat *Status) {
 // a status for which Status_t::IsNotFound() returns true.
 //
 // May return some other Status_t on an error.
-func (db *DB) Get(options *ReadOptions, key []byte, cfd ...*ColumnFamilyHandle) (val string, stat *Status) {
+func (db *DB) Get(options *ReadOptions, key []byte, cfh ...*ColumnFamilyHandle) (val []byte, stat *Status) {
 	ckey := newSliceFromBytes(key)
 	defer ckey.del()
 	cval := newCString()
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cropt *C.ReadOptions_t = unsafe.Pointers(&options.ropt)
-		ccfd *C.ColumnFamilyHandle_t
-		cckey *C.Slice_t = unsafe.Pointers(&ckey.slc) 
-		ccval *C.String_t = unsafe.Pointers(&cval.str) 
+		cdb *C.DB_t = &db.db
+		cropt *C.ReadOptions_t = &options.ropt
+		ccfh *C.ColumnFamilyHandle_t
+		cckey *C.Slice_t = &ckey.slc 
+		ccval *C.String_t = &cval.str 
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		stat = C.DBGetWithColumnFamily(cdb, cropt, ccfd, cckey, ccval).toStatus()
+	var cstat C.Status_t
+	if ccfh != nil {
+		cstat = C.DBGetWithColumnFamily(cdb, cropt, ccfh, cckey, ccval)
 	} else {
-		stat = C.DBGet(cdb, cropt, cckey, ccval).toStatus()
+		cstat = C.DBGet(cdb, cropt, cckey, ccval)
 	}
-	val = cval.goString(true)
+	stat = cstat.toStatus()
+	val = cval.goBytes(true)
 	return
 }
 
@@ -460,24 +520,25 @@ func (db *DB) Get(options *ReadOptions, key []byte, cfd ...*ColumnFamilyHandle) 
 // Similarly, the number of returned statuses will be the number of keys.
 // Note: keys will not be "de-duplicated". Duplicate keys will return
 // duplicate values in order.
-func (db *DB) MultiGet(options *ReadOptions, keys [][]byte, cfhs ...*ColumnFamilyHandle) (vals []string, stats []*Status) {
-	ckeys := newSlicesFromBytesArray(keys)
+func (db *DB) MultiGet(options *ReadOptions, keys [][]byte, cfhs ...*ColumnFamilyHandle) (vals [][]byte, stats []*Status) {
+	ckeys := cSlicePtrAry(newSlicesFromBytesArray(keys))
 	defer ckeys.del()
 	cckeys := ckeys.toCArray()
 	ccfhs := newCArrayFromColumnFamilyHandleArray(cfhs...)
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cropt *C.ReadOptions_t = unsafe.Pointers(&options.ropt)
+		cdb *C.DB_t = &db.db
+		cropt *C.ReadOptions_t = &options.ropt
 		ccvals *C.String_t
 	)
-
-	if ccfhs {
-		stats = newStatusArrayFromCArray(C.DBMultiGetWithColumnFamily(cdb, cropt, unsafe.Pointers(&ccfhs[0]), len(cfhs), unsafe.Pointers(&cckeys[0]), len(cckeys), unsafe.Pointers(&ccvals)))
+	
+	n := len(cckeys)
+	if ccfhs != nil {
+		stats = newStatusArrayFromCArray(C.DBMultiGetWithColumnFamily(cdb, cropt, &ccfhs[0], C.int(len(cfhs)), &cckeys[0], C.int(n), &ccvals), uint(n))
 	} else {
-		stats = newStatusArrayFromCArray(C.DBMultiGet(cdb, cropt, unsafe.Pointers(&cckeys[0]), len(cckeys), unsafe.Pointers(&ccvals)))
+		stats = newStatusArrayFromCArray(C.DBMultiGet(cdb, cropt, &cckeys[0], C.int(n), &ccvals), uint(n))
 	}
-	vals = newStringArrayFromCArray(ccvals, len(keys))
+	vals = newBytesFromCArray(ccvals, uint(n))
 	return
 }
 
@@ -488,29 +549,30 @@ func (db *DB) MultiGet(options *ReadOptions, keys [][]byte, cfhs ...*ColumnFamil
 // This check is potentially lighter-weight than invoking DB::Get(). One way
 // to make this lighter weight is to avoid doing any IOs.
 // Default implementation here returns true and sets 'value_found' to false
-func (db *DB) KeyMayExist(options *ReadOptions, key []byte, cfd ...*ColumnFamilyHandle) (res bool, valfound bool, val string) {
+func (db *DB) KeyMayExist(options *ReadOptions, key []byte, cfh ...*ColumnFamilyHandle) (res bool, valfound bool, val string) {
 	ckey := newSliceFromBytes(key)
 	defer ckey.del()
 	cval := newCString()
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cropt *C.ReadOptions_t = unsafe.Pointers(&options.ropt)
-		ccfd *C.ColumnFamilyHandle_t
-		cckey *C.Slice_t = unsafe.Pointers(&ckey.slc) 
-		ccval *C.String_t = unsafe.Pointers(&cval.str) 
+		cdb *C.DB_t = &db.db
+		cropt *C.ReadOptions_t = &options.ropt
+		ccfh *C.ColumnFamilyHandle_t
+		cckey *C.Slice_t = &ckey.slc 
+		ccval *C.String_t = &cval.str 
+		cvalfound C.bool
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		res = C.DBKeyMayExistWithColumnFamily(cdb, cropt, ccfd, cckey, ccval, unsafe.Pointers(&valfound))
+	if ccfh != nil {
+		res = C.DBKeyMayExistWithColumnFamily(cdb, cropt, ccfh, cckey, ccval, &cvalfound).toBool()
 	} else {
-		res = C.DBKeyMayExist(cdb, cropt, cckey, ccval, unsafe.Pointers(&valfound))
+		res = C.DBKeyMayExist(cdb, cropt, cckey, ccval, &cvalfound).toBool()
 	}
+	valfound = cvalfound.toBool()
 	val = cval.goString(true)
 	return
 }
@@ -521,25 +583,24 @@ func (db *DB) KeyMayExist(options *ReadOptions, key []byte, cfd ...*ColumnFamily
 //
 // Caller should delete the iterator when it is no longer needed.
 // The returned iterator should be deleted before this db is deleted.
-func (db *DB) NewIterator(options *ReadOptions, cfd ...*ColumnFamilyHandle) (it *Iterator) {
+func (db *DB) NewIterator(options *ReadOptions, cfh ...*ColumnFamilyHandle) (it *Iterator) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cropt *C.ReadOptions_t = unsafe.Pointers(&options.ropt)
-		ccfd *C.ColumnFamilyHandle_t
+		cdb *C.DB_t = &db.db
+		cropt *C.ReadOptions_t = &options.ropt
+		ccfh *C.ColumnFamilyHandle_t
 		cit C.Iterator_t
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		cit = C.DBNewIteratorWithColumnFamily(cdb, cropt, ccfd)
+	if ccfh != nil {
+		cit = C.DBNewIteratorWithColumnFamily(cdb, cropt, ccfh)
 	} else {
 		cit = C.DBNewIterator(cdb, cropt)
 	}
-	it = cit.toIterator()
+	it = cit.toIterator(db)
 	return
 }
 
@@ -550,15 +611,15 @@ func (db *DB) NewIterators(options *ReadOptions, cfhs []*ColumnFamilyHandle) (va
 	ccfhs := newCArrayFromColumnFamilyHandleArray(cfhs...)
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cropt *C.ReadOptions_t = unsafe.Pointers(&options.ropt)
+		cdb *C.DB_t = &db.db
+		cropt *C.ReadOptions_t = &options.ropt
 		ccvals *C.Iterator_t
-		valsz int
+		valsz C.int
 	)
 
-	ccfhs[0].(*C.ColumnFamilyHandle_t)
-	stat = C.DBNewIterators(cdb, cropt, unsafe.Pointers(&ccfhs[0]), len(ccfhs), unsafe.Pointers(&ccvals), unsafe.Pointers(&valsz)).toStatus()
-	vals = newIteratorArrayFromCArray(ccvals, valsz, db)
+	cstat := C.DBNewIterators(cdb, cropt, &ccfhs[0], C.int(len(ccfhs)), &ccvals, &valsz)
+	stat = cstat.toStatus()
+	vals = newIteratorArrayFromCArray(ccvals, uint(valsz), db)
 	return
 }
 
@@ -570,8 +631,8 @@ func (db *DB) NewIterators(options *ReadOptions, cfhs []*ColumnFamilyHandle) (va
 // nullptr will be returned if the DB fails to take a snapshot or does
 // not support snapshot.
 func (db *DB) GetSnapshot() (snp *Snapshot) {
-	var cdb *C.DB_t = unsafe.Pointers(&db.db)
-	var csnp *C.Snapshot_t = C.DBGetSnapshot(cdb)
+	var cdb *C.DB_t = &db.db
+	var csnp C.Snapshot_t = C.DBGetSnapshot(cdb)
 
 	snp = csnp.toSnapshot(db)
 	return
@@ -586,8 +647,8 @@ func (db *DB) ReleaseSnapshot(snp *Snapshot) {
 	snp.db = nil
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		csnp *C.Snapshot_t = unsafe.Pointers(&snp.snp)
+		cdb *C.DB_t = &db.db
+		csnp *C.Snapshot_t = &snp.snp
 	)
 
 	C.DBReleaseSnapshot(cdb, csnp)
@@ -630,28 +691,26 @@ func (db *DB) ReleaseSnapshot(snp *Snapshot) {
 //      See version_set.h for details. More live versions often mean more SST
 //      files are held from being deleted, by iterators or unfinished
 //      compactions.
-func (db *DB) GetProperty(options *ReadOptions, prop []byte, cfd ...*ColumnFamilyHandle) (val string, res bool) {
+func (db *DB) GetProperty(prop []byte, cfh ...*ColumnFamilyHandle) (val string, res bool) {
 	cprop := newSliceFromBytes(prop)
 	defer cprop.del()
 	cval := newCString()
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cropt *C.ReadOptions_t = unsafe.Pointers(&options.ropt)
-		ccfd *C.ColumnFamilyHandle_t
-		ccprop *C.Slice_t = unsafe.Pointers(&cprop.slc) 
-		ccval *C.String_t = unsafe.Pointers(&cval.str) 
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t
+		ccprop *C.Slice_t = &cprop.slc 
+		ccval *C.String_t = &cval.str 
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		res = C.DBGetPropertyWithColumnFamily(cdb, cropt, ccfd, ccprop, ccval)
+	if ccfh != nil {
+		res = C.DBGetPropertyWithColumnFamily(cdb, ccfh, ccprop, ccval).toBool()
 	} else {
-		res = C.DBGetProperty(cdb, cropt, ccprop, ccval)
+		res = C.DBGetProperty(cdb, ccprop, ccval).toBool()
 	}
 	val = cval.goString(true)
 	return
@@ -676,28 +735,27 @@ func (db *DB) GetProperty(options *ReadOptions, prop []byte, cfd ...*ColumnFamil
 //  "rocksdb.num-snapshots"
 //  "rocksdb.oldest-snapshot-time"
 //  "rocksdb.num-live-versions"
-func (db *DB) GetIntProperty(prop []byte, cfd ...*ColumnFamilyHandle) (val uint64, res bool) {
+func (db *DB) GetIntProperty(prop []byte, cfh ...*ColumnFamilyHandle) (val uint64, res bool) {
 	cprop := newSliceFromBytes(prop)
 	defer cprop.del()
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t
-		ccprop *C.Slice_t = unsafe.Pointers(&cprop.slc) 
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t
+		ccprop *C.Slice_t = &cprop.slc 
 		cval C.uint64_t
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		res = C.DBGetIntPropertyWithColumnFamily(cdb, ccfd, ccprop, unsafe.Pointers(&cval))
+	if ccfh != nil {
+		res = C.DBGetIntPropertyWithColumnFamily(cdb, ccfh, ccprop, &cval).toBool()
 	} else {
-		res = C.DBGetIntProperty(cdb, ccprop, unsafe.Pointers(&cval))
+		res = C.DBGetIntProperty(cdb, ccprop, &cval).toBool()
 	}
-	val = cval
+	val = uint64(cval)
 	return
 }
 
@@ -709,28 +767,27 @@ func (db *DB) GetIntProperty(prop []byte, cfd ...*ColumnFamilyHandle) (val uint6
 // sizes will be one-tenth the size of the corresponding user data size.
 //
 // The results may not include the sizes of recently written data.
-func (db *DB) GetApproximateSizes(rngs []*Range, cfd ...*ColumnFamilyHandle) (vals []uint64) {
+func (db *DB) GetApproximateSizes(rngs []*Range, cfh ...*ColumnFamilyHandle) (vals []uint64) {
 	crngs := newCArrayFromRangeArray(rngs...)
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t
-		ccrngs *C.Range_t = unsafe.Pointers(&crngs[0]) 
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t
+		ccrngs *C.Range_t = &crngs[0] 
 		sz C.int
-		cval *C.uint64_t
+		cval []C.uint64_t = make([]C.uint64_t, sz)
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		res = C.DBGetApproximateSizesWithColumnFamily(cdb, ccfd, ccrngs, sz, unsafe.Pointers(&cval))
+	if ccfh != nil {
+		C.DBGetApproximateSizesWithColumnFamily(cdb, ccfh, ccrngs, sz, &cval[0])
 	} else {
-		res = C.DBGetApproximateSizes(cdb, ccrngs, sz, unsafe.Pointers(&cval))
+		C.DBGetApproximateSizes(cdb, ccrngs, sz, &cval[0])
 	}
-	vals = newUint64ArrayFromCArray(cval)
+	vals = newUint64ArrayFromCArray(&cval)
 	return
 }
 
@@ -753,62 +810,80 @@ func (db *DB) GetApproximateSizes(rngs []*Range, cfd ...*ColumnFamilyHandle) (va
 // the data set or a given level (specified by non-negative target_level).
 // Compaction outputs should be placed in options.db_paths[target_path_id].
 // Behavior is undefined if target_path_id is out of range.
-func (db *DB) CompactRange(begin []byte, end []byte, cfd ...*ColumnFamilyHandle, reduce_level ...bool, target_level ...int, target_path_id ...uint32) (stat *Status) {
+func (db *DB) CompactRange(begin []byte, end []byte, cfhs ...interface{}) (stat *Status) {
 	cbegin := newSliceFromBytes(begin)
 	defer cbegin.del()
 	cend := newSliceFromBytes(end)
 	defer cend.del()
 
+	var ccfhs []C.ColumnFamilyHandle_t
+
+	if cfhs != nil {
+		ccfhs = newCArrayFromColumnFamilyHandleInterface(cfhs...)
+	}
+
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t
+		cdb *C.DB_t = &db.db
 		credl C.bool 
 		ctarl C.int = -1
 		ctpi C.uint32_t 
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
-	}
-	if reduce_level {
-		credl = C.bool(reduce_level[0])
-	}
-	if target_level {
-		ctarl = C.int(target_level[0])
-	}
-	if target_path_id {
-		ctpi = C.uint32_t(target_path_id[0])
+	if cfhs != nil {
+		n:= len(cfhs)
+		v, ok := cfhs[n].(uint32)
+		if ok {
+			ctpi = C.uint32_t(v)
+			n--
+		}
+
+		if 0 < n {
+			v, ok := cfhs[n].(int)
+			if ok {
+				ctarl = C.int(v)
+				n--
+			}
+
+			if 0 < n {
+				v, ok := cfhs[n].(bool)
+				if ok {
+					credl = toCBool(v)
+				}
+			}
+		}
 	}
 
-	if ccfd {
-		stat = C.DBCompactRangeWithColumnFamily(cdb, ccfd, unsafe.Pointers(&cbegin[0]), unsafe.Pointers(&cend[0]), credl, ctarl, ctpi).toStatus()
+	var cstat C.Status_t
+	if ccfhs != nil {
+		cstat = C.DBCompactRangeWithColumnFamily(cdb, &ccfhs[0], &cbegin.slc, &cend.slc, credl, ctarl, ctpi)
 	} else {
-		stat = C.DBCompactRange(cdb, unsafe.Pointers(&cbegin[0]), unsafe.Pointers(&cend[0]), credl, ctarl, ctpi).toStatus()
+		cstat = C.DBCompactRange(cdb, &cbegin.slc, &cend.slc, credl, ctarl, ctpi)
 	}
+	stat = cstat.toStatus()
 	return
 }
 
 func (db *DB) SetOptions(opts []string, cfhs ...*ColumnFamilyHandle) (stat *Status) {
-	copts := newcStringsFromStringArray(opts)
+	copts := cStringPtrAry(newcStringsFromStringArray(opts))
 	defer copts.del()
 	ccopts := copts.toCArray()
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfhs != nil {
+		ccfh = &cfhs[0].cfh
 	}
 
-	if ccfd {
-		stat = C.DBSetOptionsWithColumnFamily(cdb, ccfd, unsafe.Pointers(&ccopts[0]), len(ccopts)).toStatus()
+	var cstat C.Status_t
+	if ccfh != nil {
+		cstat = C.DBSetOptionsWithColumnFamily(cdb, ccfh, &ccopts[0], C.int(len(ccopts)))
 	} else {
-		stat = C.DBSetOptions(cdb, unsafe.Pointers(&ccopts[0]), len(ccopts)).toStatus()
+		cstat = C.DBSetOptions(cdb, &ccopts[0], C.int(len(ccopts)))
 	}
+	stat = cstat.toStatus()
 	return
 }
 
@@ -819,91 +894,99 @@ func (db *DB) SetOptions(opts []string, cfhs ...*ColumnFamilyHandle) (stat *Stat
 //
 // @see GetDataBaseMetaData
 // @see GetColumnFamilyMetaData
-func (db *DB) CompactFiles(options *CompactionOptions, files []string, level int, cfhs ...*ColumnFamilyHandle, path_id ...int) (stat Status) {
-	cfiles := newcStringsFromStringArray(opts)
+func (db *DB) CompactFiles(options *CompactionOptions, files []string, level int, cfhs ...interface{}) (stat *Status) {
+	cfiles := cStringPtrAry(newcStringsFromStringArray(files))
 	defer cfiles.del()
 	ccfiles := cfiles.toCArray()
 
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t
-		ccopt *C.CompactionOptions_t = unsafe.Pointers(&options.copt)
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t
+		ccopt *C.CompactionOptions_t = &options.copt
 		cpid C.int = -1
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
-	}
-	if path_id {
-		cpid = C.int(path_id[0])
+	if cfhs != nil {
+		n:= len(cfhs)
+		v, ok := cfhs[n].(int)
+		if ok {
+			cpid = C.int(v)
+			n--
+		}
+
+		if 0 < n {
+			v, ok := cfhs[n].(*ColumnFamilyHandle)
+			if ok {
+				ccfh = &v.cfh
+				n--
+			}
+		}
 	}
 
-	if ccfd {
-		stat = C.DBCompactFilesWithColumnFamily(cdb, ccopt, ccfd, unsafe.Pointers(&ccfiles[0]), len(ccfiles), level, cpid).toStatus()
+	var cstat C.Status_t
+	if ccfh != nil {
+		cstat = C.DBCompactFilesWithColumnFamily(cdb, ccopt, ccfh, &ccfiles[0], C.int(len(ccfiles)), C.int(level), cpid)
 	} else {
-		stat = C.DBCompactFilesWithColumnFamily(cdb, ccopt, unsafe.Pointers(&ccfiles[0]), len(ccfiles), level, cpid).toStatus()
+		cstat = C.DBCompactFiles(cdb, ccopt, &ccfiles[0], C.int(len(ccfiles)), C.int(level), cpid)
 	}
+	stat = cstat.toStatus()
 	return
 }
 
 // Number of levels used for this DB.
-func (db *DB) NumberLevels(cfd ...*ColumnFamilyHandle) (level int) {
+func (db *DB) NumberLevels(cfh ...*ColumnFamilyHandle) (level int) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		level = C.DBNumberLevelsWithColumnFamily(cdb, ccfd)
+	if ccfh != nil {
+		level = int(C.DBNumberLevelsWithColumnFamily(cdb, ccfh))
 	} else {
-		level = C.DBNumberLevels(cdb)
+		level = int(C.DBNumberLevels(cdb))
 	}
 	return
 }
 
 // Maximum level to which a new compacted memtable is pushed if it
 // does not create overlap.
-func (db *DB) MaxMemCompactionLevel(cfd ...*ColumnFamilyHandle) (level int) {
+func (db *DB) MaxMemCompactionLevel(cfh ...*ColumnFamilyHandle) (level int) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		level = C.DBMaxMemCompactionLevelWithColumnFamily(cdb, ccfd)
+	if ccfh != nil {
+		level = int(C.DBMaxMemCompactionLevelWithColumnFamily(cdb, ccfh))
 	} else {
-		level = C.DBMaxMemCompactionLevel(cdb)
+		level = int(C.DBMaxMemCompactionLevel(cdb))
 	}
 	return
 }
 
 // Number of files in level-0 that would stop writes.
-func (db *DB) Level0StopWriteTrigger(cfd ...*ColumnFamilyHandle) (level int) {
+func (db *DB) Level0StopWriteTrigger(cfh ...*ColumnFamilyHandle) (level int) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		level = C.DBLevel0StopWriteTriggerWithColumnFamily(cdb, ccfd)
+	if ccfh != nil {
+		level = int(C.DBLevel0StopWriteTriggerWithColumnFamily(cdb, ccfh))
 	} else {
-		level = C.DBLevel0StopWriteTrigger(cdb)
+		level = int(C.DBLevel0StopWriteTrigger(cdb))
 	}
 	return
 }
@@ -912,7 +995,7 @@ func (db *DB) Level0StopWriteTrigger(cfd ...*ColumnFamilyHandle) (level int) {
 // DB::Open()
 func (db *DB) GetName() (name string) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cdb *C.DB_t = &db.db
 		cname C.String_t = C.DBGetName(cdb)
 	)
 	name = cname.cToString()
@@ -922,7 +1005,7 @@ func (db *DB) GetName() (name string) {
 // Get Env object from the DB
 func (db *DB) GetEnv() (env *Env) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cdb *C.DB_t = &db.db
 		cenv C.Env_t = C.DBGetEnv(cdb)
 	)
 	env = cenv.toEnv()
@@ -933,20 +1016,19 @@ func (db *DB) GetEnv() (env *Env) {
 // column family, the options provided when calling DB::Open() or
 // DB::CreateColumnFamily() will have been "sanitized" and transformed
 // in an implementation-defined manner.
-func (db *DB) GetOptions(cfd ...*ColumnFamilyHandle) (opt *Options) {
+func (db *DB) GetOptions(cfh ...*ColumnFamilyHandle) (opt *Options) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t
 		copt C.Options_t
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		copt = C.DBGetOptionsWithColumnFamily(cdb, ccfd)
+	if ccfh != nil {
+		copt = C.DBGetOptionsWithColumnFamily(cdb, ccfh)
 	} else {
 		copt = C.DBGetOptions(cdb)
 	}
@@ -957,7 +1039,7 @@ func (db *DB) GetOptions(cfd ...*ColumnFamilyHandle) (opt *Options) {
 
 func (db *DB) GetDBOptions() (dbopt *DBOptions) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cdb *C.DB_t = &db.db
 		cdbopt C.DBOptions_t = C.DBGetDBOptions(cdb)
 	)
 	dbopt = cdbopt.toDBOptions()
@@ -967,30 +1049,31 @@ func (db *DB) GetDBOptions() (dbopt *DBOptions) {
 // Flush all mem-table data.
 func (db *DB) Flush(options *FlushOptions, cfhs ...*ColumnFamilyHandle) (stat *Status) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t
-		cfopt *C.FlushOptions_t = unsafe.Pointers(&options.fopt)
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t
+		cfopt *C.FlushOptions_t = &options.fopt
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfhs != nil {
+		ccfh = &cfhs[0].cfh
 	}
 
-	if ccfd {
-		stat = C.DBFlushWithColumnFamily(cdb, cfopt, ccfd).toStatus()
+	var cstat C.Status_t
+	if ccfh != nil {
+		cstat = C.DBFlushWithColumnFamily(cdb, cfopt, ccfh)
 	} else {
-		stat = C.DBFlush(cdb, cfopt).toStatus()
+		cstat = C.DBFlush(cdb, cfopt)
 	}
+	stat = cstat.toStatus()
 	return
 }
 
 // The sequence number of the most recent transaction.
 func (db *DB) GetLatestSequenceNumber() (sqnum SequenceNumber) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cdb *C.DB_t = &db.db
 	)
-	sqnum = C.DBGetLatestSequenceNumber(cdb)
+	sqnum = SequenceNumber(C.DBGetLatestSequenceNumber(cdb))
 	return
 }
 
@@ -999,34 +1082,36 @@ func (db *DB) GetLatestSequenceNumber() (sqnum SequenceNumber) {
 // be set properly
 func (db *DB) GetDbIdentity() (id string, stat *Status) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cdb *C.DB_t = &db.db
 		cid C.String_t
 	)
-	stat = C.DBGetDbIdentity(cdb, unsafe.Pointers(&cid)).toStatus()
+	cstat := C.DBGetDbIdentity(cdb, &cid)
+	stat = cstat.toStatus()
 	id = cid.cToString()
 	return
 }
 
 // Returns default column family handle
-func (db *DB) DefaultColumnFamily() (cfd *ColumnFamilyHandle) {
+func (db *DB) DefaultColumnFamily() (cfh *ColumnFamilyHandle) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd C.ColumnFamilyHandle_t = C.DBDefaultColumnFamily(cdb)
+		cdb *C.DB_t = &db.db
+		ccfh C.ColumnFamilyHandle_t = C.DBDefaultColumnFamily(cdb)
 	)
-	cfd = ccfd.toColumnFamilyHandle()
+	cfh = ccfh.toColumnFamilyHandle()
 	return
 }
 
 // Destroy the contents of the specified database.
 // Be very careful using this method.
 func DestroyDB(name string, opt Options) (stat *Status) {
-	cname := newCStringFromString(name)
+	cname := newCStringFromString(&name)
 
 	var (
-		ccname *C.String_t = unsafe.Pointers(&cname.str)
-		copt C.Options_t = unsafe.Pointers(&opt.opt)
+		ccname *C.String_t = &cname.str
+		copt *C.Options_t = &opt.opt
 	)
 
-	stat = C.DBDestroyDB(ccname, copt).toStatus()
+	cstat := C.DBDestroyDB(ccname, copt)
+	stat = cstat.toStatus()
 	return
 }

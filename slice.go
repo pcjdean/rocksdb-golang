@@ -26,12 +26,12 @@ type cSlice struct {
 type cSlicePtrAry []*cSlice
 
 func newSliceFromBytes(bytes []byte) (slc *cSlice) {
-	slc = &cSlice{slc: C.NewSliceTRawArgs(unsafe.Pointer(&bytes[0]), len(bytes))}
+	slc = &cSlice{slc: C.NewSliceTRawArgs(C.CString(string(bytes)), C.intToSizeT(C.int(len(bytes))))}
 	return
 }
 
 func (slc *cSlice) del()  {
-	C.DeleteSliceT(unsafe.Pointers(&slc.slc), false)
+	C.DeleteSliceT(&slc.slc, toCBool(false))
 }
 
 func newSlicesFromBytesArray(bytess [][]byte) (slcs []*cSlice) {
@@ -42,15 +42,15 @@ func newSlicesFromBytesArray(bytess [][]byte) (slcs []*cSlice) {
 	return
 }
 
-func (slcs cSlicePtrAry) del() {
-	for _, slc := range slcs {
+func (slcs *cSlicePtrAry) del() {
+	for _, slc := range *slcs {
 		slc.del()
 	}
 }
 
-func (slcs cSlicePtrAry) toCArray (cslcs []C.Slice_t) {
-	cslcs = make([]C.Slice_t, len(bytess))
-	for i, slc := range slcs {
+func (slcs *cSlicePtrAry) toCArray() (cslcs []C.Slice_t) {
+	cslcs = make([]C.Slice_t, len(*slcs))
+	for i, slc := range *slcs {
 		cslcs[i] = slc.slc
 	}
 	return

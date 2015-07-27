@@ -9,13 +9,18 @@ package rocksdb
 */
 import "C"
 
+import (
+	"runtime"
+	"unsafe"
+)
+
 type ColumnFamilyMetaData struct {
 	cfmd C.ColumnFamilyMetaData_t
 }
 
 func (cfmd *ColumnFamilyMetaData) finalize() {
-	var ccfmd *C.ColumnFamilyMetaData_t = unsafe.Pointer(&cfmd.cfmd)
-	C.DeleteColumnFamilyMetaDataT(ccfmd, false)
+	var ccfmd *C.ColumnFamilyMetaData_t = &cfmd.cfmd
+	C.DeleteColumnFamilyMetaDataT(ccfmd, toCBool(false))
 }
 
 func (ccfmd *C.ColumnFamilyMetaData_t) toColumnFamilyMetaData() (cfmd *ColumnFamilyMetaData) {
@@ -29,15 +34,15 @@ type LiveFileMetaData struct {
 }
 
 func (lfmd *LiveFileMetaData) finalize() {
-	var clfmd *C.LiveFileMetaData_t = unsafe.Pointer(&lfmd.lfmd)
-	C.DeleteLiveFileMetaDataT(clfmd, false)
+	var clfmd *C.LiveFileMetaData_t = &lfmd.lfmd
+	C.DeleteLiveFileMetaDataT(clfmd, toCBool(false))
 }
 
 func newLiveFileMetaDataArrayFromCArray(clfmd *C.LiveFileMetaData_t, sz uint) (lfmds []*LiveFileMetaData) {
 	defer C.DeleteLiveFileMetaDataTArray(clfmd)
 	lfmds = make([]*LiveFileMetaData, sz)
-	for i := 0; i < sz; i++ {
-		lfmds[i] = &LiveFileMetaData{lfmd: (*[sz]C.LiveFileMetaData_t)(unsafe.Pointer(clfmd))[i]}
+	for i := uint(0); i < sz; i++ {
+		lfmds[i] = &LiveFileMetaData{lfmd: (*[arrayDimenMax]C.LiveFileMetaData_t)(unsafe.Pointer(clfmd))[i]}
 		runtime.SetFinalizer(lfmds[i], finalize)
 	}
 	return

@@ -19,14 +19,19 @@ package rocksdb
 */
 import "C"
 
+import (
+	"runtime"
+	"unsafe"
+)
+
 type Iterator struct {
 	it C.Iterator_t
 	db *DB // make sure the iterator is deleted before the db
 }
 
 func (it *Iterator) finalize() {
-	var cit *C.Iterator_t = unsafe.Pointer(&it.it)
-	C.DeleteIteratorT(cit, false)
+	var cit *C.Iterator_t = &it.it
+	C.DeleteIteratorT(cit, toCBool(false))
 }
 
 func (cit *C.Iterator_t) toIterator(db *DB) (it *Iterator) {
@@ -38,8 +43,8 @@ func (cit *C.Iterator_t) toIterator(db *DB) (it *Iterator) {
 func newIteratorArrayFromCArray(cit *C.Iterator_t, sz uint, db *DB) (its []*Iterator) {
 	defer C.DeleteIteratorTArray(cit)
 	its = make([]*Iterator, sz)
-	for i := 0; i < sz; i++ {
-		its[i] = &Iterator{it: (*[sz]C.Iterator_t)(unsafe.Pointer(cit))[i], db: db}
+	for i := uint(0); i < sz; i++ {
+		its[i] = &Iterator{it: (*[arrayDimenMax]C.Iterator_t)(unsafe.Pointer(cit))[i], db: db}
 		runtime.SetFinalizer(its[i], finalize)
 	}
 	return

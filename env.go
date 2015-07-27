@@ -17,13 +17,17 @@ package rocksdb
 */
 import "C"
 
+import (
+	"runtime"
+)
+
 type Env struct {
 	env C.Env_t
 }
 
 func (env *Env) finalize() {
-	var cenv *C.Env_t = unsafe.Pointer(&env.env)
-	C.DeleteEnvT(cenv, false)
+	var cenv *C.Env_t = &env.env
+	C.DeleteEnvT(cenv, toCBool(false))
 }
 
 func (cenv *C.Env_t) toEnv() (env *Env) {

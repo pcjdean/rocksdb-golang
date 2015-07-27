@@ -223,17 +223,13 @@ enum bool_t {
 #define DEFINE_C_WRAP_DESTRUCTOR_ARRAY(x) DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC_R(x) \
     DEFINE_C_WRAP_DESTRUCTOR_ARRAY_BODY(x)
 
+#ifndef __cplusplus
 
+static inline size_t intToSizeT(int i) 
+{
+    return (size_t)i;
+}
 
-#ifdef __cplusplus
-extern "C" {
 #endif
-
-DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(uint64)
-
-#ifdef __cplusplus
-}  /* end extern "C" */
-#endif
-
 
 #endif //  GO_ROCKSDB_INCLUDE_TYPES_H_

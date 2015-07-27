@@ -37,6 +37,22 @@ func (rstr *cString) goString(del bool) (str string) {
 	return
 }
 
+func (rstr *cString) goBytes(del bool) (str []byte) {
+	var (
+		cplustr *C.String_t = &rstr.str
+		cstr *C.char = C.StringGetCStr(cplustr)
+		sz C.int = C.StringGetCStrLen(cplustr)
+	)
+	if del {
+		defer C.DeleteStringT(cplustr, toCBool(false))
+	}
+
+	if unsafe.Pointer(cstr) != nil && sz > 0 {
+		str = C.GoBytes(unsafe.Pointer(cstr), sz);
+	}
+	return
+}
+
 func (str *cString) del()  {
 	C.DeleteStringT(&str.str, toCBool(false))
 }
@@ -69,7 +85,17 @@ func newStringArrayFromCArray(ccstr *C.String_t, sz uint) (strs []string) {
 	return
 }
 
-func newcStringsFromStringArray(strs []string, sz uint) (cstrs []*cString) {
+func newBytesFromCArray(ccstr *C.String_t, sz uint) (strs [][]byte) {
+	defer C.DeleteStringTArray(ccstr)
+	strs = make([][]byte, sz)
+	for i := uint(0); i < sz; i++ {
+		cstr := cString{str: (*[arrayDimenMax]C.String_t)(unsafe.Pointer(ccstr))[i]}
+		strs[i] = cstr.goBytes(true)
+	}
+	return
+}
+
+func newcStringsFromStringArray(strs []string) (cstrs []*cString) {
 	cstrs = make([]*cString, len(strs))
 	for i, str := range strs {
 		cstrs[i] = newCStringFromString(&str)
@@ -77,15 +103,15 @@ func newcStringsFromStringArray(strs []string, sz uint) (cstrs []*cString) {
 	return
 }
 
-func (cstrs cStringPtrAry) del() {
-	for _, cstr := range cstrs {
+func (cstrs *cStringPtrAry) del() {
+	for _, cstr := range *cstrs {
 		cstr.del()
 	}
 }
 
-func (cstrs cStringPtrAry) toCArray (ccstrs []C.String_t) {
-	ccstrs = make([]C.String_t, len(cstrs))
-	for i, cstr := range cstrs {
+func (cstrs *cStringPtrAry) toCArray() (ccstrs []C.String_t) {
+	ccstrs = make([]C.String_t, len(*cstrs))
+	for i, cstr := range *cstrs {
 		ccstrs[i] = cstr.str
 	}
 	return

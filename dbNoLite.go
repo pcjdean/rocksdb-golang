@@ -12,19 +12,16 @@ package rocksdb
 */
 import "C"
 
-import (
-	"unsafe"
-)
-
 // Prevent file deletions. Compactions will continue to occur,
 // but no obsolete files will be deleted. Calling this multiple
 // times have the same effect as calling it once.
 func (db *DB) DisableFileDeletions() (stat *Status) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cdb *C.DB_t = &db.db
 	)
 
-	stat = C.DBDisableFileDeletions(cdb).toStatus()
+	cstat := C.DBDisableFileDeletions(cdb)
+	stat = cstat.toStatus()
 	return
 }
 
@@ -39,15 +36,16 @@ func (db *DB) DisableFileDeletions() (stat *Status) {
 // threads call EnableFileDeletions()
 func (db *DB) EnableFileDeletions(force ...bool) (stat *Status) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cforce C.bool = true
+		cdb *C.DB_t = &db.db
+		cforce C.bool = toCBool(true)
 	)
 
-	if force {
-		cforce = force
+	if force != nil {
+		cforce = toCBool(force[0])
 	}
 
-	stat = C.DBEnableFileDeletions(cdb, cforce).toStatus()
+	cstat := C.DBEnableFileDeletions(cdb, cforce)
+	stat = cstat.toStatus()
 	return
 }
 
@@ -69,31 +67,35 @@ func (db *DB) EnableFileDeletions(force ...bool) (stat *Status) {
 // column families were flushing
 func (db *DB) GetLiveFiles(flush_memtable ...bool) (files []string, fileSz uint64, stat *Status) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		cflhmem C.bool = true
+		cdb *C.DB_t = &db.db
+		cflhmem C.bool = toCBool(true)
 		n C.int
 		cfiles *C.String_t
+		cfsz C.uint64_t
 	)
 
-	if flush_memtable {
-		cflhmem = flush_memtable
+	if flush_memtable != nil {
+		cflhmem = toCBool(flush_memtable[0])
 	}
 
-	stat = C.DBGetLiveFiles(cdb, unsafe.Pointers(&cfiles), unsafe.Pointers(&n), unsafe.Pointers(&fileSz), cflhmem).toStatus()
-	files = newStringArrayFromCArray(cfiles, n)
+	cstat := C.DBGetLiveFiles(cdb, &cfiles, &n, &cfsz, cflhmem)
+	stat = cstat.toStatus()
+	fileSz = uint64(cfsz)
+	files = newStringArrayFromCArray(cfiles, uint(n))
 	return
 }
 
 // Retrieve the sorted list of all wal files with earliest file first
 func (db *DB) GetSortedWalFiles() (files []*LogFile, stat *Status) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cdb *C.DB_t = &db.db
 		n C.int
 		cfiles *C.LogFile_t
 	)
 
-	stat = C.DBGetSortedWalFiles(cdb, unsafe.Pointers(&cfiles), unsafe.Pointers(&n)).toStatus()
-	files = newLogFileArrayFromCArray(cfiles, n)
+	cstat := C.DBGetSortedWalFiles(cdb, &cfiles, &n)
+	stat = cstat.toStatus()
+	files = newLogFileArrayFromCArray(cfiles, uint(n))
 	return
 }
 
@@ -107,16 +109,17 @@ func (db *DB) GetSortedWalFiles() (files []*LogFile, stat *Status) {
 // an update is read.
 func (db *DB) GetUpdatesSince(sqn SequenceNumber, tranropt ...TransactionLogIteratorReadOptions) (it *TransactionLogIterator, stat *Status) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cdb *C.DB_t = &db.db
 		cit C.TransactionLogIterator_t
 		ctranropt *C.TransactionLogIterator_ReadOptions_t
 	)
 
-	if tranropt {
-		ctranropt = unsafe.Pointers(&tranropt.tranropt)	
+	if tranropt != nil {
+		ctranropt = &tranropt[0].tranropt	
 	}
 
-	stat = C.DBGetUpdatesSince(cdb, sqn, unsafe.Pointers(&cit), ctranropt).toStatus()
+	cstat := C.DBGetUpdatesSince(cdb, C.SequenceNumber(sqn), &cit, ctranropt)
+	stat = cstat.toStatus()
 	it = cit.toTransactionLogIterator()
 	return
 }
@@ -126,10 +129,11 @@ func (db *DB) GetUpdatesSince(sqn SequenceNumber, tranropt ...TransactionLogIter
 // path relative to the db directory. eg. 000001.sst, /archive/000003.log
 func (db *DB) DeleteFile(name string) (stat *Status) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cdb *C.DB_t = &db.db
 		cname C.String_t
 	)
-	stat = C.DBDeleteFile(cdb, unsafe.Pointers(&cname)).toStatus()
+	cstat := C.DBDeleteFile(cdb, &cname)
+	stat = cstat.toStatus()
 	name = cname.cToString()
 	return
 }
@@ -138,13 +142,13 @@ func (db *DB) DeleteFile(name string) (stat *Status) {
 // and end key
 func (db *DB) GetLiveFilesMetaData() (lfmds []*LiveFileMetaData) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
+		cdb *C.DB_t = &db.db
 		clfmds *C.LiveFileMetaData_t
-		valsz int
+		valsz C.int
 	)
 
-	C.DBGetLiveFilesMetaData(cdb, unsafe.Pointers(&cclfmds), len(valsz))
-	vals = newLiveFileMetaDataArrayFromCArray(cclfmds, valsz)
+	C.DBGetLiveFilesMetaData(cdb, &clfmds, &valsz)
+	lfmds = newLiveFileMetaDataArrayFromCArray(clfmds, uint(valsz))
 	return
 }
 
@@ -154,44 +158,44 @@ func (db *DB) GetLiveFilesMetaData() (lfmds []*LiveFileMetaData) {
 //
 // If cf_name is not specified, then the metadata of the default
 // column family will be returned.
-func (db *DB) GetColumnFamilyMetaData(cfd ...*ColumnFamilyHandle) (md *ColumnFamilyMetaData) {
+func (db *DB) GetColumnFamilyMetaData(cfh ...*ColumnFamilyHandle) (md *ColumnFamilyMetaData) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t
 		ccfmd C.ColumnFamilyMetaData_t
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		level = C.DBGetColumnFamilyMetaDataWithColumnFamily(cdb, ccfd, unsafe.Pointers(&ccfmd))
+	if ccfh != nil {
+		C.DBGetColumnFamilyMetaDataWithColumnFamily(cdb, ccfh, &ccfmd)
 	} else {
-		level = C.DBGetColumnFamilyMetaData(cdb, unsafe.Pointers(&ccfmd))
+		C.DBGetColumnFamilyMetaData(cdb, &ccfmd)
 	}
 	md = ccfmd.toColumnFamilyMetaData()
 	return
 }
 
-func (db *DB) GetPropertiesOfAllTables(cfd ...*ColumnFamilyHandle) (tpc *TablePropertiesCollection, stat *Status) {
+func (db *DB) GetPropertiesOfAllTables(cfh ...*ColumnFamilyHandle) (tpc *TablePropertiesCollection, stat *Status) {
 	var (
-		cdb *C.DB_t = unsafe.Pointers(&db.db)
-		ccfd *C.ColumnFamilyHandle_t
+		cdb *C.DB_t = &db.db
+		ccfh *C.ColumnFamilyHandle_t
 		ctpc C.TablePropertiesCollection_t
 	)
 
-	if cfd {
-		cfd[0].(*ColumnFamilyHandle)
-		ccfd = unsafe.Pointers(&cfd[0].cfd)
+	if cfh != nil {
+		ccfh = &cfh[0].cfh
 	}
 
-	if ccfd {
-		stat = C.DBGetPropertiesOfAllTablesWithColumnFamily(cdb, ccfd, unsafe.Pointers(&ctpc)).toStatus()
+	var cstat C.Status_t
+	if ccfh != nil {
+		cstat = C.DBGetPropertiesOfAllTablesWithColumnFamily(cdb, ccfh, &ctpc)
 	} else {
-		stat = C.DBGetPropertiesOfAllTables(cdb, unsafe.Pointers(&ctpc)).toStatus()
+		cstat = C.DBGetPropertiesOfAllTables(cdb, &ctpc)
 	}
+	stat = cstat.toStatus()
 	tpc = ctpc.toTablePropertiesCollection()
 	return
 }
@@ -201,13 +205,14 @@ func (db *DB) GetPropertiesOfAllTables(cfd ...*ColumnFamilyHandle) (tpc *TablePr
 // Some data may be lost, so be careful when calling this function
 // on a database that contains important information.
 func RepairDB(name string, opt Options) (stat *Status) {
-	cname := newCStringFromString(name)
+	cname := newCStringFromString(&name)
 
 	var (
-		ccname *C.String_t = unsafe.Pointers(&cname.str)
-		copt C.Options_t = unsafe.Pointers(&opt.opt)
+		ccname *C.String_t = &cname.str
+		copt *C.Options_t = &opt.opt
 	)
 
-	stat = C.DBRepairDB(ccname, copt).toStatus()
+	cstat := C.DBRepairDB(ccname, copt)
+	stat = cstat.toStatus()
 	return
 }

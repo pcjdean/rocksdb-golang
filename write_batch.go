@@ -30,6 +30,6 @@ type WriteBatch struct {
 }
 
 func (wbt *WriteBatch) finalize() {
-	var cwbt *C.WriteBatch_t = unsafe.Pointer(&wbt.wbt)
-	C.DeleteWriteBatchT(cwbt, false)
+	var cwbt *C.WriteBatch_t = &wbt.wbt
+	C.DeleteWriteBatchT(cwbt, toCBool(false))
 }

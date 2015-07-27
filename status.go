@@ -10,13 +10,18 @@ package rocksdb
 */
 import "C"
 
+import (
+	"runtime"
+	"unsafe"
+)
+
 type Status struct {
 	sta C.Status_t
 }
 
 func (stat *Status) finalize() {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	C.DeleteStatusT(cstat, false)
+	var cstat *C.Status_t = &stat.sta
+	C.DeleteStatusT(cstat, toCBool(false))
 }
 
 func (csta *C.Status_t) toStatus() (sta *Status) {
@@ -29,7 +34,7 @@ func newStatusArrayFromCArray(csta *C.Status_t, sz uint) (stas []*Status) {
 	defer C.DeleteStatusTArray(csta)
 	stas = make([]*Status, sz)
 	for i, _ := range stas {
-		stas[i] = &Status{sta: *(*[sz]C.Status_t)(unsafe.Pointer(csta))[i]}	
+		stas[i] = &Status{sta: (*[arrayDimenMax]C.Status_t)(unsafe.Pointer(csta))[i]}	
 		runtime.SetFinalizer(stas[i], finalize)
 	}
 	return
@@ -37,73 +42,73 @@ func newStatusArrayFromCArray(csta *C.Status_t, sz uint) (stas []*Status) {
 
 // Returns true iff the status indicates success.
 func (stat *Status) Ok() bool {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	return StatusOk(cstat)
+	var cstat *C.Status_t = &stat.sta
+	return C.StatusOk(cstat).toBool()
 }
 
 // Returns true iff the status indicates a NotFound error.
 func (stat *Status) IsNotFound() bool {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	return StatusIsNotFound(cstat)
+	var cstat *C.Status_t = &stat.sta
+	return C.StatusIsNotFound(cstat).toBool()
 }
 
 // Returns true iff the status indicates a Corruption error.
 func (stat *Status) IsCorruption() bool {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	return StatusIsCorruption(cstat)
+	var cstat *C.Status_t = &stat.sta
+	return C.StatusIsCorruption(cstat).toBool()
 }
 
 // Returns true iff the status indicates a NotSupported error.
 func (stat *Status) IsNotSupported() bool {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	return StatusIsNotSupported(cstat)
+	var cstat *C.Status_t = &stat.sta
+	return C.StatusIsNotSupported(cstat).toBool()
 }
 
 // Returns true iff the status indicates an IOError.
 func (stat *Status) IsInvalidArgument() bool {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	return StatusIsInvalidArgument(cstat)
+	var cstat *C.Status_t = &stat.sta
+	return C.StatusIsInvalidArgument(cstat).toBool()
 }
 
 // Returns true iff the status indicates an MergeInProgress.
 func (stat *Status) IsMergeInProgress() bool {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	return StatusIsMergeInProgress(cstat)
+	var cstat *C.Status_t = &stat.sta
+	return C.StatusIsMergeInProgress(cstat).toBool()
 }
 
 // Returns true iff the status indicates Incomplete
 func (stat *Status) IsIncomplete() bool {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	return StatusIsIncomplete(cstat)
+	var cstat *C.Status_t = &stat.sta
+	return C.StatusIsIncomplete(cstat).toBool()
 }
 
 // Returns true iff the status indicates Shutdown In progress
 func (stat *Status) IsShutdownInProgress() bool {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	return StatusIsShutdownInProgress(cstat)
+	var cstat *C.Status_t = &stat.sta
+	return C.StatusIsShutdownInProgress(cstat).toBool()
 }
 
 func (stat *Status) IsTimedOut() bool {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	return StatusIsTimedOut(cstat)
+	var cstat *C.Status_t = &stat.sta
+	return C.StatusIsTimedOut(cstat).toBool()
 }
 
 func (stat *Status) IsAborted() bool {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	return StatusIsAborted(cstat)
+	var cstat *C.Status_t = &stat.sta
+	return C.StatusIsAborted(cstat).toBool()
 }
 
 // Returns true iff the status indicates that a resource is Busy and
 // temporarily could not be acquired.
 func (stat *Status) IsBusy() bool {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	return StatusIsBusy(cstat)
+	var cstat *C.Status_t = &stat.sta
+	return C.StatusIsBusy(cstat).toBool()
 }
 
 // Return a string representation of this status suitable for printing.
 // Returns the string "OK" for success.
 func (stat *Status) ToString() string {
-	var cstat *C.Status_t = unsafe.Pointer(&stat.sta)
-	str := String{StatusToString(cstat)}
+	var cstat *C.Status_t = &stat.sta
+	str := cString{str: C.StatusToString(cstat)}
 	return str.goString(false)
 }

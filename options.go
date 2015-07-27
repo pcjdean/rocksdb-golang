@@ -10,13 +10,26 @@ package rocksdb
 */
 import "C"
 
+import (
+	"runtime"
+)
+
+type ColumnFamilyOptions struct {
+	cfopt C.ColumnFamilyOptions_t
+}
+
+func (cfopt *ColumnFamilyOptions) finalize() {
+	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
+	C.DeleteColumnFamilyOptionsT(ccfopt, toCBool(false))
+}
+
 type Options struct {
 	opt C.Options_t
 }
 
 func (opt *Options) finalize() {
-	var copt *C.Options_t = unsafe.Pointer(&opt.opt)
-	C.DeleteOptionsT(copt, false)
+	var copt *C.Options_t = &opt.opt
+	C.DeleteOptionsT(copt, toCBool(false))
 }
 
 func (copt *C.Options_t) toOptions() (opt *Options) {
@@ -30,8 +43,8 @@ type DBOptions struct {
 }
 
 func (dbopt *DBOptions) finalize() {
-	var cdbopt *C.DBOptions_t = unsafe.Pointer(&dbopt.dbopt)
-	C.DeleteDBOptionsT(cdbopt, false)
+	var cdbopt *C.DBOptions_t = &dbopt.dbopt
+	C.DeleteDBOptionsT(cdbopt, toCBool(false))
 }
 
 func (cdbopt *C.DBOptions_t) toDBOptions() (dbopt *DBOptions) {
@@ -45,8 +58,8 @@ type WriteOptions struct {
 }
 
 func (wopt *WriteOptions) finalize() {
-	var cwopt *C.WriteOptions_t = unsafe.Pointer(&wopt.wopt)
-	C.DeleteWriteOptionsT(cwopt, false)
+	var cwopt *C.WriteOptions_t = &wopt.wopt
+	C.DeleteWriteOptionsT(cwopt, toCBool(false))
 }
 
 type ReadOptions struct {
@@ -54,17 +67,17 @@ type ReadOptions struct {
 }
 
 func (ropt *ReadOptions) finalize() {
-	var cropt *C.ReadOptions_t = unsafe.Pointer(&ropt.ropt)
-	C.DeleteReadOptionsT(cropt, false)
+	var cropt *C.ReadOptions_t = &ropt.ropt
+	C.DeleteReadOptionsT(cropt, toCBool(false))
 }
 
 type FlushOptions struct {
-	fopt C.CompactionOptions_t
+	fopt C.FlushOptions_t
 }
 
 func (fopt *FlushOptions) finalize() {
-	var cfopt *C.FlushOptions_t = unsafe.Pointer(&fopt.fopt)
-	C.DeleteFlushOptionsT(cfopt, false)
+	var cfopt *C.FlushOptions_t = &fopt.fopt
+	C.DeleteFlushOptionsT(cfopt, toCBool(false))
 }
 
 type CompactionOptions struct {
@@ -72,7 +85,7 @@ type CompactionOptions struct {
 }
 
 func (copt *CompactionOptions) finalize() {
-	var ccopt *C.CompactionOptions_t = unsafe.Pointer(&copt.copt)
-	C.DeleteCompactionOptionsT(ccopt, false)
+	var ccopt *C.CompactionOptions_t = &copt.copt
+	C.DeleteCompactionOptionsT(ccopt, toCBool(false))
 }
 

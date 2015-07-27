@@ -18,24 +18,32 @@ type finalizer interface {
 	finalize()
 }
 
-func finalize(obj *finalizer) {
+func finalize(obj finalizer) {
 	obj.finalize()
 }
 
-func newUint64ArrayFromCArray(cuints *C.uint64_t, sz uint) (vals []uint64) {
-	defer C.Deleteuint64TArray(cuints)
-	vals = make([]uint64, sz)
-	for i := 0; i < sz; i++ {
-		vals[i] = (*[sz]C.uint64_t)(unsafe.Pointer(cuints))[i]
+func newUint64ArrayFromCArray(cuints *[]C.uint64_t) (vals []uint64) {
+	vals = make([]uint64, len(*cuints))
+	for i, v := range *cuints {
+		vals[i] = uint64(v)
 	}
 	return
 }
 
 func toCBool(b bool) (ret C.bool) {
 	if b {
-		ret = C.enum_bool_t.true
+		ret = C.true
 	} else {
-		ret = C.enum_bool_t.false
+		ret = C.false
+	}
+	return
+}
+
+func (b C.bool) toBool() (ret bool)  {
+	if b == C.true {
+		ret = true
+	} else {
+		ret = false
 	}
 	return
 }
