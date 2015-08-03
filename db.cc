@@ -2,7 +2,9 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <assert.h>
 #include <string.h>
+#include <stdio.h>
 #include <rocksdb/db.h>
 #include "db.h"
 
@@ -15,12 +17,14 @@ DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyHandle)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY(ColumnFamilyHandle)
 String_t ColumnFamilyGetName(const ColumnFamilyHandle_t* column_family)
 {
+    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
     const std::string& name_str = GET_REP(column_family, ColumnFamilyHandle)->GetName();
     return NewStringT(const_cast<std::string*>(&name_str));
 }
     
 uint32_t ColumnFamilyGetID(const ColumnFamilyHandle_t* column_family)
 {
+    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
     return GET_REP(column_family, ColumnFamilyHandle)->GetID();
 }
 
@@ -35,6 +39,7 @@ DEFINE_C_WRAP_CONSTRUCTOR(Snapshot)
 
 SequenceNumber SnapshotGetSequenceNumber(Snapshot_t* snapshot)
 {
+    assert(GET_REP(snapshot, Snapshot) != NULL);
     return GET_REP(snapshot, Snapshot)->GetSequenceNumber();
 }
 
@@ -61,8 +66,12 @@ Status_t DBOpen(const Options_t* options,
                 const String_t* name,
                 DB_t* dbptr)
 {
-    DB* rdbptr = GET_REP(dbptr, DB);
-    Status stat = DB::Open(GET_REP_REF(options, Options), GET_REP_REF(name, String), &rdbptr);
+    assert(dbptr != NULL);
+    DB** rdbptr = GET_REP_ADDR(dbptr, DB);
+    assert(rdbptr != NULL);
+    assert(GET_REP(options, Options) != NULL);
+    assert(GET_REP(name, String) != NULL);
+    Status stat = DB::Open(GET_REP_REF(options, Options), GET_REP_REF(name, String), rdbptr);
     return NewStatusTCopy(&stat);
 }
 
@@ -78,8 +87,12 @@ Status_t DBOpenForReadOnly(const Options_t* options,
                            const String_t* name, DB_t* dbptr,
                            bool error_if_log_file_exist)
 {
-    DB* rdbptr = GET_REP(dbptr, DB);
-    Status stat = DB::OpenForReadOnly(GET_REP_REF(options, Options), GET_REP_REF(name, String),  &rdbptr, error_if_log_file_exist);
+    assert(dbptr != NULL);
+    DB** rdbptr = GET_REP_ADDR(dbptr, DB);
+    assert(rdbptr != NULL);
+    assert(GET_REP(options, Options) != NULL);
+    assert(GET_REP(name, String) != NULL);
+    Status stat = DB::OpenForReadOnly(GET_REP_REF(options, Options), GET_REP_REF(name, String),  rdbptr, error_if_log_file_exist);
     return NewStatusTCopy(&stat);
 }
 
@@ -102,15 +115,19 @@ Status_t DBOpenForReadOnlyWithColumnFamilies(const Options_t* options,
     for (int i = 0; i < size_col; i++)
         column_families_vec.push_back(*(ColumnFamilyDescriptor*)column_families[i].rep);
     std::vector<ColumnFamilyHandle*> handles_vec;
-    DB* rdbptr = GET_REP(dbptr, DB);
-    Status stat = DB::OpenForReadOnly(GET_REP_REF(options, Options), GET_REP_REF(name, String), column_families_vec, &handles_vec, &rdbptr, error_if_log_file_exist);
+    assert(dbptr != NULL);
+    DB** rdbptr = GET_REP_ADDR(dbptr, DB);
+    assert(rdbptr != NULL);
+    assert(GET_REP(options, Options) != NULL);
+    assert(GET_REP(name, String) != NULL);
+    Status stat = DB::OpenForReadOnly(GET_REP_REF(options, Options), GET_REP_REF(name, String), column_families_vec, &handles_vec, rdbptr, error_if_log_file_exist);
     Status_t ret = NewStatusTCopy(&stat);
     assert(handles_vec.size() == size_col);
     *handles = new ColumnFamilyHandle_t[size_col];
     for (int j = 0; j < size_col; j++)
     {
-        ColumnFamilyHandle* rcfh = GET_REP(&(*handles)[j], ColumnFamilyHandle);
-        rcfh = handles_vec[j];
+        ColumnFamilyHandle** rcfh = GET_REP_ADDR(&(*handles)[j], ColumnFamilyHandle);
+        *rcfh = handles_vec[j];
     }
     return ret;
 }
@@ -135,15 +152,19 @@ Status_t DBOpenWithColumnFamilies(const Options_t* options, const String_t* name
     for (int i = 0; i < size_col; i++)
         column_families_vec.push_back(*(ColumnFamilyDescriptor*)column_families[i].rep);
     std::vector<ColumnFamilyHandle*> handles_vec;
-    DB* rdbptr = GET_REP(dbptr, DB);
-    Status stat = DB::Open(GET_REP_REF(options, Options), GET_REP_REF(name, String), column_families_vec, &handles_vec, &rdbptr);
+    assert(dbptr != NULL);
+    DB** rdbptr = GET_REP_ADDR(dbptr, DB);
+    assert(rdbptr != NULL);
+    assert(GET_REP(options, Options) != NULL);
+    assert(GET_REP(name, String) != NULL);
+    Status stat = DB::Open(GET_REP_REF(options, Options), GET_REP_REF(name, String), column_families_vec, &handles_vec, rdbptr);
     Status_t ret = NewStatusTCopy(&stat);
     assert(handles_vec.size() == size_col);
     *handles = new ColumnFamilyHandle_t[size_col];
     for (int j = 0; j < size_col; j++)
     {
-        ColumnFamilyHandle* rcfh = GET_REP(&(*handles)[j], ColumnFamilyHandle);
-        rcfh = handles_vec[j];
+        ColumnFamilyHandle** rcfh = GET_REP_ADDR(&(*handles)[j], ColumnFamilyHandle);
+        *rcfh = handles_vec[j];
     }
     return ret;
 }
@@ -157,6 +178,8 @@ Status_t DBListColumnFamilies(DBOptions_t* db_options,
                               String_t **column_families, int* size_col)
 {
     std::vector<std::string> column_families_vec;
+    assert(GET_REP(db_options, Options) != NULL);
+    assert(GET_REP(name, String) != NULL);
     Status stat = DB::ListColumnFamilies(GET_REP_REF(db_options, Options), GET_REP_REF(name, String), &column_families_vec);
     Status_t ret = NewStatusTCopy(&stat);
     *size_col = column_families_vec.size();
@@ -165,6 +188,7 @@ Status_t DBListColumnFamilies(DBOptions_t* db_options,
     {
         (*column_families)[j].rep = new String();
         String* rstr = GET_REP(&(*column_families)[j], String);
+        assert(rstr != NULL);
         *rstr = std::move(column_families_vec[j]);
     }
     return ret;
@@ -177,8 +201,13 @@ Status_t DBCreateColumnFamily(const DB_t* dbptr, const ColumnFamilyOptions_t* op
                             const String_t* column_family_name,
                             ColumnFamilyHandle_t* handle)
 {
-    ColumnFamilyHandle* rcfh = GET_REP(handle, ColumnFamilyHandle);
-    Status stat = GET_REP(dbptr, DB)->CreateColumnFamily(GET_REP_REF(options, ColumnFamilyOptions), GET_REP_REF(column_family_name, String), &rcfh);
+    assert(handle != NULL);
+    ColumnFamilyHandle** rcfh = GET_REP_ADDR(handle, ColumnFamilyHandle);
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(options, ColumnFamilyOptions) != NULL);
+    assert(GET_REP(column_family_name, String) != NULL);
+    Status stat = GET_REP(dbptr, DB)->CreateColumnFamily(GET_REP_REF(options, ColumnFamilyOptions), GET_REP_REF(column_family_name, String), rcfh);
     return NewStatusTCopy(dbptr ?
                           &stat :
                           // TODO create a const constructor
@@ -190,6 +219,9 @@ Status_t DBCreateColumnFamily(const DB_t* dbptr, const ColumnFamilyOptions_t* op
 // family from flushing and compacting.
 Status_t DBDropColumnFamily(const DB_t* dbptr, const ColumnFamilyHandle_t* column_family)
 {
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
     Status stat = GET_REP(dbptr, DB)->DropColumnFamily(GET_REP(column_family, ColumnFamilyHandle));
     return NewStatusTCopy(dbptr ?
                           &stat :
@@ -205,6 +237,12 @@ Status_t DBPutWithColumnFamily(const DB_t* dbptr, const WriteOptions_t* options,
                            const Slice_t* key,
                            const Slice_t* value)
 {
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(options, WriteOptions) != NULL);
+    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
+    assert(GET_REP(key, Slice) != NULL);
+    assert(GET_REP(value, Slice) != NULL);
     Status stat = GET_REP(dbptr, DB)->Put(GET_REP_REF(options, WriteOptions), GET_REP(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), GET_REP_REF(value, Slice));
     return NewStatusTCopy(dbptr ?
                           &stat :
@@ -227,6 +265,11 @@ Status_t DBDeleteWithColumnFamily(const DB_t* dbptr, const WriteOptions_t* optio
                                   const ColumnFamilyHandle_t* column_family,
                                   const Slice_t* key)
 {
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(options, WriteOptions) != NULL);
+    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
+    assert(GET_REP(key, Slice) != NULL);
     Status stat = GET_REP(dbptr, DB)->Delete(GET_REP_REF(options, WriteOptions), GET_REP(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice));
     return NewStatusTCopy(dbptr ?
                           &stat :
@@ -249,6 +292,12 @@ Status_t DBMergeWithColumnFamily(const DB_t* dbptr, const WriteOptions_t* option
                                  const Slice_t* key,
                                  const Slice_t* value)
 {
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(options, WriteOptions) != NULL);
+    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
+    assert(GET_REP(key, Slice) != NULL);
+    assert(GET_REP(value, Slice) != NULL);
     Status stat = GET_REP(dbptr, DB)->Merge(GET_REP_REF(options, WriteOptions), GET_REP(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), GET_REP_REF(value, Slice));
     return NewStatusTCopy(dbptr ?
                           &stat :
@@ -270,6 +319,10 @@ Status_t DBMerge(const DB_t* dbptr, const WriteOptions_t* options,
 // Note: consider setting options.sync = true.
 Status_t DBWrite(const DB_t* dbptr, const WriteOptions_t* options, WriteBatch_t* updates)
 {
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(options, WriteOptions) != NULL);
+    assert(GET_REP(updates, WriteBatch) != NULL);
     Status stat = GET_REP(dbptr, DB)->Write(GET_REP_REF(options, WriteOptions), GET_REP(updates, WriteBatch));
     return NewStatusTCopy(dbptr ?
                           &stat :
@@ -292,6 +345,10 @@ Status_t DBGetWithColumnFamily(const DB_t* dbptr, const ReadOptions_t* options,
     if (dbptr)
     {
         std::string str_val;
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(options, ReadOptions) != NULL);
+        assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
+        assert(GET_REP(key, Slice) != NULL);
         ret = GET_REP(dbptr, DB)->Get(GET_REP_REF(options, ReadOptions), GET_REP(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), &str_val);
         if (!str_val.empty())
             GET_REP_REF(value, String) = std::move(str_val);
@@ -337,6 +394,8 @@ Status_t* DBMultiGetWithColumnFamily(const DB_t* dbptr, const ReadOptions_t* opt
         for (int i = 0; i < size_keys; i++)
             keys_vec.push_back(*(Slice*)(keys[i].rep));
         std::vector<std::string> values_vec;
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(options, ReadOptions) != NULL);
         std::vector<Status> ret_vec = GET_REP(dbptr, DB)->MultiGet(GET_REP_REF(options, ReadOptions), column_families_vec, keys_vec, &values_vec);
         assert(values_vec.size() == size_keys);
         assert(ret_vec.size() == size_keys);
@@ -383,6 +442,11 @@ bool DBKeyMayExistWithColumnFamily(const DB_t* dbptr, const ReadOptions_t* optio
                                    bool* value_found)
 {
     std::string val_str;
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(options, ReadOptions) != NULL);
+    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
+    assert(GET_REP(key, Slice) != NULL);
     bool ret = GET_REP(dbptr, DB)->KeyMayExist(GET_REP_REF(options, ReadOptions), GET_REP(column_family, ColumnFamilyHandle), GET_REP_REF(key, Slice), &val_str, value_found);
     GET_REP_REF(value, String) = std::move(val_str);
     return ret;
@@ -406,7 +470,9 @@ bool DBKeyMayExist(const DB_t* dbptr, const ReadOptions_t* options,
 Iterator_t DBNewIteratorWithColumnFamily(const DB_t* dbptr, const ReadOptions_t* options,
                                          const ColumnFamilyHandle_t* column_family)
 {
-    return NewIteratorT(dbptr ? GET_REP(dbptr, DB)->NewIterator(GET_REP_REF(options, ReadOptions), GET_REP(column_family, ColumnFamilyHandle)) : nullptr);
+    assert(GET_REP(options, ReadOptions) != NULL);
+    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
+    return NewIteratorT((dbptr && GET_REP(dbptr, DB)) ? GET_REP(dbptr, DB)->NewIterator(GET_REP_REF(options, ReadOptions), GET_REP(column_family, ColumnFamilyHandle)) : nullptr);
 }
     
 Iterator_t DBNewIterator(const DB_t* dbptr, const ReadOptions_t* options)
@@ -431,6 +497,8 @@ Status_t DBNewIterators(const DB_t* dbptr, const ReadOptions_t* options,
         for (int i = 0; i < size_col; i++)
             column_families_vec.push_back(GET_REP(&column_families[i], ColumnFamilyHandle));
         std::vector<Iterator*> values_vec;
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(options, ReadOptions) != NULL);
         ret = GET_REP(dbptr, DB)->NewIterators(GET_REP_REF(options, ReadOptions), column_families_vec, &values_vec);
         *val_sz = values_vec.size();
         *values = new Iterator_t[*val_sz];
@@ -456,7 +524,7 @@ Status_t DBNewIterators(const DB_t* dbptr, const ReadOptions_t* options,
 // not support snapshot.
 Snapshot_t DBGetSnapshot(const DB_t* dbptr)
 {
-    return NewSnapshotT(dbptr ? const_cast<Snapshot *>(GET_REP(dbptr, DB)->GetSnapshot()) : nullptr);
+    return NewSnapshotT((dbptr && GET_REP(dbptr, DB)) ? const_cast<Snapshot *>(GET_REP(dbptr, DB)->GetSnapshot()) : nullptr);
 }
 
 // Release a previously acquired snapshot.  The caller must not
@@ -464,7 +532,11 @@ Snapshot_t DBGetSnapshot(const DB_t* dbptr)
 void DBReleaseSnapshot(const DB_t* dbptr, const Snapshot_t* snapshot)
 {
     if (dbptr)
+    {
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(snapshot, Snapshot) != NULL);
         GET_REP(dbptr, DB)->ReleaseSnapshot(GET_REP(snapshot, Snapshot));
+    }
 }
 
 // DB implementations can export properties about their state
@@ -510,7 +582,11 @@ bool DBGetPropertyWithColumnFamily(const DB_t* dbptr, const ColumnFamilyHandle_t
     if (dbptr)
     {
         std::string str_val;
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
+        assert(GET_REP(property, Slice) != NULL);
         bool ret = GET_REP(dbptr, DB)->GetProperty( GET_REP(column_family, ColumnFamilyHandle), GET_REP_REF(property, Slice), &str_val);
+        assert(GET_REP(value, String) != NULL);
         GET_REP_REF(value, String) = std::move(str_val);
         return ret;
     }
@@ -549,6 +625,9 @@ bool DBGetIntPropertyWithColumnFamily(const DB_t* dbptr,
 {
     if (dbptr)
     {
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
+        assert(GET_REP(property, Slice) != NULL);
         return GET_REP(dbptr, DB)->GetIntProperty(GET_REP(column_family, ColumnFamilyHandle), GET_REP_REF(property, Slice), value);
     }
     else
@@ -580,6 +659,8 @@ void DBGetApproximateSizesWithColumnFamily(const DB_t* dbptr,
         Range* range_ary = new Range[n];
         for (int i = 0; i < n; i++)
             range_ary[i] = GET_REP_REF(&range[i], Range);
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
         GET_REP(dbptr, DB)->GetApproximateSizes(GET_REP(column_family, ColumnFamilyHandle), range_ary, n, sizes);
         delete []range_ary;
     }
@@ -618,6 +699,11 @@ Status_t DBCompactRangeWithColumnFamily(const DB_t* dbptr,
                                         bool reduce_level, int target_level,
                                         uint32_t target_path_id)
 {
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
+    assert(GET_REP(begin, Slice) != NULL);
+    assert(GET_REP(end, Slice) != NULL);
     Status stat = GET_REP(dbptr, DB)->CompactRange(GET_REP(column_family, ColumnFamilyHandle), GET_REP(begin, Slice), GET_REP(end, Slice), reduce_level, target_level, target_path_id);
     return NewStatusTCopy(dbptr ?
                           &stat :
@@ -643,6 +729,9 @@ Status_t DBSetOptionsWithColumnFamily(const DB_t* dbptr,
     {
         new_options_map[std::move(GET_REP_REF(&new_options[i], String))] = std::move(GET_REP_REF(&new_options[++i], String));
     }
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
     Status stat = GET_REP(dbptr, DB)->SetOptions(GET_REP(column_family, ColumnFamilyHandle), new_options_map);
     return NewStatusTCopy(&stat);
 }
@@ -675,6 +764,9 @@ Status_t DBCompactFilesWithColumnFamily(const DB_t* dbptr,
         std::vector<std::string> input_file_names_vec;
         for (int i = 0; i < n; i++)
             input_file_names_vec.push_back(std::move(GET_REP_REF(&input_file_names[i], String)));
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(compact_options, CompactionOptions) != NULL);
+        assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
         ret = GET_REP(dbptr, DB)->CompactFiles(GET_REP_REF(compact_options, CompactionOptions), GET_REP(column_family, ColumnFamilyHandle), input_file_names_vec, output_level, output_path_id);
     }
     else
@@ -702,6 +794,8 @@ int DBNumberLevelsWithColumnFamily(const DB_t* dbptr,
     int ret = 0;
     if (dbptr)
     {
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
         ret = GET_REP(dbptr, DB)->NumberLevels(GET_REP(column_family, ColumnFamilyHandle));
     }
     return ret;
@@ -721,6 +815,8 @@ int DBMaxMemCompactionLevelWithColumnFamily(const DB_t* dbptr,
     int ret = 0;
     if (dbptr)
     {
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
         ret = GET_REP(dbptr, DB)->MaxMemCompactionLevel(GET_REP(column_family, ColumnFamilyHandle));
     }
     return ret;
@@ -739,6 +835,8 @@ int DBLevel0StopWriteTriggerWithColumnFamily(const DB_t* dbptr,
     int ret = 0;
     if (dbptr)
     {
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
         ret = GET_REP(dbptr, DB)->Level0StopWriteTrigger(GET_REP(column_family, ColumnFamilyHandle));
     }
     return ret;
@@ -756,6 +854,7 @@ String_t DBGetName(const DB_t* dbptr)
 {
     if (dbptr)
     {
+        assert(GET_REP(dbptr, DB) != NULL);
         return NewStringTMove(const_cast<String *>(&GET_REP(dbptr, DB)->GetName()));
     }
     else
@@ -765,7 +864,7 @@ String_t DBGetName(const DB_t* dbptr)
 // Get Env object from the DB
 Env_t DBGetEnv(const DB_t* dbptr)
 {
-    return NewEnvT(dbptr ? GET_REP(dbptr, DB)->GetEnv() : nullptr);
+    return NewEnvT((dbptr && GET_REP(dbptr, DB)) ? GET_REP(dbptr, DB)->GetEnv() : nullptr);
 }
 
 // Get DB Options that we use.  During the process of opening the
@@ -777,6 +876,8 @@ Options_t DBGetOptionsWithColumnFamily(const DB_t* dbptr,
 {
     if (dbptr)
     {
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
         const Options &options = GET_REP(dbptr, DB)->GetOptions(GET_REP(column_family, ColumnFamilyHandle));
         return NewOptionsTRawArgs(options, options);
     }
@@ -794,8 +895,10 @@ DBOptions_t DBGetDBOptions(const DB_t* dbptr)
 {
     if (dbptr)
     {
+        assert(GET_REP(dbptr, DB) != NULL);
         const DBOptions &dboptions = GET_REP(dbptr, DB)->GetDBOptions();
         const ColumnFamilyHandle_t column_family = DBDefaultColumnFamily(dbptr);
+        assert(GET_REP(&column_family, ColumnFamilyHandle) != NULL);
         const Options &options = GET_REP(dbptr, DB)->GetOptions(GET_REP(&column_family, ColumnFamilyHandle));
         Options new_options(dboptions, options);
         return NewDBOptionsTRawArgs(new_options);
@@ -809,6 +912,10 @@ Status_t DBFlushWithColumnFamily(const DB_t* dbptr,
                                  const FlushOptions_t* options,
                                  const ColumnFamilyHandle_t* column_family)
 {
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(options, FlushOptions) != NULL);
+    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
     Status stat = GET_REP(dbptr, DB)->Flush(GET_REP_REF(options, FlushOptions), GET_REP(column_family, ColumnFamilyHandle));
     return NewStatusTCopy(dbptr ?
                           &stat :
@@ -828,6 +935,7 @@ SequenceNumber DBGetLatestSequenceNumber(const DB_t* dbptr)
     SequenceNumber ret = -1;
     if (dbptr)
     {
+        assert(GET_REP(dbptr, DB) != NULL);
         ret = GET_REP(dbptr, DB)->GetLatestSequenceNumber();
     }
     return ret;
@@ -840,6 +948,8 @@ SequenceNumber DBGetLatestSequenceNumber(const DB_t* dbptr)
 // times have the same effect as calling it once.
 Status_t DBDisableFileDeletions(const DB_t* dbptr)
 {
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
     Status stat = GET_REP(dbptr, DB)->DisableFileDeletions();
     return NewStatusTCopy(dbptr ?
                           &stat :
@@ -857,6 +967,8 @@ Status_t DBDisableFileDeletions(const DB_t* dbptr)
 // threads call EnableFileDeletions()
 Status_t DBEnableFileDeletions(const DB_t* dbptr, bool force)
 {
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
     Status stat = GET_REP(dbptr, DB)->EnableFileDeletions(force);
     return NewStatusTCopy(dbptr ?
                           &stat :
@@ -889,6 +1001,7 @@ Status_t DBGetLiveFiles(const DB_t* dbptr,
     if (dbptr)
     {
         std::vector<std::string> live_files_vec;
+        assert(GET_REP(dbptr, DB) != NULL);
         ret = GET_REP(dbptr, DB)->GetLiveFiles(live_files_vec, manifest_file_size, flush_memtable);
         *n = live_files_vec.size();
         *live_files = new String_t[*n];
@@ -912,6 +1025,7 @@ Status_t DBGetSortedWalFiles(const DB_t* dbptr, LogFile_t **files, int* n)
     if (dbptr)
     {
         VectorLogPtr files_vec;
+        assert(GET_REP(dbptr, DB) != NULL);
         ret = GET_REP(dbptr, DB)->GetSortedWalFiles(files_vec);
         *n = files_vec.size();
         *files = new LogFile_t[*n];
@@ -941,6 +1055,8 @@ Status_t DBGetUpdatesSince(const DB_t* dbptr, SequenceNumber seq_number,
     if (dbptr)
     {
         unique_ptr<TransactionLogIterator> iter_ptr;
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(read_options, TransactionLogIterator_ReadOptions) != NULL);
         ret = GET_REP(dbptr, DB)->GetUpdatesSince(seq_number, &iter_ptr, GET_REP_REF(read_options, TransactionLogIterator_ReadOptions));
         iter->rep = iter_ptr.release();
     }
@@ -955,6 +1071,9 @@ Status_t DBGetUpdatesSince(const DB_t* dbptr, SequenceNumber seq_number,
 // path relative to the db directory. eg. 000001.sst, /archive/000003.log
 Status_t DBDeleteFile(const DB_t* dbptr, String_t* name)
 {
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(name, String) != NULL);
     Status stat = GET_REP(dbptr, DB)->DeleteFile(GET_REP_REF(name, String));
     return NewStatusTCopy(dbptr ?
                           &stat :
@@ -968,6 +1087,7 @@ void DBGetLiveFilesMetaData(const DB_t* dbptr, LiveFileMetaData_t** metadata, in
     if (dbptr)
     {
         std::vector<LiveFileMetaData> metadata_vec;
+        assert(GET_REP(dbptr, DB) != NULL);
         GET_REP(dbptr, DB)->GetLiveFilesMetaData(&metadata_vec);
         *n = metadata_vec.size();
         *metadata = new LiveFileMetaData_t[*n];
@@ -991,6 +1111,9 @@ void DBGetColumnFamilyMetaDataWithColumnFamily(const DB_t* dbptr,
 {
     if (dbptr)
     {
+        assert(GET_REP(dbptr, DB) != NULL);
+        assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
+        assert(GET_REP(metadata, ColumnFamilyMetaData) != NULL);
         GET_REP(dbptr, DB)->GetColumnFamilyMetaData(GET_REP(column_family, ColumnFamilyHandle), GET_REP(metadata, ColumnFamilyMetaData));
     }
 }
@@ -1009,6 +1132,9 @@ void DBGetColumnFamilyMetaData(const DB_t* dbptr,
 // be set properly
 Status_t DBGetDbIdentity(const DB_t* dbptr, String_t* identity)
 {
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(identity, String) != NULL);
     Status stat = GET_REP(dbptr, DB)->GetDbIdentity(GET_REP_REF(identity, String));
     return NewStatusTCopy(dbptr ?
                           &stat :
@@ -1019,7 +1145,9 @@ Status_t DBGetDbIdentity(const DB_t* dbptr, String_t* identity)
 ColumnFamilyHandle_t DBDefaultColumnFamily(const DB_t* dbptr)
 {
     ColumnFamilyHandle_t cf_handle;
-    cf_handle.rep = dbptr ? GET_REP(dbptr, DB)->DefaultColumnFamily() : nullptr; 
+    cf_handle.rep = (dbptr && GET_REP(dbptr, DB)) ?
+        GET_REP(dbptr, DB)->DefaultColumnFamily() :
+        nullptr; 
     return cf_handle;
 }
 
@@ -1028,6 +1156,10 @@ Status_t DBGetPropertiesOfAllTablesWithColumnFamily(const DB_t* dbptr,
                                                     const ColumnFamilyHandle_t* column_family,
                                                     TablePropertiesCollection_t* props)
 {
+    assert(dbptr != NULL);
+    assert(GET_REP(dbptr, DB) != NULL);
+    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
+    assert(GET_REP(props, TablePropertiesCollection) != NULL);
     Status stat = GET_REP(dbptr, DB)->GetPropertiesOfAllTables(GET_REP(column_family, ColumnFamilyHandle), GET_REP(props, TablePropertiesCollection));
     return NewStatusTCopy(dbptr ?
                           &stat :
@@ -1046,6 +1178,8 @@ Status_t DBGetPropertiesOfAllTables(const DB_t* dbptr,
 // Be very careful using this method.
 Status_t DBDestroyDB(const String_t* name, const Options_t* options)
 {
+    assert(GET_REP(name, String) != NULL);
+    assert(GET_REP(options, Options) != NULL);
     Status stat = DestroyDB(GET_REP_REF(name, String), GET_REP_REF(options, Options));
     return NewStatusTCopy(&stat);
 }
@@ -1057,6 +1191,8 @@ Status_t DBDestroyDB(const String_t* name, const Options_t* options)
 // on a database that contains important information.
 Status_t DBRepairDB(const String_t* dbname, const Options_t* options)
 {
+    assert(GET_REP(dbname, String) != NULL);
+    assert(GET_REP(options, Options) != NULL);
     Status stat = RepairDB(GET_REP_REF(dbname, String), GET_REP_REF(options, Options));
     return NewStatusTCopy(&stat);
 }

@@ -23,6 +23,7 @@ enum bool_t {
 
 #define GET_REP(x,y) ((y*)((x)->rep))
 #define GET_REP_REF(x,y) (*GET_REP(x, y))
+#define GET_REP_ADDR(x,y) ((y**)&((x)->rep))
 
 #define DEFINE_C_WRAP_STRUCT(x) typedef struct x##_t   \
     {                                                  \
@@ -222,6 +223,37 @@ enum bool_t {
 #define DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(x) DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC_R(x);
 #define DEFINE_C_WRAP_DESTRUCTOR_ARRAY(x) DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC_R(x) \
     DEFINE_C_WRAP_DESTRUCTOR_ARRAY_BODY(x)
+
+
+
+#define DEFINE_C_WRAP_GETTER_DEC_R(x,y,z) z x##_get_##y(x##_t* ptr)
+#define DEFINE_C_WRAP_GETTER_BODY(x,y,z) { \
+        if (ptr) \
+        {                                       \
+            return (z)(((x*)ptr->rep)->y);      \
+        }                                       \
+    } 
+
+#define DEFINE_C_WRAP_GETTER_DEC(x,y,z) DEFINE_C_WRAP_GETTER_DEC_R(x,y,z);
+#define DEFINE_C_WRAP_GETTER(x,y,z) DEFINE_C_WRAP_GETTER_DEC_R(x,y,z) \
+    DEFINE_C_WRAP_GETTER_BODY(x,y,z)
+
+
+
+#define DEFINE_C_WRAP_SETTER_DEC_R(x,y,z) void x##_set_##y(x##_t* ptr, z v)
+#define DEFINE_C_WRAP_SETTER_BODY(x,y,z) { \
+        if (ptr) \
+        {                                       \
+            ((x*)ptr->rep)->y = (z)v;            \
+        }                                       \
+    } 
+
+#define DEFINE_C_WRAP_SETTER_DEC(x,y,z) DEFINE_C_WRAP_SETTER_DEC_R(x,y,z);
+#define DEFINE_C_WRAP_SETTER(x,y,z) DEFINE_C_WRAP_SETTER_DEC_R(x,y,z) \
+    DEFINE_C_WRAP_SETTER_BODY(x,y,z)
+
+
+
 
 #ifndef __cplusplus
 

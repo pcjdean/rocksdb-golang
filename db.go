@@ -212,7 +212,7 @@ func (db *DB) finalize() {
 // If everything is OK, handles will on return be the same size
 // as column_families --- handles[i] will be a handle that you
 // will use to operate on column family column_family[i]
-func Open(options *Options, name *string, cfds ...*ColumnFamilyDescriptor) (db *DB, stat *Status, cfhs []*ColumnFamilyHandle) {
+func Open(name *string, options *Options, cfds ...*ColumnFamilyDescriptor) (db *DB, stat *Status, cfhs []*ColumnFamilyHandle) {
 	db = &DB{}
 	rstr := newCStringFromString(name)
 	defer rstr.del()
@@ -269,7 +269,7 @@ func Open(options *Options, name *string, cfds ...*ColumnFamilyDescriptor) (db *
 //
 // Not supported in ROCKSDB_LITE, in which case the function will
 // return Status_t::NotSupported.
-func OpenForReadOnly(options *Options, name *string, cfds ...interface{}) (db *DB, cfhs []*ColumnFamilyHandle, stat *Status) {
+func OpenForReadOnly(name *string, options *Options, cfds ...interface{}) (db *DB, cfhs []*ColumnFamilyHandle, stat *Status) {
 	db = &DB{}
 	rstr := newCStringFromString(name)
 	defer rstr.del()
@@ -314,7 +314,7 @@ func OpenForReadOnly(options *Options, name *string, cfds ...interface{}) (db *D
 // and return the list of all column families in that DB
 // through column_families argument. The ordering of
 // column families in column_families is unspecified.
-func ListColumnFamilies(dbopt *DBOptions, name *string) (cfss []string, stat *Status) {
+func ListColumnFamilies(name *string, dbopt *DBOptions) (cfss []string, stat *Status) {
 	rstr := newCStringFromString(name)
 	defer rstr.del()
 
@@ -336,7 +336,7 @@ func ListColumnFamilies(dbopt *DBOptions, name *string) (cfss []string, stat *St
 
 // Create a column_family and return the handle of column family
 // through the argument handle.
-func (db *DB) CreateColumnFamily(options *ColumnFamilyOptions, colfname *string) (cfd *ColumnFamilyHandle, stat *Status) {
+func (db *DB) CreateColumnFamily(colfname *string, options *ColumnFamilyOptions) (cfd *ColumnFamilyHandle, stat *Status) {
 	cstr := newCStringFromString(colfname)
 	var (
 		cdb *C.DB_t = &db.db
@@ -1103,8 +1103,8 @@ func (db *DB) DefaultColumnFamily() (cfh *ColumnFamilyHandle) {
 
 // Destroy the contents of the specified database.
 // Be very careful using this method.
-func DestroyDB(name string, opt Options) (stat *Status) {
-	cname := newCStringFromString(&name)
+func DestroyDB(name *string, opt *Options) (stat *Status) {
+	cname := newCStringFromString(name)
 
 	var (
 		ccname *C.String_t = &cname.str

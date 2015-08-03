@@ -107,7 +107,7 @@ func (stat *Status) IsBusy() bool {
 
 // Return a string representation of this status suitable for printing.
 // Returns the string "OK" for success.
-func (stat *Status) ToString() string {
+func (stat *Status) String() string {
 	var cstat *C.Status_t = &stat.sta
 	str := cString{str: C.StatusToString(cstat)}
 	return str.goString(false)
