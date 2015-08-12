@@ -30,6 +30,14 @@ func newUint64ArrayFromCArray(cuints *[]C.uint64_t) (vals []uint64) {
 	return
 }
 
+func newCIntArrayFromArray(vals *[]int) (cints []C.int) {
+	cints = make([]C.int, len(*vals))
+	for i, v := range *vals {
+		cints[i] = C.int(v)
+	}
+	return
+}
+
 func toCBool(b bool) (ret C.bool) {
 	if b {
 		ret = C.true

@@ -24,10 +24,21 @@ DEFINE_C_WRAP_STRUCT(WriteOptions)
 DEFINE_C_WRAP_STRUCT(FlushOptions)
 DEFINE_C_WRAP_STRUCT(CompactionOptions)
 
+DEFINE_C_WRAP_STATIC_CAST_DEC(Options, DBOptions)
+DEFINE_C_WRAP_STATIC_CAST_DEC(Options, ColumnFamilyOptions)
+
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(ColumnFamilyOptions)
 DEFINE_C_WRAP_CONSTRUCTOR_ARGS_DEC(ColumnFamilyOptions, Options)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(ColumnFamilyOptions)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(ColumnFamilyOptions)
+// Get/Set methods
+DEFINE_C_WRAP_GETTER_DEC(ColumnFamilyOptions, compression, int)
+DEFINE_C_WRAP_SETTER_DEC(ColumnFamilyOptions, compression, int)
+void ColumnFamilyOptions_set_compression_per_level(ColumnFamilyOptions_t* opt,
+                                                   int* level_values,
+                                                   size_t num_levels);
+void ColumnFamilyOptions_set_compression_options(
+    ColumnFamilyOptions_t* opt, int w_bits, int level, int strategy);
 
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(DBOptions)
 #ifdef __cplusplus
@@ -38,6 +49,8 @@ DEFINE_C_WRAP_DESTRUCTOR_DEC(DBOptions)
 // Get/Set methods
 DEFINE_C_WRAP_GETTER_DEC(DBOptions, create_if_missing, bool)
 DEFINE_C_WRAP_SETTER_DEC(DBOptions, create_if_missing, bool)
+DEFINE_C_WRAP_GETTER_DEC(DBOptions, error_if_exists, bool)
+DEFINE_C_WRAP_SETTER_DEC(DBOptions, error_if_exists, bool)
 
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(Options)
 DEFINE_C_WRAP_CONSTRUCTOR_ARGS_DEC(Options, DBOptions, ColumnFamilyOptions)

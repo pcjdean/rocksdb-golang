@@ -15,23 +15,31 @@
 package rocksdb
 
 /*
+#include <stdlib.h>
 #include "slice.h"
 */
 import "C"
 
+import (
+	"unsafe"
+)
+
 type cSlice struct {
 	slc C.Slice_t
+	cptr *C.char
 }
 
 type cSlicePtrAry []*cSlice
 
 func newSliceFromBytes(bytes []byte) (slc *cSlice) {
-	slc = &cSlice{slc: C.NewSliceTRawArgs(C.CString(string(bytes)), C.intToSizeT(C.int(len(bytes))))}
+	cptr := C.CString(string(bytes))
+	slc = &cSlice{slc: C.NewSliceTRawArgs(cptr, C.uint64ToSizeT(C.uint64_t(len(bytes)))), cptr: cptr}
 	return
 }
 
 func (slc *cSlice) del()  {
 	C.DeleteSliceT(&slc.slc, toCBool(false))
+	C.free(unsafe.Pointer(slc.cptr))
 }
 
 func newSlicesFromBytesArray(bytess [][]byte) (slcs []*cSlice) {

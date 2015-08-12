@@ -5,18 +5,19 @@
 #ifndef GO_ROCKSDB_INCLUDE_TYPES_H_
 #define GO_ROCKSDB_INCLUDE_TYPES_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
 typedef uint64_t SequenceNumber;
-typedef uint64_t size_t;
 
 #ifndef __cplusplus
+
 typedef char bool;
 
 enum bool_t {
     false, true
 };
-    
+
 #endif
 
 #define GET_MACRO3(_1,_2,_3,NAME,...) NAME
@@ -226,6 +227,20 @@ enum bool_t {
 
 
 
+#define DEFINE_C_WRAP_STATIC_CAST_DEC_R(x,y) void x##TStaticCastTo##y##T(x##_t* ptr, y##_t* toptr)
+#define DEFINE_C_WRAP_STATIC_CAST_BODY(x,y) { \
+        if (ptr && toptr) \
+        {                                       \
+            toptr->rep = static_cast<y*>((x*)ptr->rep);      \
+        }                                       \
+    } 
+
+#define DEFINE_C_WRAP_STATIC_CAST_DEC(x,y) DEFINE_C_WRAP_STATIC_CAST_DEC_R(x,y);
+#define DEFINE_C_WRAP_STATIC_CAST(x,y) DEFINE_C_WRAP_STATIC_CAST_DEC_R(x,y) \
+    DEFINE_C_WRAP_STATIC_CAST_BODY(x,y)
+
+
+
 #define DEFINE_C_WRAP_GETTER_DEC_R(x,y,z) z x##_get_##y(x##_t* ptr)
 #define DEFINE_C_WRAP_GETTER_BODY(x,y,z) { \
         if (ptr) \
@@ -236,6 +251,8 @@ enum bool_t {
 
 #define DEFINE_C_WRAP_GETTER_DEC(x,y,z) DEFINE_C_WRAP_GETTER_DEC_R(x,y,z);
 #define DEFINE_C_WRAP_GETTER(x,y,z) DEFINE_C_WRAP_GETTER_DEC_R(x,y,z) \
+    DEFINE_C_WRAP_GETTER_BODY(x,y,z)
+#define DEFINE_C_WRAP_GETTER_CAST(x,y,z) DEFINE_C_WRAP_GETTER_DEC_R(x,y,z) \
     DEFINE_C_WRAP_GETTER_BODY(x,y,z)
 
 
@@ -251,17 +268,18 @@ enum bool_t {
 #define DEFINE_C_WRAP_SETTER_DEC(x,y,z) DEFINE_C_WRAP_SETTER_DEC_R(x,y,z);
 #define DEFINE_C_WRAP_SETTER(x,y,z) DEFINE_C_WRAP_SETTER_DEC_R(x,y,z) \
     DEFINE_C_WRAP_SETTER_BODY(x,y,z)
-
+#define DEFINE_C_WRAP_SETTER_CAST(x,y,z,u) DEFINE_C_WRAP_SETTER_DEC_R(x,y,z) \
+    DEFINE_C_WRAP_SETTER_BODY(x,y,u)
 
 
 
 #ifndef __cplusplus
 
-static inline size_t intToSizeT(int i) 
+static inline size_t uint64ToSizeT(uint64_t v)
 {
-    return (size_t)i;
+    return (size_t)v;
 }
 
-#endif
+#endif //  __cplusplus
 
 #endif //  GO_ROCKSDB_INCLUDE_TYPES_H_

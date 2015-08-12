@@ -105,12 +105,24 @@ func (snp *Snapshot) GetSequenceNumber() SequenceNumber {
 
 // A range of keys
 type Range struct {
+	startSlc *cSlice
+	limitSlc *cSlice
 	rng C.Range_t
 }
 
 func (rng *Range) finalize() {
+	rng.startSlc.del()
+	rng.limitSlc.del()
 	var crng *C.Range_t = &rng.rng
 	C.DeleteRangeT(crng, toCBool(false))
+}
+
+func NewRange(start, limit []byte) (rng *Range) {
+	startSlc := newSliceFromBytes(start)
+	limitSlc := newSliceFromBytes(limit)
+	rng = &Range{rng: C.NewRangeTArgs(&startSlc.slc, &limitSlc.slc), startSlc: startSlc, limitSlc: limitSlc}
+	runtime.SetFinalizer(rng, finalize)
+	return
 }
 
 func newCArrayFromRangeArray(rngs ...*Range) (crngs []C.Range_t) {
@@ -774,7 +786,7 @@ func (db *DB) GetApproximateSizes(rngs []*Range, cfh ...*ColumnFamilyHandle) (va
 		cdb *C.DB_t = &db.db
 		ccfh *C.ColumnFamilyHandle_t
 		ccrngs *C.Range_t = &crngs[0] 
-		sz C.int
+		sz C.int = C.int(len(crngs))
 		cval []C.uint64_t = make([]C.uint64_t, sz)
 	)
 
@@ -815,7 +827,6 @@ func (db *DB) CompactRange(begin []byte, end []byte, cfhs ...interface{}) (stat 
 	defer cbegin.del()
 	cend := newSliceFromBytes(end)
 	defer cend.del()
-
 	var ccfhs []C.ColumnFamilyHandle_t
 
 	if cfhs != nil {

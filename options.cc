@@ -4,10 +4,39 @@
 
 #include "options.h"
 
+DEFINE_C_WRAP_STATIC_CAST(Options, DBOptions)
+DEFINE_C_WRAP_STATIC_CAST(Options, ColumnFamilyOptions)
+
 DEFINE_C_WRAP_CONSTRUCTOR(ColumnFamilyOptions)
 DEFINE_C_WRAP_CONSTRUCTOR_ARGS(ColumnFamilyOptions, Options)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(ColumnFamilyOptions)
 DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyOptions)
+// Get/Set methods
+DEFINE_C_WRAP_GETTER(ColumnFamilyOptions, compression, int)
+DEFINE_C_WRAP_SETTER_CAST(ColumnFamilyOptions, compression, int, CompressionType)
+
+void ColumnFamilyOptions_set_compression_per_level(ColumnFamilyOptions_t* opt,
+                                                   int* level_values,
+                                                   size_t num_levels)
+{
+    assert(opt != NULL);
+    assert(GET_REP(opt, ColumnFamilyOptions) != NULL);
+    GET_REP(opt, ColumnFamilyOptions)->compression_per_level.resize(num_levels);
+    for (uint64_t i = 0; i < num_levels; ++i) {
+        GET_REP(opt, ColumnFamilyOptions)->compression_per_level[i] =
+            static_cast<CompressionType>(level_values[i]);
+    }
+}
+
+void ColumnFamilyOptions_set_compression_options(
+    ColumnFamilyOptions_t* opt, int w_bits, int level, int strategy)
+{
+    assert(opt != NULL);
+    assert(GET_REP(opt, ColumnFamilyOptions) != NULL);
+    GET_REP(opt, ColumnFamilyOptions)->compression_opts.window_bits = w_bits;
+    GET_REP(opt, ColumnFamilyOptions)->compression_opts.level = level;
+    GET_REP(opt, ColumnFamilyOptions)->compression_opts.strategy = strategy;
+}
 
 DEFINE_C_WRAP_CONSTRUCTOR(DBOptions)
 DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(DBOptions, const Options&)
@@ -15,6 +44,8 @@ DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(DBOptions)
 DEFINE_C_WRAP_DESTRUCTOR(DBOptions)
 DEFINE_C_WRAP_GETTER(DBOptions, create_if_missing, bool)
 DEFINE_C_WRAP_SETTER(DBOptions, create_if_missing, bool)
+DEFINE_C_WRAP_GETTER(DBOptions, error_if_exists, bool)
+DEFINE_C_WRAP_SETTER(DBOptions, error_if_exists, bool)
 
 DEFINE_C_WRAP_CONSTRUCTOR(Options)
 DEFINE_C_WRAP_CONSTRUCTOR_ARGS(Options, DBOptions, ColumnFamilyOptions)

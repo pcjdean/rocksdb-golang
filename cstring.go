@@ -66,7 +66,7 @@ func (ccstr *C.String_t) cToString() (str string) {
 func newCStringFromString(str *string) (cstr *cString) {
 	var ccstr *C.char = C.CString(*str)
 	defer C.free(unsafe.Pointer(ccstr))
-	cstr = &cString{str: C.NewStringTRawArgs(ccstr, C.uint64_t(len(*str)))}
+	cstr = &cString{str: C.NewStringTRawArgs(ccstr, C.uint64ToSizeT(C.uint64_t(len(*str))))}
 	return
 }
 
