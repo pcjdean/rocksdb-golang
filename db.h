@@ -15,17 +15,12 @@
 #include "env.h"
 #include "metadata.h"
 #include "transaction_log.h"
+#include "snapshot.h"
+#include "columnFamilyHandle.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-DEFINE_C_WRAP_STRUCT(ColumnFamilyHandle)
-DEFINE_C_WRAP_CONSTRUCTOR_DEC(ColumnFamilyHandle)
-DEFINE_C_WRAP_DESTRUCTOR_DEC(ColumnFamilyHandle)
-DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(ColumnFamilyHandle)
-String_t ColumnFamilyGetName(const ColumnFamilyHandle_t* column_family);
-uint32_t ColumnFamilyGetID(const ColumnFamilyHandle_t* column_family);
 
 DEFINE_C_WRAP_STRUCT(TablePropertiesCollection)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(TablePropertiesCollection)
@@ -37,10 +32,6 @@ DEFINE_C_WRAP_CONSTRUCTOR_ARGS_DEC(ColumnFamilyDescriptor, String, ColumnFamilyO
 // DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(ColumnFamilyDescriptor, String, ColumnFamilyOptions)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(ColumnFamilyDescriptor, kDefaultColumnFamilyName, ColumnFamilyOptions())
 DEFINE_C_WRAP_DESTRUCTOR_DEC(ColumnFamilyDescriptor)
-
-DEFINE_C_WRAP_STRUCT(Snapshot)
-DEFINE_C_WRAP_CONSTRUCTOR_DEC(Snapshot)
-SequenceNumber SnapshotGetSequenceNumber(Snapshot_t* snapshot);
 
 DEFINE_C_WRAP_STRUCT(Range)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(Range)

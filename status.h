@@ -5,6 +5,16 @@
 #ifndef GO_ROCKSDB_INCLUDE_STATUS_H_
 #define GO_ROCKSDB_INCLUDE_STATUS_H_
 
+#ifdef __cplusplus
+#include <rocksdb/status.h>
+
+using namespace rocksdb;
+
+extern const Status invalid_status;
+extern const Status db_closed_status;
+
+#endif
+
 #include "types.h"
 #include "cstring.h"
 
@@ -31,6 +41,7 @@ bool StatusIsTimedOut(Status_t *stat);
 bool StatusIsAborted(Status_t *stat);
 bool StatusIsBusy(Status_t *stat);
 String_t StatusToString(Status_t *stat);
+Status_t StatusDBClosedStatus();
 
 #ifdef __cplusplus
 }  /* end extern "C" */

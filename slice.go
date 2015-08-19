@@ -31,6 +31,7 @@ type cSlice struct {
 
 type cSlicePtrAry []*cSlice
 
+// The caller is responsible for delete the returned slc
 func newSliceFromBytes(bytes []byte) (slc *cSlice) {
 	cptr := C.CString(string(bytes))
 	slc = &cSlice{slc: C.NewSliceTRawArgs(cptr, C.uint64ToSizeT(C.uint64_t(len(bytes)))), cptr: cptr}
@@ -42,6 +43,7 @@ func (slc *cSlice) del()  {
 	C.free(unsafe.Pointer(slc.cptr))
 }
 
+// The caller is responsible for delete the returned slcs
 func newSlicesFromBytesArray(bytess [][]byte) (slcs []*cSlice) {
 	slcs = make([]*cSlice, len(bytess))
 	for i, bytes := range bytess {

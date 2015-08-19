@@ -63,6 +63,13 @@ func (ccstr *C.String_t) cToString() (str string) {
 	return
 }
 
+func (ccstr *C.String_t) cToBytes() (str []byte) {
+	cstr := cString{str: *ccstr}
+	str = cstr.goBytes(true)
+	return
+}
+
+// The caller is responsible for delete the returned cstr
 func newCStringFromString(str *string) (cstr *cString) {
 	var ccstr *C.char = C.CString(*str)
 	defer C.free(unsafe.Pointer(ccstr))
@@ -70,6 +77,7 @@ func newCStringFromString(str *string) (cstr *cString) {
 	return
 }
 
+// The caller is responsible for delete the returned cstr
 func newCString() (str *cString) {
 	str = &cString{str: C.NewStringTDefault()}
 	return
@@ -95,6 +103,7 @@ func newBytesFromCArray(ccstr *C.String_t, sz uint) (strs [][]byte) {
 	return
 }
 
+// The caller is responsible for delete the returned cstrs
 func newcStringsFromStringArray(strs []string) (cstrs []*cString) {
 	cstrs = make([]*cString, len(strs))
 	for i, str := range strs {

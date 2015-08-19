@@ -30,6 +30,11 @@ func (csta *C.Status_t) toStatus() (sta *Status) {
 	return
 }
 
+func NewDBClosedStatus() *Status {
+	csta := C.StatusDBClosedStatus()
+	return csta.toStatus()
+}
+
 func newStatusArrayFromCArray(csta *C.Status_t, sz uint) (stas []*Status) {
 	defer C.DeleteStatusTArray(csta)
 	stas = make([]*Status, sz)

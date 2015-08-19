@@ -16,6 +16,11 @@ import "C"
 // but no obsolete files will be deleted. Calling this multiple
 // times have the same effect as calling it once.
 func (db *DB) DisableFileDeletions() (stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 	)
@@ -35,6 +40,11 @@ func (db *DB) DisableFileDeletions() (stat *Status) {
 // synchronization -- i.e., file deletions will be enabled only after both
 // threads call EnableFileDeletions()
 func (db *DB) EnableFileDeletions(force ...bool) (stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		cforce C.bool = toCBool(true)
@@ -66,6 +76,11 @@ func (db *DB) EnableFileDeletions(force ...bool) (stat *Status) {
 // for new data that arrived to already-flushed column families while other
 // column families were flushing
 func (db *DB) GetLiveFiles(flush_memtable ...bool) (files []string, fileSz uint64, stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		cflhmem C.bool = toCBool(true)
@@ -87,6 +102,11 @@ func (db *DB) GetLiveFiles(flush_memtable ...bool) (files []string, fileSz uint6
 
 // Retrieve the sorted list of all wal files with earliest file first
 func (db *DB) GetSortedWalFiles() (files []*LogFile, stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		n C.int
@@ -108,6 +128,11 @@ func (db *DB) GetSortedWalFiles() (files []*LogFile, stat *Status) {
 // cleared aggressively and the iterator might keep getting invalid before
 // an update is read.
 func (db *DB) GetUpdatesSince(sqn SequenceNumber, tranropt ...TransactionLogIteratorReadOptions) (it *TransactionLogIterator, stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		cit C.TransactionLogIterator_t
@@ -141,6 +166,10 @@ func (db *DB) DeleteFile(name string) (stat *Status) {
 // Returns a list of all table files with their level, start key
 // and end key
 func (db *DB) GetLiveFilesMetaData() (lfmds []*LiveFileMetaData) {
+	if db.closed {
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		clfmds *C.LiveFileMetaData_t
@@ -159,6 +188,10 @@ func (db *DB) GetLiveFilesMetaData() (lfmds []*LiveFileMetaData) {
 // If cf_name is not specified, then the metadata of the default
 // column family will be returned.
 func (db *DB) GetColumnFamilyMetaData(cfh ...*ColumnFamilyHandle) (md *ColumnFamilyMetaData) {
+	if db.closed {
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		ccfh *C.ColumnFamilyHandle_t
@@ -179,6 +212,11 @@ func (db *DB) GetColumnFamilyMetaData(cfh ...*ColumnFamilyHandle) (md *ColumnFam
 }
 
 func (db *DB) GetPropertiesOfAllTables(cfh ...*ColumnFamilyHandle) (tpc *TablePropertiesCollection, stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		ccfh *C.ColumnFamilyHandle_t
@@ -204,8 +242,8 @@ func (db *DB) GetPropertiesOfAllTables(cfh ...*ColumnFamilyHandle) (tpc *TablePr
 // resurrect as much of the contents of the database as possible.
 // Some data may be lost, so be careful when calling this function
 // on a database that contains important information.
-func RepairDB(name string, opt Options) (stat *Status) {
-	cname := newCStringFromString(&name)
+func RepairDB(opt *Options, name *string) (stat *Status) {
+	cname := newCStringFromString(name)
 
 	var (
 		ccname *C.String_t = &cname.str

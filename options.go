@@ -68,6 +68,35 @@ func (cfopt *ColumnFamilyOptions) SetCompression(val int) {
 	C.ColumnFamilyOptions_set_compression(ccfopt, C.int(val))
 }
 
+// -------------------
+// Parameters that affect performance
+
+// Amount of data to build up in memory (backed by an unsorted log
+// on disk) before converting to a sorted on-disk file.
+//
+// Larger values increase performance, especially during bulk loads.
+// Up to max_write_buffer_number write buffers may be held in memory
+// at the same time,
+// so you may wish to adjust this parameter to control memory usage.
+// Also, a larger write buffer will result in a longer recovery time
+// the next time the database is opened.
+//
+// Note that write_buffer_size is enforced per column family.
+// See db_write_buffer_size for sharing memory across column families.
+//
+// Default: 4MB
+//
+// Dynamically changeable through SetOptions() API
+func (cfopt *ColumnFamilyOptions) WriteBufferSize() uint64 {
+	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
+	return uint64(C.ColumnFamilyOptions_get_write_buffer_size(ccfopt))
+}
+
+func (cfopt *ColumnFamilyOptions) SetWriteBufferSize(val uint64) {
+	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
+	C.ColumnFamilyOptions_set_write_buffer_size(ccfopt, C.uint64ToSizeT(C.uint64_t(val)))
+}
+
 // different options for compression algorithms
 func (cfopt *ColumnFamilyOptions) SetCompressionOptions(wBits int, level int, strategy int) {
 	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
@@ -200,9 +229,11 @@ func (wopt *WriteOptions) SetSync(val bool) {
 
 type ReadOptions struct {
 	ropt C.ReadOptions_t
+	snp *Snapshot
 }
 
 func (ropt *ReadOptions) finalize() {
+	ropt.SetSnapshot(nil)
 	var cropt *C.ReadOptions_t = &ropt.ropt
 	C.DeleteReadOptionsT(cropt, toCBool(false))
 }
@@ -211,6 +242,20 @@ func NewReadOptions() *ReadOptions {
 	ropt := &ReadOptions{ropt: C.NewReadOptionsTDefault()}
 	runtime.SetFinalizer(ropt, finalize)
 	return ropt
+}
+
+func (ropt *ReadOptions) SetSnapshot(snp *Snapshot) {
+	ropt.snp = snp
+	var (
+		cropt *C.ReadOptions_t = &ropt.ropt
+		csnp *C.Snapshot_t
+	)
+
+	if nil != snp {
+		csnp = &snp.snp
+	}
+
+	C.ReadOptions_set_snapshot(cropt, csnp)
 }
 
 type FlushOptions struct {

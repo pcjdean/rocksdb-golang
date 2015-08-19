@@ -10,16 +10,21 @@
 // non-const method, all threads accessing the same Status must use
 // external synchronization.
 
-#include <rocksdb/status.h>
 #include "status.h"
-#include "cstring.h"
 
-using namespace rocksdb;
+extern const Status invalid_status = Status::InvalidArgument("Invalid database pointer");
+extern const Status db_closed_status = Status::ShutdownInProgress("The database is closed");
 
 DEFINE_C_WRAP_CONSTRUCTOR(Status)
 DEFINE_C_WRAP_DESTRUCTOR(Status)
 DEFINE_C_WRAP_CONSTRUCTOR_COPY(Status)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY(Status)
+
+// Returns the status indicates the database is closed.
+Status_t StatusDBClosedStatus()
+{
+    return NewStatusTCopy(const_cast<Status*>(&db_closed_status));
+}
 
 // Returns true iff the status indicates success.
 bool StatusOk(Status_t *stat)

@@ -53,7 +53,7 @@ func TestCMain(t *testing.T) {
 	options.SetErrorIfExists(true);
 	// rocksdb_options_set_env(options, env);
 	// rocksdb_options_set_info_log(options, NULL);
-	// rocksdb_options_set_write_buffer_size(options, 100000);
+	options.SetWriteBufferSize(100000)
 	// rocksdb_options_set_paranoid_checks(options, 1);
 	// rocksdb_options_set_max_open_files(options, 10);
 	// table_options = rocksdb_block_based_options_create();
@@ -67,11 +67,11 @@ func TestCMain(t *testing.T) {
 	options.SetCompressionPerLevel(compressionLevels)
 
 	t.Log("phase: Destroy")
-	stat = DestroyDB(&dbname, options)
+	stat = DestroyDB(options, &dbname)
 	t.Logf("DestroyDB: status = ", stat)
 
 	t.Log("phase: open_error")
-	_, stat, _ = Open(&dbname, options)
+	_, stat, _ = Open(options, &dbname)
 	if stat.Ok() {
 		t.Error("err: open_error")
 	} else {
@@ -80,7 +80,7 @@ func TestCMain(t *testing.T) {
 
 	t.Log("phase: open")
 	options.SetCreateIfMissing(true)
-	db, stat, _ = Open(&dbname, options)
+	db, stat, _ = Open(options, &dbname)
 	if !stat.Ok() {
 		t.Fatalf("err: open: stat = %s", stat)
 	}
@@ -150,42 +150,39 @@ func TestCMain(t *testing.T) {
 	}
 	db.checkGet(t, ropts, []byte("foo"), []byte("hello"))
 
+	t.Log("phase: writebatch")
+	wb := NewWriteBatch()
+	wb.Put([]byte("foo"), []byte("a"))
+	wb.Clear()
+	wb.Put([]byte("bar"), []byte("b"))
+	wb.Put([]byte("box"), []byte("c"))
+	wb.Delete([]byte("bar"))
+	stat = db.Write(woptions, wb)
+	if !stat.Ok() {
+		t.Fatalf("err: writebatch Write: stat = %s", stat)
+	}
+	db.checkGet(t, ropts, []byte("foo"), []byte("hello"))
+	db.checkGet(t, ropts, []byte("bar"), nil)
+	db.checkGet(t, ropts, []byte("box"), []byte("c"))
 	// StartPhase("writebatch");
 	// {
-	// 	rocksdb_writebatch_t* wb = rocksdb_writebatch_create();
-	// 	rocksdb_writebatch_put(wb, "foo", 3, "a", 1);
-	// 	rocksdb_writebatch_clear(wb);
-	// 	rocksdb_writebatch_put(wb, "bar", 3, "b", 1);
-	// 	rocksdb_writebatch_put(wb, "box", 3, "c", 1);
-	// 	rocksdb_writebatch_delete(wb, "bar", 3);
-	// 	rocksdb_write(db, woptions, wb, &err);
-	// 	CheckNoError(err);
-	// 	CheckGet(db, roptions, "foo", "hello");
-	// 	CheckGet(db, roptions, "bar", NULL);
-	// 	CheckGet(db, roptions, "box", "c");
 	// 	int pos = 0;
 	// 	rocksdb_writebatch_iterate(wb, &pos, CheckPut, CheckDel);
 	// 	CheckCondition(pos == 3);
-	// 	rocksdb_writebatch_destroy(wb);
 	// }
+	wb.Close()
 
-	// StartPhase("writebatch_rep");
-	// {
-	// 	rocksdb_writebatch_t* wb1 = rocksdb_writebatch_create();
-	// 	rocksdb_writebatch_put(wb1, "baz", 3, "d", 1);
-	// 	rocksdb_writebatch_put(wb1, "quux", 4, "e", 1);
-	// 	rocksdb_writebatch_delete(wb1, "quux", 4);
-	// 	size_t repsize1 = 0;
-	// 	const char* rep = rocksdb_writebatch_data(wb1, &repsize1);
-	// 	rocksdb_writebatch_t* wb2 = rocksdb_writebatch_create_from(rep, repsize1);
-	// 	CheckCondition(rocksdb_writebatch_count(wb1) ==
-	// 		rocksdb_writebatch_count(wb2));
-	// 	size_t repsize2 = 0;
-	// 	CheckCondition(
-	// 		memcmp(rep, rocksdb_writebatch_data(wb2, &repsize2), repsize1) == 0);
-	// 	rocksdb_writebatch_destroy(wb1);
-	// 	rocksdb_writebatch_destroy(wb2);
-	// }
+	t.Log("phase: writebatch_rep")
+	wb1 := NewWriteBatch()
+	wb1.Put([]byte("baz"), []byte("d"))
+	wb1.Put([]byte("quux"), []byte("e"))
+	wb1.Delete([]byte("quux"))
+	wb2 := NewWriteBatchFromBytes(wb1.Data())
+	checkCondition(t, wb1.Count() == wb2.Count())
+	checkCondition(t, wb1.GetDataSize() == wb2.GetDataSize())
+	checkCondition(t, bytes.Equal(wb1.Data(), wb2.Data()))
+	wb1.Close()
+	wb2.Close()
 
 	// StartPhase("iter");
 	// {
@@ -216,58 +213,57 @@ func TestCMain(t *testing.T) {
 	for i := 0; i < n; i++ {
 		key := fmt.Sprintf("k%020d", i)
 		val := fmt.Sprintf("v%020d", i)
-		db.Put(woptions, []byte(key), []byte(val))
+		stat = db.Put(woptions, []byte(key), []byte(val))
 		if !stat.Ok() {
 			t.Fatalf("err: approximate_sizes put: stat = %s", stat)
 		}
 	}
 	szs := db.GetApproximateSizes(rngs)
-	fmt.Printf("szs = %v\n", szs)
 	checkCondition(t, szs[0] > 0)
 	checkCondition(t, szs[1] > 0)
 
-	// StartPhase("property");
-	// {
-	// 	char* prop = rocksdb_property_value(db, "nosuchprop");
-	// 	CheckCondition(prop == NULL);
-	// 	prop = rocksdb_property_value(db, "rocksdb.stats");
-	// 	CheckCondition(prop != NULL);
-	// 	Free(&prop);
-	// }
+	t.Log("phase: property")
+	val, res := db.GetProperty([]byte("nosuchprop"))
+	checkCondition(t, !res)
+	checkCondition(t, len(val) == 0)
+	val, res = db.GetProperty([]byte("rocksdb.stats"))
+	checkCondition(t, res)
+	checkCondition(t, len(val) > 0)
 
-	// StartPhase("snapshot");
-	// {
-	// 	const rocksdb_snapshot_t* snap;
-	// 	snap = rocksdb_create_snapshot(db);
-	// 	rocksdb_delete(db, woptions, "foo", 3, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_readoptions_set_snapshot(roptions, snap);
-	// 	CheckGet(db, roptions, "foo", "hello");
-	// 	rocksdb_readoptions_set_snapshot(roptions, NULL);
-	// 	CheckGet(db, roptions, "foo", NULL);
-	// 	rocksdb_release_snapshot(db, snap);
-	// }
+	t.Log("phase: snapshot")
+	snap := db.GetSnapshot()
+	stat = db.Delete(woptions, []byte("foo"))
+	if !stat.Ok() {
+		t.Fatalf("err: snapshot Delete: stat = %s", stat)
+	}
+	ropts.SetSnapshot(snap)
+	db.checkGet(t, ropts, []byte("foo"), []byte("hello"))
+	ropts.SetSnapshot(nil)
+	db.checkGet(t, ropts, []byte("foo"), nil)
+	db.ReleaseSnapshot(snap)
 
-	// StartPhase("repair");
-	// {
-	// 	// If we do not compact here, then the lazy deletion of
-	// 	// files (https://reviews.facebook.net/D6123) would leave
-	// 	// around deleted files and the repair process will find
-	// 	// those files and put them back into the database.
-	// 	rocksdb_compact_range(db, NULL, 0, NULL, 0);
-	// 	rocksdb_close(db);
-	// 	rocksdb_options_set_create_if_missing(options, 0);
-	// 	rocksdb_options_set_error_if_exists(options, 0);
-	// 	rocksdb_repair_db(options, dbname, &err);
-	// 	CheckNoError(err);
-	// 	db = rocksdb_open(options, dbname, &err);
-	// 	CheckNoError(err);
-	// 	CheckGet(db, roptions, "foo", NULL);
-	// 	CheckGet(db, roptions, "bar", NULL);
-	// 	CheckGet(db, roptions, "box", "c");
-	// 	rocksdb_options_set_create_if_missing(options, 1);
-	// 	rocksdb_options_set_error_if_exists(options, 1);
-	// }
+	t.Log("phase: repair")
+	// If we do not compact here, then the lazy deletion of
+	// files (https://reviews.facebook.net/D6123) would leave
+	// around deleted files and the repair process will find
+	// those files and put them back into the database.
+	stat = db.CompactRange(nil, nil)
+	db.Close()
+	options.SetErrorIfExists(false);
+	options.SetCreateIfMissing(false)
+	stat = RepairDB(options, &dbname)
+	if !stat.Ok() {
+		t.Fatalf("err: repair RepairDB: stat = %s", stat)
+	}
+	db, stat, _ = Open(options, &dbname)
+	if !stat.Ok() {
+		t.Logf("err: repair Open: stat = %s", stat)
+	}
+	db.checkGet(t, ropts, []byte("foo"), nil)
+	db.checkGet(t, ropts, []byte("bar"), nil)
+	// db.checkGet(t, ropts, []byte("box"), []byte("c"))
+	options.SetErrorIfExists(true);
+	options.SetCreateIfMissing(true)
 
 	// StartPhase("filter");
 	// for (run = 0; run < 2; run++) {

@@ -12,56 +12,7 @@ import "C"
 
 import (
 	"runtime"
-	"unsafe"
 )
-
-type ColumnFamilyHandle struct {
-	cfh C.ColumnFamilyHandle_t
-}
-
-func (cfh *ColumnFamilyHandle) finalize() {
-	var ccfh *C.ColumnFamilyHandle_t = &cfh.cfh
-	C.DeleteColumnFamilyHandleT(ccfh, toCBool(false))
-}
-
-func (cfh *ColumnFamilyHandle) GetName() string {
-	var ptr *C.ColumnFamilyHandle_t = &cfh.cfh
-	rstr := cString{C.ColumnFamilyGetName(ptr)}
-	return rstr.goString(true);
-}
-    
-func (cfh *ColumnFamilyHandle) GetID() uint32 {
-	var ptr *C.ColumnFamilyHandle_t = &cfh.cfh
-	return uint32(C.ColumnFamilyGetID(ptr))
-}
-
-func (ccfh *C.ColumnFamilyHandle_t) toColumnFamilyHandle() (cfh *ColumnFamilyHandle) {
-	cfh = &ColumnFamilyHandle{cfh: *ccfh}	
-	runtime.SetFinalizer(cfh, finalize)
-	return
-}
-
-func newColumnFamilyHandleArrayFromCArray(cfh *C.ColumnFamilyHandle_t, sz uint) (cfhs []*ColumnFamilyHandle) {
-	defer C.DeleteColumnFamilyHandleTArray(cfh)
-	cfhs = make([]*ColumnFamilyHandle, sz)
-	for i := uint(0); i < sz; i++ {
-		cfhs[i] = &ColumnFamilyHandle{cfh: (*[arrayDimenMax]C.ColumnFamilyHandle_t)(unsafe.Pointer(cfh))[i]}
-		runtime.SetFinalizer(cfhs[i], finalize)
-	}
-	return
-}
-
-func newCArrayFromColumnFamilyHandleArray(cfhs ...*ColumnFamilyHandle) (ccfhs []C.ColumnFamilyHandle_t) {
-	var cfhlen int
-	if cfhs != nil {
-		cfhlen = len(cfhs)
-		ccfhs = make([]C.ColumnFamilyHandle_t, cfhlen)
-		for i := 0; i < cfhlen; i++ {
-			ccfhs[i] = cfhs[i].cfh
-		}
-	}
-	return
-}
 
 type TablePropertiesCollection struct {
 	tpc C.TablePropertiesCollection_t
@@ -76,31 +27,6 @@ func (ctpc *C.TablePropertiesCollection_t) toTablePropertiesCollection() (tpc *T
 	tpc = &TablePropertiesCollection{tpc: *ctpc}	
 	runtime.SetFinalizer(tpc, finalize)
 	return
-}
-
-// Abstract handle to particular state of a DB.
-// A Snapshot is an immutable object and can therefore be safely
-// accessed from multiple threads without any external synchronization.
-type Snapshot struct {
-	snp C.Snapshot_t
-	db *DB
-}
-
-func (snp *Snapshot) finalize() {
-	if snp.db != nil {
-		snp.db.ReleaseSnapshot(snp)
-	}
-}
-
-func (csnp *C.Snapshot_t) toSnapshot(db *DB) (snp *Snapshot) {
-	snp = &Snapshot{snp: *csnp, db: db}	
-	runtime.SetFinalizer(snp, finalize)
-	return
-}
-
-func (snp *Snapshot) GetSequenceNumber() SequenceNumber {
-	var csnp *C.Snapshot_t = &snp.snp
-	return SequenceNumber(C.SnapshotGetSequenceNumber(csnp))
 }
 
 // A range of keys
@@ -199,11 +125,20 @@ func newCArrayFromColumnFamilyHandleInterface(cfhs ...interface{}) (ccfhs []C.Co
 // any external synchronization.
 type DB struct {
 	db C.DB_t
+	closed bool
 }
 
 func (db *DB) finalize() {
-	var cdb *C.DB_t = &db.db
-	C.DeleteDBT(cdb, toCBool(false))
+	if !db.closed {
+		db.closed = true
+		var cdb *C.DB_t = &db.db
+		C.DeleteDBT(cdb, toCBool(false))
+	}
+}
+
+func (db *DB) Close() {
+	runtime.SetFinalizer(db, nil)
+	db.finalize()
 }
 
 // Open the database with the specified "name".
@@ -224,7 +159,7 @@ func (db *DB) finalize() {
 // If everything is OK, handles will on return be the same size
 // as column_families --- handles[i] will be a handle that you
 // will use to operate on column family column_family[i]
-func Open(name *string, options *Options, cfds ...*ColumnFamilyDescriptor) (db *DB, stat *Status, cfhs []*ColumnFamilyHandle) {
+func Open(options *Options, name *string, cfds ...*ColumnFamilyDescriptor) (db *DB, stat *Status, cfhs []*ColumnFamilyHandle) {
 	db = &DB{}
 	rstr := newCStringFromString(name)
 	defer rstr.del()
@@ -281,7 +216,7 @@ func Open(name *string, options *Options, cfds ...*ColumnFamilyDescriptor) (db *
 //
 // Not supported in ROCKSDB_LITE, in which case the function will
 // return Status_t::NotSupported.
-func OpenForReadOnly(name *string, options *Options, cfds ...interface{}) (db *DB, cfhs []*ColumnFamilyHandle, stat *Status) {
+func OpenForReadOnly(options *Options, name *string, cfds ...interface{}) (db *DB, cfhs []*ColumnFamilyHandle, stat *Status) {
 	db = &DB{}
 	rstr := newCStringFromString(name)
 	defer rstr.del()
@@ -326,7 +261,7 @@ func OpenForReadOnly(name *string, options *Options, cfds ...interface{}) (db *D
 // and return the list of all column families in that DB
 // through column_families argument. The ordering of
 // column families in column_families is unspecified.
-func ListColumnFamilies(name *string, dbopt *DBOptions) (cfss []string, stat *Status) {
+func ListColumnFamilies(dbopt *DBOptions, name *string) (cfss []string, stat *Status) {
 	rstr := newCStringFromString(name)
 	defer rstr.del()
 
@@ -348,7 +283,12 @@ func ListColumnFamilies(name *string, dbopt *DBOptions) (cfss []string, stat *St
 
 // Create a column_family and return the handle of column family
 // through the argument handle.
-func (db *DB) CreateColumnFamily(colfname *string, options *ColumnFamilyOptions) (cfd *ColumnFamilyHandle, stat *Status) {
+func (db *DB) CreateColumnFamily(options *ColumnFamilyOptions, colfname *string) (cfd *ColumnFamilyHandle, stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	cstr := newCStringFromString(colfname)
 	var (
 		cdb *C.DB_t = &db.db
@@ -369,6 +309,11 @@ func (db *DB) CreateColumnFamily(colfname *string, options *ColumnFamilyOptions)
 // only records a drop record in the manifest and prevents the column
 // family from flushing and compacting.
 func (db *DB) DropColumnFamily(cfh *ColumnFamilyHandle) (stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		ccfh *C.ColumnFamilyHandle_t = &cfh.cfh 
@@ -383,6 +328,11 @@ func (db *DB) DropColumnFamily(cfh *ColumnFamilyHandle) (stat *Status) {
 // Returns OK on success, and a non-OK status on error.
 // Note: consider setting options.sync = true.
 func (db *DB) Put(options *WriteOptions, key, val []byte, cfh ...*ColumnFamilyHandle) (stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	ckey := newSliceFromBytes(key)
 	defer ckey.del()
 	cval := newSliceFromBytes(val)
@@ -415,6 +365,11 @@ func (db *DB) Put(options *WriteOptions, key, val []byte, cfh ...*ColumnFamilyHa
 // did not exist in the database.
 // Note: consider setting options.sync = true.
 func (db *DB) Delete(options *WriteOptions, key []byte, cfh ...*ColumnFamilyHandle) (stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	ckey := newSliceFromBytes(key)
 	defer ckey.del()
 
@@ -443,7 +398,12 @@ func (db *DB) Delete(options *WriteOptions, key []byte, cfh ...*ColumnFamilyHand
 // and a non-OK status on error. The semantics of this operation is
 // determined by the user provided merge_operator when opening DB.
 // Note: consider setting options.sync = true.
-func (db *DB) Merge(options *WriteOptions, key []byte, val []byte, cfh ...*ColumnFamilyHandle) (stat *Status) {
+func (db *DB) Merge(options *WriteOptions, key, val []byte, cfh ...*ColumnFamilyHandle) (stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	ckey := newSliceFromBytes(key)
 	defer ckey.del()
 	cval := newSliceFromBytes(val)
@@ -477,11 +437,19 @@ func (db *DB) Merge(options *WriteOptions, key []byte, val []byte, cfh ...*Colum
 // Returns OK on success, non-OK on failure.
 // Note: consider setting options.sync = true.
 func (db *DB) Write(options *WriteOptions, wbt *WriteBatch) (stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		cwopt *C.WriteOptions_t = &options.wopt
 		cwbt *C.WriteBatch_t = &wbt.wbt
 	)
+
+	defer wbt.mutex.Unlock()
+	wbt.mutex.Lock()
 	cstat := C.DBWrite(cdb, cwopt, cwbt)
 	stat = cstat.toStatus()
 	return
@@ -495,6 +463,11 @@ func (db *DB) Write(options *WriteOptions, wbt *WriteBatch) (stat *Status) {
 //
 // May return some other Status_t on an error.
 func (db *DB) Get(options *ReadOptions, key []byte, cfh ...*ColumnFamilyHandle) (val []byte, stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	ckey := newSliceFromBytes(key)
 	defer ckey.del()
 	cval := newCString()
@@ -533,6 +506,15 @@ func (db *DB) Get(options *ReadOptions, key []byte, cfh ...*ColumnFamilyHandle) 
 // Note: keys will not be "de-duplicated". Duplicate keys will return
 // duplicate values in order.
 func (db *DB) MultiGet(options *ReadOptions, keys [][]byte, cfhs ...*ColumnFamilyHandle) (vals [][]byte, stats []*Status) {
+	if db.closed {
+		stats = make([]*Status, len(keys))
+		stat := NewDBClosedStatus()
+		for i, _ := range stats {
+			stats[i] = stat	
+		}
+		return
+	}
+
 	ckeys := cSlicePtrAry(newSlicesFromBytesArray(keys))
 	defer ckeys.del()
 	cckeys := ckeys.toCArray()
@@ -562,6 +544,10 @@ func (db *DB) MultiGet(options *ReadOptions, keys [][]byte, cfhs ...*ColumnFamil
 // to make this lighter weight is to avoid doing any IOs.
 // Default implementation here returns true and sets 'value_found' to false
 func (db *DB) KeyMayExist(options *ReadOptions, key []byte, cfh ...*ColumnFamilyHandle) (res bool, valfound bool, val string) {
+	if db.closed {
+		return
+	}
+
 	ckey := newSliceFromBytes(key)
 	defer ckey.del()
 	cval := newCString()
@@ -596,6 +582,10 @@ func (db *DB) KeyMayExist(options *ReadOptions, key []byte, cfh ...*ColumnFamily
 // Caller should delete the iterator when it is no longer needed.
 // The returned iterator should be deleted before this db is deleted.
 func (db *DB) NewIterator(options *ReadOptions, cfh ...*ColumnFamilyHandle) (it *Iterator) {
+	if db.closed {
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		cropt *C.ReadOptions_t = &options.ropt
@@ -620,6 +610,11 @@ func (db *DB) NewIterator(options *ReadOptions, cfh ...*ColumnFamilyHandle) (it 
 // column families. Iterators are heap allocated and need to be deleted
 // before the db is deleted
 func (db *DB) NewIterators(options *ReadOptions, cfhs []*ColumnFamilyHandle) (vals []*Iterator, stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	ccfhs := newCArrayFromColumnFamilyHandleArray(cfhs...)
 
 	var (
@@ -643,6 +638,10 @@ func (db *DB) NewIterators(options *ReadOptions, cfhs []*ColumnFamilyHandle) (va
 // nullptr will be returned if the DB fails to take a snapshot or does
 // not support snapshot.
 func (db *DB) GetSnapshot() (snp *Snapshot) {
+	if db.closed {
+		return
+	}
+
 	var cdb *C.DB_t = &db.db
 	var csnp C.Snapshot_t = C.DBGetSnapshot(cdb)
 
@@ -653,6 +652,10 @@ func (db *DB) GetSnapshot() (snp *Snapshot) {
 // Release a previously acquired snapshot.  The caller must not
 // use "snapshot" after this call.
 func (db *DB) ReleaseSnapshot(snp *Snapshot) {
+	if db.closed {
+		return
+	}
+
 	if snp.db != db {
 		panic("ReleaseSnapshot error!")
 	}
@@ -704,6 +707,10 @@ func (db *DB) ReleaseSnapshot(snp *Snapshot) {
 //      files are held from being deleted, by iterators or unfinished
 //      compactions.
 func (db *DB) GetProperty(prop []byte, cfh ...*ColumnFamilyHandle) (val string, res bool) {
+	if db.closed {
+		return
+	}
+
 	cprop := newSliceFromBytes(prop)
 	defer cprop.del()
 	cval := newCString()
@@ -748,6 +755,10 @@ func (db *DB) GetProperty(prop []byte, cfh ...*ColumnFamilyHandle) (val string, 
 //  "rocksdb.oldest-snapshot-time"
 //  "rocksdb.num-live-versions"
 func (db *DB) GetIntProperty(prop []byte, cfh ...*ColumnFamilyHandle) (val uint64, res bool) {
+	if db.closed {
+		return
+	}
+
 	cprop := newSliceFromBytes(prop)
 	defer cprop.del()
 
@@ -780,6 +791,10 @@ func (db *DB) GetIntProperty(prop []byte, cfh ...*ColumnFamilyHandle) (val uint6
 //
 // The results may not include the sizes of recently written data.
 func (db *DB) GetApproximateSizes(rngs []*Range, cfh ...*ColumnFamilyHandle) (vals []uint64) {
+	if db.closed {
+		return
+	}
+
 	crngs := newCArrayFromRangeArray(rngs...)
 
 	var (
@@ -823,6 +838,11 @@ func (db *DB) GetApproximateSizes(rngs []*Range, cfh ...*ColumnFamilyHandle) (va
 // Compaction outputs should be placed in options.db_paths[target_path_id].
 // Behavior is undefined if target_path_id is out of range.
 func (db *DB) CompactRange(begin []byte, end []byte, cfhs ...interface{}) (stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	cbegin := newSliceFromBytes(begin)
 	defer cbegin.del()
 	cend := newSliceFromBytes(end)
@@ -875,6 +895,11 @@ func (db *DB) CompactRange(begin []byte, end []byte, cfhs ...interface{}) (stat 
 }
 
 func (db *DB) SetOptions(opts []string, cfhs ...*ColumnFamilyHandle) (stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	copts := cStringPtrAry(newcStringsFromStringArray(opts))
 	defer copts.del()
 	ccopts := copts.toCArray()
@@ -906,6 +931,11 @@ func (db *DB) SetOptions(opts []string, cfhs ...*ColumnFamilyHandle) (stat *Stat
 // @see GetDataBaseMetaData
 // @see GetColumnFamilyMetaData
 func (db *DB) CompactFiles(options *CompactionOptions, files []string, level int, cfhs ...interface{}) (stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	cfiles := cStringPtrAry(newcStringsFromStringArray(files))
 	defer cfiles.del()
 	ccfiles := cfiles.toCArray()
@@ -946,6 +976,10 @@ func (db *DB) CompactFiles(options *CompactionOptions, files []string, level int
 
 // Number of levels used for this DB.
 func (db *DB) NumberLevels(cfh ...*ColumnFamilyHandle) (level int) {
+	if db.closed {
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		ccfh *C.ColumnFamilyHandle_t
@@ -966,6 +1000,10 @@ func (db *DB) NumberLevels(cfh ...*ColumnFamilyHandle) (level int) {
 // Maximum level to which a new compacted memtable is pushed if it
 // does not create overlap.
 func (db *DB) MaxMemCompactionLevel(cfh ...*ColumnFamilyHandle) (level int) {
+	if db.closed {
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		ccfh *C.ColumnFamilyHandle_t
@@ -985,6 +1023,10 @@ func (db *DB) MaxMemCompactionLevel(cfh ...*ColumnFamilyHandle) (level int) {
 
 // Number of files in level-0 that would stop writes.
 func (db *DB) Level0StopWriteTrigger(cfh ...*ColumnFamilyHandle) (level int) {
+	if db.closed {
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		ccfh *C.ColumnFamilyHandle_t
@@ -1005,6 +1047,10 @@ func (db *DB) Level0StopWriteTrigger(cfh ...*ColumnFamilyHandle) (level int) {
 // Get DB name -- the exact same name that was provided as an argument to
 // DB::Open()
 func (db *DB) GetName() (name string) {
+	if db.closed {
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		cname C.String_t = C.DBGetName(cdb)
@@ -1015,6 +1061,10 @@ func (db *DB) GetName() (name string) {
 
 // Get Env object from the DB
 func (db *DB) GetEnv() (env *Env) {
+	if db.closed {
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		cenv C.Env_t = C.DBGetEnv(cdb)
@@ -1028,6 +1078,10 @@ func (db *DB) GetEnv() (env *Env) {
 // DB::CreateColumnFamily() will have been "sanitized" and transformed
 // in an implementation-defined manner.
 func (db *DB) GetOptions(cfh ...*ColumnFamilyHandle) (opt *Options) {
+	if db.closed {
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		ccfh *C.ColumnFamilyHandle_t
@@ -1049,6 +1103,10 @@ func (db *DB) GetOptions(cfh ...*ColumnFamilyHandle) (opt *Options) {
 }
 
 func (db *DB) GetDBOptions() (dbopt *DBOptions) {
+	if db.closed {
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		cdbopt C.DBOptions_t = C.DBGetDBOptions(cdb)
@@ -1059,6 +1117,11 @@ func (db *DB) GetDBOptions() (dbopt *DBOptions) {
 
 // Flush all mem-table data.
 func (db *DB) Flush(options *FlushOptions, cfhs ...*ColumnFamilyHandle) (stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		ccfh *C.ColumnFamilyHandle_t
@@ -1081,6 +1144,10 @@ func (db *DB) Flush(options *FlushOptions, cfhs ...*ColumnFamilyHandle) (stat *S
 
 // The sequence number of the most recent transaction.
 func (db *DB) GetLatestSequenceNumber() (sqnum SequenceNumber) {
+	if db.closed {
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 	)
@@ -1092,6 +1159,11 @@ func (db *DB) GetLatestSequenceNumber() (sqnum SequenceNumber) {
 // Env::GenerateUniqueId(), in identity. Returns Status_t::OK if identity could
 // be set properly
 func (db *DB) GetDbIdentity() (id string, stat *Status) {
+	if db.closed {
+		stat = NewDBClosedStatus()
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		cid C.String_t
@@ -1104,6 +1176,10 @@ func (db *DB) GetDbIdentity() (id string, stat *Status) {
 
 // Returns default column family handle
 func (db *DB) DefaultColumnFamily() (cfh *ColumnFamilyHandle) {
+	if db.closed {
+		return
+	}
+
 	var (
 		cdb *C.DB_t = &db.db
 		ccfh C.ColumnFamilyHandle_t = C.DBDefaultColumnFamily(cdb)
@@ -1114,7 +1190,7 @@ func (db *DB) DefaultColumnFamily() (cfh *ColumnFamilyHandle) {
 
 // Destroy the contents of the specified database.
 // Be very careful using this method.
-func DestroyDB(name *string, opt *Options) (stat *Status) {
+func DestroyDB(opt *Options, name *string) (stat *Status) {
 	cname := newCStringFromString(name)
 
 	var (

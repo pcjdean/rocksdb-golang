@@ -10,38 +10,9 @@
 
 using namespace rocksdb;
 
-static const Status invalid_status = Status::InvalidArgument("Invalid database pointer");
-
-DEFINE_C_WRAP_CONSTRUCTOR(ColumnFamilyHandle)
-DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyHandle)
-DEFINE_C_WRAP_DESTRUCTOR_ARRAY(ColumnFamilyHandle)
-String_t ColumnFamilyGetName(const ColumnFamilyHandle_t* column_family)
-{
-    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
-    const std::string& name_str = GET_REP(column_family, ColumnFamilyHandle)->GetName();
-    return NewStringT(const_cast<std::string*>(&name_str));
-}
-    
-uint32_t ColumnFamilyGetID(const ColumnFamilyHandle_t* column_family)
-{
-    assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
-    return GET_REP(column_family, ColumnFamilyHandle)->GetID();
-}
-
 DEFINE_C_WRAP_CONSTRUCTOR(TablePropertiesCollection)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(TablePropertiesCollection)
 DEFINE_C_WRAP_DESTRUCTOR(TablePropertiesCollection)
-
-// Abstract handle to particular state of a DB.
-// A Snapshot is an immutable object and can therefore be safely
-// accessed from multiple threads without any external synchronization.
-DEFINE_C_WRAP_CONSTRUCTOR(Snapshot)
-
-SequenceNumber SnapshotGetSequenceNumber(Snapshot_t* snapshot)
-{
-    assert(GET_REP(snapshot, Snapshot) != NULL);
-    return GET_REP(snapshot, Snapshot)->GetSequenceNumber();
-}
 
 // A range of keys
 DEFINE_C_WRAP_CONSTRUCTOR(Range)
@@ -105,11 +76,11 @@ Status_t DBOpenForReadOnly(const Options_t* options,
 // Not supported in ROCKSDB_LITE, in which case the function will
 // return Status_t::NotSupported.
 Status_t DBOpenForReadOnlyWithColumnFamilies(const Options_t* options,
-                                           const String_t* name,
-                                           const ColumnFamilyDescriptor_t column_families[],
-                                           const int size_col,
-                                           ColumnFamilyHandle_t **handles,
-                                           DB_t* dbptr, bool error_if_log_file_exist)
+                                             const String_t* name,
+                                             const ColumnFamilyDescriptor_t column_families[],
+                                             const int size_col,
+                                             ColumnFamilyHandle_t **handles,
+                                             DB_t* dbptr, bool error_if_log_file_exist)
 {
     std::vector<ColumnFamilyDescriptor> column_families_vec = std::vector<ColumnFamilyDescriptor>(size_col);
     for (int i = 0; i < size_col; i++)
@@ -145,8 +116,8 @@ Status_t DBOpenForReadOnlyWithColumnFamilies(const Options_t* options,
 // as column_families --- handles[i] will be a handle that you
 // will use to operate on column family column_family[i]
 Status_t DBOpenWithColumnFamilies(const Options_t* options, const String_t* name,
-                                const ColumnFamilyDescriptor_t column_families[], const int size_col,
-                                ColumnFamilyHandle_t **handles, DB_t* dbptr)
+                                  const ColumnFamilyDescriptor_t column_families[], const int size_col,
+                                  ColumnFamilyHandle_t **handles, DB_t* dbptr)
 {
     std::vector<ColumnFamilyDescriptor> column_families_vec = std::vector<ColumnFamilyDescriptor>(size_col);
     for (int i = 0; i < size_col; i++)
@@ -198,8 +169,8 @@ Status_t DBListColumnFamilies(DBOptions_t* db_options,
 // Create a column_family and return the handle of column family
 // through the argument handle.
 Status_t DBCreateColumnFamily(const DB_t* dbptr, const ColumnFamilyOptions_t* options,
-                            const String_t* column_family_name,
-                            ColumnFamilyHandle_t* handle)
+                              const String_t* column_family_name,
+                              ColumnFamilyHandle_t* handle)
 {
     assert(handle != NULL);
     ColumnFamilyHandle** rcfh = GET_REP_ADDR(handle, ColumnFamilyHandle);
@@ -233,9 +204,9 @@ Status_t DBDropColumnFamily(const DB_t* dbptr, const ColumnFamilyHandle_t* colum
 // Returns OK on success, and a non-OK status on error.
 // Note: consider setting options.sync = true.
 Status_t DBPutWithColumnFamily(const DB_t* dbptr, const WriteOptions_t* options,
-                           const ColumnFamilyHandle_t* column_family,
-                           const Slice_t* key,
-                           const Slice_t* value)
+                               const ColumnFamilyHandle_t* column_family,
+                               const Slice_t* key,
+                               const Slice_t* value)
 {
     assert(dbptr != NULL);
     assert(GET_REP(dbptr, DB) != NULL);
@@ -305,8 +276,8 @@ Status_t DBMergeWithColumnFamily(const DB_t* dbptr, const WriteOptions_t* option
 }
 
 Status_t DBMerge(const DB_t* dbptr, const WriteOptions_t* options,
-               const Slice_t* key,
-               const Slice_t* value)
+                 const Slice_t* key,
+                 const Slice_t* value)
 {
     const ColumnFamilyHandle_t column_family = DBDefaultColumnFamily(dbptr);
     return DBMergeWithColumnFamily(dbptr, options, &column_family, key, value);
