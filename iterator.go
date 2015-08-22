@@ -52,7 +52,7 @@ func (it *Iterator) Close() {
 
 // Iterator of C to go iterator
 func (cit *C.Iterator_t) toIterator(db *DB) (it *Iterator) {
-	it = &Iterator{it: *cit, db: db}	
+	it = &Iterator{it: *cit, mutex: sync.Mutex{}, db: db}	
 	runtime.SetFinalizer(it, finalize)
 	return
 }
@@ -62,7 +62,7 @@ func newIteratorArrayFromCArray(cit *C.Iterator_t, sz uint, db *DB) (its []*Iter
 	defer C.DeleteIteratorTArray(cit)
 	its = make([]*Iterator, sz)
 	for i := uint(0); i < sz; i++ {
-		its[i] = &Iterator{it: (*[arrayDimenMax]C.Iterator_t)(unsafe.Pointer(cit))[i], db: db}
+		its[i] = &Iterator{it: (*[arrayDimenMax]C.Iterator_t)(unsafe.Pointer(cit))[i], mutex: sync.Mutex{}, db: db}
 		runtime.SetFinalizer(its[i], finalize)
 	}
 	return
