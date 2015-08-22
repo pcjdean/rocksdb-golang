@@ -30,12 +30,16 @@ import (
 	"sync"
 )
 
+// Go WriteBatch
 type WriteBatch struct {
 	wbt C.WriteBatch_t
+	// Thread safe
 	mutex sync.Mutex
+	// true if the underlying c object is deleted
 	closed bool
 }
 
+// Release resources
 func (wbt *WriteBatch) finalize() {
 	if !wbt.closed {
 		wbt.closed = true
@@ -44,17 +48,20 @@ func (wbt *WriteBatch) finalize() {
 	}
 }
 
+// Close the write batch
 func (wbt *WriteBatch) Close() {
 	runtime.SetFinalizer(wbt, nil)
 	wbt.finalize()
 }
 
+// Create a default write batch
 func NewWriteBatch() *WriteBatch {
 	wbt:= &WriteBatch{wbt: C.NewWriteBatchTDefault(), mutex: sync.Mutex{}}
 	runtime.SetFinalizer(wbt, finalize)
 	return wbt
 }
 
+// Create a write batch from data usually from another write batch
 func NewWriteBatchFromBytes(bytes []byte) *WriteBatch {
 	str := string(bytes)
 	cstr := newCStringFromString(&str)

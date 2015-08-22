@@ -20,3 +20,25 @@ using namespace rocksdb;
 DEFINE_C_WRAP_CONSTRUCTOR(Slice)
 DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(Slice, const char*, size_t)
 DEFINE_C_WRAP_DESTRUCTOR(Slice)
+
+// Return a pointer to the beginning of the referenced data
+const char* SliceData(Slice_t *slc)
+{
+    const char* ret = nullptr;
+    if (slc && GET_REP(slc, Slice))
+    {
+        ret = GET_REP(slc, Slice)->data();
+    }
+    return ret;
+}
+
+// Return the length (in bytes) of the referenced data
+size_t SliceSize(Slice_t *slc)
+{
+    size_t ret = 0;
+    if (slc && GET_REP(slc, Slice))
+    {
+        ret = GET_REP(slc, Slice)->size();
+    }
+    return ret;
+}

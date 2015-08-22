@@ -31,6 +31,13 @@ func checkCondition(t *testing.T, cond bool) {
 	}
 }
 
+func checkIter(t *testing.T, iter *Iterator, key, val string) {
+	str := iter.Key();
+	checkCondition(t, bytes.Equal(str, []byte(key)));
+	str = iter.Value();
+	checkCondition(t, bytes.Equal(str, []byte(val)));
+}
+
 // Test from rocksdb's c_test.c.
 func TestCMain(t *testing.T) {
 	var (
@@ -184,27 +191,23 @@ func TestCMain(t *testing.T) {
 	wb1.Close()
 	wb2.Close()
 
-	// StartPhase("iter");
-	// {
-	// 	rocksdb_iterator_t* iter = rocksdb_create_iterator(db, roptions);
-	// 	CheckCondition(!rocksdb_iter_valid(iter));
-	// 	rocksdb_iter_seek_to_first(iter);
-	// 	CheckCondition(rocksdb_iter_valid(iter));
-	// 	CheckIter(iter, "box", "c");
-	// 	rocksdb_iter_next(iter);
-	// 	CheckIter(iter, "foo", "hello");
-	// 	rocksdb_iter_prev(iter);
-	// 	CheckIter(iter, "box", "c");
-	// 	rocksdb_iter_prev(iter);
-	// 	CheckCondition(!rocksdb_iter_valid(iter));
-	// 	rocksdb_iter_seek_to_last(iter);
-	// 	CheckIter(iter, "foo", "hello");
-	// 	rocksdb_iter_seek(iter, "b", 1);
-	// 	CheckIter(iter, "box", "c");
-	// 	rocksdb_iter_get_error(iter, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_iter_destroy(iter);
-	// }
+	t.Log("phase: iter")
+	iter := db.NewIterator(ropts)
+	checkCondition(t, !iter.Valid())
+	iter.SeekToFirst()
+	checkCondition(t, iter.Valid())
+	checkIter(t, iter, "box", "c")
+	iter.Next()
+	checkIter(t, iter, "foo", "hello")
+	iter.Prev()
+	checkIter(t, iter, "box", "c")
+	iter.Prev()
+	checkCondition(t, !iter.Valid())
+	iter.SeekToLast()
+	checkIter(t, iter, "foo", "hello")
+	iter.Seek([]byte("b"))
+	checkIter(t, iter, "box", "c")
+	iter.Close()
 
 	t.Log("phase: approximate_sizes")
 	rngs := []*Range{NewRange([]byte("a"), []byte("k00000000000000010000")), NewRange([]byte("k00000000000000010000"), []byte("z"))}

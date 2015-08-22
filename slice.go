@@ -24,23 +24,51 @@ import (
 	"unsafe"
 )
 
+// Go wrap C slice
 type cSlice struct {
 	slc C.Slice_t
+	// Allocated by cgo C.CString
 	cptr *C.char
 }
 
+// Go wrap C slice array
 type cSlicePtrAry []*cSlice
 
-// The caller is responsible for delete the returned slc
+// Go wrap C slice to go bytes
+func (slc *cSlice) goBytes(del bool) (val []byte) {
+	var (
+		cslc *C.Slice_t = &slc.slc
+		cstr *C.char = C.SliceData(cslc)
+		sz C.size_t = C.SliceSize(cslc)
+	)
+	if del {
+		defer C.DeleteSliceT(cslc, toCBool(false))
+	}
+
+	if unsafe.Pointer(cstr) != nil && sz > 0 {
+		val = C.GoBytes(unsafe.Pointer(cstr), C.int(sz));
+	}
+	return
+}
+
+// Bytes to Go wrap C slice. The caller is responsible for delete the returned slc
 func newSliceFromBytes(bytes []byte) (slc *cSlice) {
 	cptr := C.CString(string(bytes))
 	slc = &cSlice{slc: C.NewSliceTRawArgs(cptr, C.uint64ToSizeT(C.uint64_t(len(bytes)))), cptr: cptr}
 	return
 }
 
+// Delete Go wrap C slice
 func (slc *cSlice) del()  {
 	C.DeleteSliceT(&slc.slc, toCBool(false))
 	C.free(unsafe.Pointer(slc.cptr))
+}
+
+// C slice to go bytes
+func (cslc *C.Slice_t) cToBytes() (val []byte) {
+	slc := cSlice{slc: *cslc}
+	val = slc.goBytes(true)
+	return
 }
 
 // The caller is responsible for delete the returned slcs
@@ -52,12 +80,14 @@ func newSlicesFromBytesArray(bytess [][]byte) (slcs []*cSlice) {
 	return
 }
 
+// Delete Go wrap C slice array
 func (slcs *cSlicePtrAry) del() {
 	for _, slc := range *slcs {
 		slc.del()
 	}
 }
 
+// Go wrap C slice array to C slice array
 func (slcs *cSlicePtrAry) toCArray() (cslcs []C.Slice_t) {
 	cslcs = make([]C.Slice_t, len(*slcs))
 	for i, slc := range *slcs {

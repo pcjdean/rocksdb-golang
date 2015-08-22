@@ -15,26 +15,31 @@ import (
 	"unsafe"
 )
 
+// Go Status
 type Status struct {
 	sta C.Status_t
 }
 
+// Release resources
 func (stat *Status) finalize() {
 	var cstat *C.Status_t = &stat.sta
 	C.DeleteStatusT(cstat, toCBool(false))
 }
 
+// C Status to Go Status
 func (csta *C.Status_t) toStatus() (sta *Status) {
 	sta = &Status{sta: *csta}	
 	runtime.SetFinalizer(sta, finalize)
 	return
 }
 
+// Create a new 'DB closed' go status
 func NewDBClosedStatus() *Status {
 	csta := C.StatusDBClosedStatus()
 	return csta.toStatus()
 }
 
+// C Status array to Go Status array
 func newStatusArrayFromCArray(csta *C.Status_t, sz uint) (stas []*Status) {
 	defer C.DeleteStatusTArray(csta)
 	stas = make([]*Status, sz)

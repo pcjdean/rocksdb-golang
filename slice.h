@@ -17,6 +17,9 @@ DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(Slice, const char*, size_t)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(Slice)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(Slice)
 
+const char* SliceData(Slice_t *slc);
+size_t SliceSize(Slice_t *slc);
+
 #ifdef __cplusplus
 }  /* end extern "C" */
 #endif

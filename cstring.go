@@ -15,12 +15,15 @@ import (
 	"unsafe"
 )
 
+// Go wrap C string
 type cString struct {
 	str C.String_t
 }
 
+// Go wrap C string array
 type cStringPtrAry []*cString
 
+// Go wrap C string to go string
 func (rstr *cString) goString(del bool) (str string) {
 	var (
 		cplustr *C.String_t = &rstr.str
@@ -37,6 +40,7 @@ func (rstr *cString) goString(del bool) (str string) {
 	return
 }
 
+// Go wrap C string to go bytes
 func (rstr *cString) goBytes(del bool) (str []byte) {
 	var (
 		cplustr *C.String_t = &rstr.str
@@ -53,16 +57,19 @@ func (rstr *cString) goBytes(del bool) (str []byte) {
 	return
 }
 
+// Delete the go wrap C string
 func (str *cString) del()  {
 	C.DeleteStringT(&str.str, toCBool(false))
 }
 
+// C string to go string
 func (ccstr *C.String_t) cToString() (str string) {
 	cstr := cString{str: *ccstr}
 	str = cstr.goString(true)
 	return
 }
 
+// C string to go bytes
 func (ccstr *C.String_t) cToBytes() (str []byte) {
 	cstr := cString{str: *ccstr}
 	str = cstr.goBytes(true)
@@ -83,6 +90,7 @@ func newCString() (str *cString) {
 	return
 }
 
+// C string array to go string array
 func newStringArrayFromCArray(ccstr *C.String_t, sz uint) (strs []string) {
 	defer C.DeleteStringTArray(ccstr)
 	strs = make([]string, sz)
@@ -93,6 +101,7 @@ func newStringArrayFromCArray(ccstr *C.String_t, sz uint) (strs []string) {
 	return
 }
 
+// C string array to go bytes array
 func newBytesFromCArray(ccstr *C.String_t, sz uint) (strs [][]byte) {
 	defer C.DeleteStringTArray(ccstr)
 	strs = make([][]byte, sz)
@@ -112,12 +121,14 @@ func newcStringsFromStringArray(strs []string) (cstrs []*cString) {
 	return
 }
 
+// Delete go wrap C string array
 func (cstrs *cStringPtrAry) del() {
 	for _, cstr := range *cstrs {
 		cstr.del()
 	}
 }
 
+// Go wrap C string array to C string array
 func (cstrs *cStringPtrAry) toCArray() (ccstrs []C.String_t) {
 	ccstrs = make([]C.String_t, len(*cstrs))
 	for i, cstr := range *cstrs {
