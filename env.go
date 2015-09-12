@@ -21,15 +21,18 @@ import (
 	"runtime"
 )
 
+// Wrap go Env
 type Env struct {
 	env C.Env_t
 }
 
+// Release resources
 func (env *Env) finalize() {
 	var cenv *C.Env_t = &env.env
 	C.DeleteEnvT(cenv, toCBool(false))
 }
 
+// C env to go env
 func (cenv *C.Env_t) toEnv() (env *Env) {
 	env = &Env{env: *cenv}	
 	runtime.SetFinalizer(env, finalize)

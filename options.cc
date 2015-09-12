@@ -16,6 +16,11 @@ DEFINE_C_WRAP_GETTER(ColumnFamilyOptions, compression, int)
 DEFINE_C_WRAP_SETTER_CAST(ColumnFamilyOptions, compression, int, CompressionType)
 DEFINE_C_WRAP_GETTER(ColumnFamilyOptions, write_buffer_size, size_t)
 DEFINE_C_WRAP_SETTER(ColumnFamilyOptions, write_buffer_size, size_t)
+// This is a factory that provides TableFactory objects.
+// Default: a block-based table factory that provides a default
+// implementation of TableBuilder and TableReader with default
+// BlockBasedTableOptions.
+DEFINE_C_WRAP_SETTER_WRAP(ColumnFamilyOptions, table_factory, PTableFactory)
 
 void ColumnFamilyOptions_set_compression_per_level(ColumnFamilyOptions_t* opt,
                                                    int* level_values,

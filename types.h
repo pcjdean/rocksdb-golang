@@ -34,6 +34,7 @@ enum bool_t {
     
 
 // Used internally by the C/C++ code
+// Construct the new wrap object from the raw c++ object
 #define DEFINE_C_WRAP_CONSTRUCTOR_DEC_R(x) x##_t New##x##T(void* ptr)
 #define DEFINE_C_WRAP_CONSTRUCTOR_BODY(x) { \
         x##_t wrap_t; \
@@ -48,6 +49,7 @@ enum bool_t {
 
 
 // Used internally by the C/C++ code
+// Construct the new wrap object from the copied raw c++ object
 #define DEFINE_C_WRAP_CONSTRUCTOR_COPY_DEC_R(x)  x##_t New##x##TCopy(void* ptr)
 #define DEFINE_C_WRAP_CONSTRUCTOR_COPY_BODY(x) { \
         x##_t wrap_t; \
@@ -62,6 +64,7 @@ enum bool_t {
 
 
 // Used internally by the C/C++ code
+// Construct the new wrap object from the moved raw c++ object
 #define DEFINE_C_WRAP_CONSTRUCTOR_MOVE_DEC_R(x) x##_t New##x##TMove(void* ptr)
 #define DEFINE_C_WRAP_CONSTRUCTOR_MOVE_BODY(x) { \
         x##_t wrap_t; \
@@ -76,6 +79,9 @@ enum bool_t {
 
 
 // Used externally by the calling code
+// Construct the new wrap object from the newly created raw c++ object
+// from the raw arguments 0, 1 and 2. The arguments are in the wrapped
+// type.
 #define DEFINE_C_WRAP_CONSTRUCTOR_ARGS0_DEC_R(x) x##_t New##x##TArgs()
 #define DEFINE_C_WRAP_CONSTRUCTOR_ARGS0_BODY(x) { \
         x##_t wrap_t; \
@@ -122,6 +128,9 @@ enum bool_t {
 
 
 // Used internally by the calling code
+// Construct the new wrap object from the newly created raw c++ object
+// from the raw arguments 0, 1 and 2. The arguments are in the raw
+// type.
 #define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0_DEC_R(x)  x##_t New##x##TRawArgs()
 #define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0_DEC(x) DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0_DEC_R(x);
 #define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0(x) DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0_DEC_R(x) \
@@ -159,7 +168,9 @@ enum bool_t {
 #define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(...) GET_MACRO3(__VA_ARGS__, DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2_DEC, DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1_DEC, DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0_DEC)(__VA_ARGS__)
 #define DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(...) GET_MACRO3(__VA_ARGS__, DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS2, DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS1, DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS0)(__VA_ARGS__)
 
-// Used externally by the calling code. But it's implemented inernally.
+// Construct the new wrap object from the newly created raw c++ object
+// from the raw arguments 0, 1 and 2. The arguments are the raw
+// values of raw types.
 #define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0_DEC_R(x) x##_t New##x##TDefault()
 #define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0_DEC(x) DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0_DEC_R(x);
 #define DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0(x) DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT0_DEC_R(x) \
@@ -193,7 +204,8 @@ enum bool_t {
 
 
 
-// Used externally by the calling code
+// Delete the wrapped raw object in x
+// Delete the wrap object x itself if self is true
 #define DEFINE_C_WRAP_DESTRUCTOR_DEC_R(x)  void Delete##x##T(x##_t* ptr, bool self)
 #define DEFINE_C_WRAP_DESTRUCTOR_BODY(x) { \
         if (ptr) \
@@ -212,7 +224,7 @@ enum bool_t {
 
 
 
-// Used externally by the calling code
+// Delete array of pointers to wrap object x
 #define DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC_R(x) void Delete##x##TArray(x##_t* ptr)
 #define DEFINE_C_WRAP_DESTRUCTOR_ARRAY_BODY(x) { \
         if (ptr) \
@@ -227,6 +239,7 @@ enum bool_t {
 
 
 
+// Get y static cast from x
 #define DEFINE_C_WRAP_STATIC_CAST_DEC_R(x,y) void x##TStaticCastTo##y##T(x##_t* ptr, y##_t* toptr)
 #define DEFINE_C_WRAP_STATIC_CAST_BODY(x,y) { \
         if (ptr && toptr) \
@@ -241,6 +254,7 @@ enum bool_t {
 
 
 
+// Get the member y of x, in type z
 #define DEFINE_C_WRAP_GETTER_DEC_R(x,y,z) z x##_get_##y(x##_t* ptr)
 #define DEFINE_C_WRAP_GETTER_BODY(x,y,z) { \
         if (ptr) \
@@ -252,11 +266,13 @@ enum bool_t {
 #define DEFINE_C_WRAP_GETTER_DEC(x,y,z) DEFINE_C_WRAP_GETTER_DEC_R(x,y,z);
 #define DEFINE_C_WRAP_GETTER(x,y,z) DEFINE_C_WRAP_GETTER_DEC_R(x,y,z) \
     DEFINE_C_WRAP_GETTER_BODY(x,y,z)
+// Get the member y of x, cast to z
 #define DEFINE_C_WRAP_GETTER_CAST(x,y,z) DEFINE_C_WRAP_GETTER_DEC_R(x,y,z) \
     DEFINE_C_WRAP_GETTER_BODY(x,y,z)
 
 
 
+// Set the member y of x to the raw value of v
 #define DEFINE_C_WRAP_SETTER_DEC_R(x,y,z) void x##_set_##y(x##_t* ptr, z v)
 #define DEFINE_C_WRAP_SETTER_BODY(x,y,z) { \
         if (ptr) \
@@ -270,6 +286,21 @@ enum bool_t {
     DEFINE_C_WRAP_SETTER_BODY(x,y,z)
 #define DEFINE_C_WRAP_SETTER_CAST(x,y,z,u) DEFINE_C_WRAP_SETTER_DEC_R(x,y,z) \
     DEFINE_C_WRAP_SETTER_BODY(x,y,u)
+
+
+
+// Set the member y of x to the wrapped raw value of v
+#define DEFINE_C_WRAP_SETTER_WRAP_DEC_R(x,y,z) void x##_set_##y(x##_t* ptr, z##_t* v)
+#define DEFINE_C_WRAP_SETTER_WRAP_BODY(x,y,z) { \
+        if (ptr) \
+        {                                       \
+            GET_REP(ptr, x)->y = GET_REP_REF(v,z);       \
+        }                                       \
+    } 
+
+#define DEFINE_C_WRAP_SETTER_WRAP_DEC(x,y,z) DEFINE_C_WRAP_SETTER_WRAP_DEC_R(x,y,z);
+#define DEFINE_C_WRAP_SETTER_WRAP(x,y,z) DEFINE_C_WRAP_SETTER_WRAP_DEC_R(x,y,z) \
+    DEFINE_C_WRAP_SETTER_WRAP_BODY(x,y,z)
 
 
 

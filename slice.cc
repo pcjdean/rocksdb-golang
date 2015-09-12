@@ -20,6 +20,7 @@ using namespace rocksdb;
 DEFINE_C_WRAP_CONSTRUCTOR(Slice)
 DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(Slice, const char*, size_t)
 DEFINE_C_WRAP_DESTRUCTOR(Slice)
+DEFINE_C_WRAP_DESTRUCTOR_ARRAY(Slice)
 
 // Return a pointer to the beginning of the referenced data
 const char* SliceData(Slice_t *slc)

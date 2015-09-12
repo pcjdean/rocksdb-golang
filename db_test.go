@@ -38,6 +38,34 @@ func checkIter(t *testing.T, iter *Iterator, key, val string) {
 	checkCondition(t, bytes.Equal(str, []byte(val)));
 }
 
+type testFilterPolicy struct {
+	t *testing.T
+	fakeResult bool
+}
+
+func (tfp testFilterPolicy) Name() string {
+	return "testFilterPolicy"
+}
+
+func (tfp testFilterPolicy) CreateFilter(keys [][]byte) []byte {
+	return []byte("fake")
+}
+
+func (tfp testFilterPolicy) KeyMayMatch(key, filter []byte) bool {
+	checkCondition(tfp.t, 4 == len(filter))
+	checkCondition(tfp.t, bytes.Equal(filter, []byte("fake")));
+	return tfp.fakeResult
+}
+
+func (tfp testFilterPolicy) GetFilterBitsBuilder() *IFilterBitsBuilder {
+	return nil
+}
+
+func (tfp testFilterPolicy) GetFilterBitsReader() *IFilterBitsReader {
+	return nil
+}
+
+
 // Test from rocksdb's c_test.c.
 func TestCMain(t *testing.T) {
 	var (
@@ -52,7 +80,7 @@ func TestCMain(t *testing.T) {
 	fmt.Printf("dbbackupname = %s\n", dbbackupname)
 	// cmp = rocksdb_comparator_create(NULL, CmpDestroy, CmpCompare, CmpName);
 	// env = rocksdb_create_default_env();
-	// cache = rocksdb_cache_create_lru(100000);
+	cache := NewLRUCache(100000)
 
 	options := NewOptions()
 
@@ -63,9 +91,9 @@ func TestCMain(t *testing.T) {
 	options.SetWriteBufferSize(100000)
 	// rocksdb_options_set_paranoid_checks(options, 1);
 	// rocksdb_options_set_max_open_files(options, 10);
-	// table_options = rocksdb_block_based_options_create();
-	// rocksdb_block_based_options_set_block_cache(table_options, cache);
-	// rocksdb_options_set_block_based_table_factory(options, table_options);
+	table_options := NewBlockBasedTableOptions()
+	table_options.SetBlockCache(cache)
+	options.SetTableFactory(table_options.NewBlockBasedTableFactory())
 
 	options.SetCompression(NoCompression);
 	options.SetCompressionOptions(-14, -1, 0)
@@ -264,53 +292,56 @@ func TestCMain(t *testing.T) {
 	}
 	db.checkGet(t, ropts, []byte("foo"), nil)
 	db.checkGet(t, ropts, []byte("bar"), nil)
-	// db.checkGet(t, ropts, []byte("box"), []byte("c"))
+	db.checkGet(t, ropts, []byte("box"), []byte("c"))
 	options.SetErrorIfExists(true);
 	options.SetCreateIfMissing(true)
 
-	// StartPhase("filter");
-	// for (run = 0; run < 2; run++) {
-	// 	// First run uses custom filter, second run uses bloom filter
-	// 	CheckNoError(err);
-	// 	rocksdb_filterpolicy_t* policy;
-	// 	if (run == 0) {
-	// 		policy = rocksdb_filterpolicy_create(
-	// 			NULL, FilterDestroy, FilterCreate, FilterKeyMatch, NULL, FilterName);
-	// 	} else {
-	// 		policy = rocksdb_filterpolicy_create_bloom(10);
-	// 	}
+	t.Log("phase: filter")
+	var policy *FilterPolicy
+	tfp := testFilterPolicy{t: t, fakeResult: true}
+	for run := 0; run < 2; run++ {
+		if 0 == run {
+			policy = NewFilterPolicy(tfp)
+		} else {
+			policy = NewBloomFilterPolicy(10)
+		}
+		table_options.SetFilterPolicy(policy)
+		db.Close()
+		stat = DestroyDB(options, &dbname)
+		t.Logf("DestroyDB: status = ", stat)
+		options.SetTableFactory(table_options.NewBlockBasedTableFactory())
+		db, stat, _ = Open(options, &dbname)
+		if !stat.Ok() {
+			t.Fatalf("err: open: stat = %s", stat)
+		}
+		stat = db.Put(woptions, []byte("foo"), []byte("foovalue"))
+		if !stat.Ok() {
+			t.Fatalf("err: put err: stat = %s", stat)
+		}
+		stat = db.Put(woptions, []byte("bar"), []byte("barvalue"))
+		if !stat.Ok() {
+			t.Fatalf("err: put err: stat = %s", stat)
+		}
+		db.CompactRange(nil, nil)
 
-	// 	rocksdb_block_based_options_set_filter_policy(table_options, policy);
+		tfp.fakeResult = true
+		db.checkGet(t, ropts, []byte("foo"), []byte("foovalue"))
+		db.checkGet(t, ropts, []byte("bar"), []byte("barvalue"))
 
-	// 	// Create new database
-	// 	rocksdb_close(db);
-	// 	rocksdb_destroy_db(options, dbname, &err);
-	// 	rocksdb_options_set_block_based_table_factory(options, table_options);
-	// 	db = rocksdb_open(options, dbname, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "foo", 3, "foovalue", 8, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "bar", 3, "barvalue", 8, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_compact_range(db, NULL, 0, NULL, 0);
+		if 0 == run {
+			// Must not find value when custom filter returns false
+			tfp.fakeResult = false
+			db.checkGet(t, ropts, []byte("foo"), nil)
+			db.checkGet(t, ropts, []byte("bar"), nil)
 
-	// 	fake_filter_result = 1;
-	// 	CheckGet(db, roptions, "foo", "foovalue");
-	// 	CheckGet(db, roptions, "bar", "barvalue");
-	// 	if (phase == 0) {
-	// 		// Must not find value when custom filter returns false
-	// 		fake_filter_result = 0;
-	// 		CheckGet(db, roptions, "foo", NULL);
-	// 		CheckGet(db, roptions, "bar", NULL);
-	// 		fake_filter_result = 1;
+			tfp.fakeResult = true
+			db.checkGet(t, ropts, []byte("foo"), []byte("foovalue"))
+			db.checkGet(t, ropts, []byte("bar"), []byte("barvalue"))
+		}
 
-	// 		CheckGet(db, roptions, "foo", "foovalue");
-	// 		CheckGet(db, roptions, "bar", "barvalue");
-	// 	}
-	// 	// Reset the policy
-	// 	rocksdb_block_based_options_set_filter_policy(table_options, NULL);
-	// 	rocksdb_options_set_block_based_table_factory(options, table_options);
-	// }
+		table_options.SetFilterPolicy(nil)
+		options.SetTableFactory(table_options.NewBlockBasedTableFactory())
+	}
 
 	// StartPhase("compaction_filter");
 	// {

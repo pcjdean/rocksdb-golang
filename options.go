@@ -38,6 +38,7 @@ func (cfopt *ColumnFamilyOptions) finalize() {
 	C.DeleteColumnFamilyOptionsT(ccfopt, toCBool(false))
 }
 
+// Create default ColumnFamilyOptions
 func NewColumnFamilyOptions() *ColumnFamilyOptions {
 	cfopt := &ColumnFamilyOptions{cfopt: C.NewColumnFamilyOptionsTDefault()}
 	runtime.SetFinalizer(cfopt, finalize)
@@ -128,6 +129,15 @@ func (cfopt *ColumnFamilyOptions) SetCompressionPerLevel(levelValues []int) {
 	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
 	cints := newCIntArrayFromArray(&levelValues)
 	C.ColumnFamilyOptions_set_compression_per_level(ccfopt, &cints[0], C.uint64ToSizeT(C.uint64_t(len(cints))))
+}
+
+// This is a factory that provides TableFactory objects.
+// Default: a block-based table factory that provides a default
+// implementation of TableBuilder and TableReader with default
+// BlockBasedTableOptions.
+func (cfopt *ColumnFamilyOptions) SetTableFactory(tbf *TableFactory) {
+	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
+	C.ColumnFamilyOptions_set_table_factory(ccfopt, &tbf.tbf)
 }
 
 type DBOptions struct {

@@ -65,9 +65,26 @@ func (slc *cSlice) del()  {
 }
 
 // C slice to go bytes
-func (cslc *C.Slice_t) cToBytes() (val []byte) {
+// Delete cslc if delEle is true
+func (cslc *C.Slice_t) cToBytes(delEle bool) (val []byte) {
 	slc := cSlice{slc: *cslc}
-	val = slc.goBytes(true)
+	val = slc.goBytes(delEle)
+	return
+}
+
+// C slice array to go bytes array
+// Delete ccslc if delAry is true
+// Delete ccslc[i] if delEle is true
+func newBytesFromCSliceArray(ccslc *C.Slice_t, sz uint, delAry bool, delEle bool) (strs [][]byte) {
+	if delAry {
+		defer C.DeleteSliceTArray(ccslc)
+	}
+
+	strs = make([][]byte, sz)
+	for i := uint(0); i < sz; i++ {
+		cslc := cSlice{slc: (*[arrayDimenMax]C.Slice_t)(unsafe.Pointer(ccslc))[i]}
+		strs[i] = cslc.goBytes(delEle)
+	}
 	return
 }
 

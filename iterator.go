@@ -144,7 +144,7 @@ func (it *Iterator) Key() (key []byte){
 
 	var cit *C.Iterator_t = &it.it
 	ckey := C.IteratorKey(cit)
-	key = ckey.cToBytes()
+	key = ckey.cToBytes(true)
 	return
 }
 
@@ -158,7 +158,7 @@ func (it *Iterator) Value() (val []byte){
 
 	var cit *C.Iterator_t = &it.it
 	cval := C.IteratorValue(cit)
-	val = cval.cToBytes()
+	val = cval.cToBytes(true)
 	return
 }
 

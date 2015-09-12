@@ -12,6 +12,7 @@ using namespace rocksdb;
 
 #include "types.h"
 #include "snapshot.h"
+#include "table.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,7 +27,9 @@ DEFINE_C_WRAP_STRUCT(FlushOptions)
 DEFINE_C_WRAP_STRUCT(CompactionOptions)
 
 
+// Cast Options* to DBOptions*
 DEFINE_C_WRAP_STATIC_CAST_DEC(Options, DBOptions)
+// Cast Options* to ColumnFamilyOptions*
 DEFINE_C_WRAP_STATIC_CAST_DEC(Options, ColumnFamilyOptions)
 
 
@@ -39,6 +42,7 @@ DEFINE_C_WRAP_GETTER_DEC(ColumnFamilyOptions, compression, int)
 DEFINE_C_WRAP_SETTER_DEC(ColumnFamilyOptions, compression, int)
 DEFINE_C_WRAP_GETTER_DEC(ColumnFamilyOptions, write_buffer_size, size_t)
 DEFINE_C_WRAP_SETTER_DEC(ColumnFamilyOptions, write_buffer_size, size_t)
+DEFINE_C_WRAP_SETTER_WRAP_DEC(ColumnFamilyOptions, table_factory, PTableFactory)
 void ColumnFamilyOptions_set_compression_per_level(ColumnFamilyOptions_t* opt,
                                                    int* level_values,
                                                    size_t num_levels);
