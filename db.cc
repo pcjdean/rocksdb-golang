@@ -673,8 +673,8 @@ Status_t DBCompactRangeWithColumnFamily(const DB_t* dbptr,
     assert(dbptr != NULL);
     assert(GET_REP(dbptr, DB) != NULL);
     assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
-    assert(GET_REP(begin, Slice) != NULL);
-    assert(GET_REP(end, Slice) != NULL);
+    assert(begin != NULL);
+    assert(end != NULL);
     Status stat = GET_REP(dbptr, DB)->CompactRange(GET_REP(column_family, ColumnFamilyHandle), GET_REP(begin, Slice), GET_REP(end, Slice), reduce_level, target_level, target_path_id);
     return NewStatusTCopy(dbptr ?
                           &stat :

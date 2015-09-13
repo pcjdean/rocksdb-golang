@@ -19,7 +19,7 @@ func (db *DB) checkGet(t *testing.T, ropts *ReadOptions, key []byte, valExp []by
 	}
 
 	if nil == valExp && !stat.IsNotFound() {
-		t.Fatalf("err: get err: stat = %s", stat)
+		t.Fatalf("err: get nil err: stat = %s", stat)
 	} else if !bytes.Equal(val, valExp) {
 		t.Fatalf("err: get err: expected = %v, got = %v", valExp, val)
 	}
@@ -48,10 +48,12 @@ func (tfp testFilterPolicy) Name() string {
 }
 
 func (tfp testFilterPolicy) CreateFilter(keys [][]byte) []byte {
+	tfp.t.Logf("CreateFilter keys = %v", keys)
 	return []byte("fake")
 }
 
 func (tfp testFilterPolicy) KeyMayMatch(key, filter []byte) bool {
+	tfp.t.Logf("KeyMayMatch keys = %v, filter = %v", key, filter)
 	checkCondition(tfp.t, 4 == len(filter))
 	checkCondition(tfp.t, bytes.Equal(filter, []byte("fake")));
 	return tfp.fakeResult
@@ -103,14 +105,14 @@ func TestCMain(t *testing.T) {
 
 	t.Log("phase: Destroy")
 	stat = DestroyDB(options, &dbname)
-	t.Logf("DestroyDB: status = ", stat)
+	t.Logf("DestroyDB: status = %s", stat)
 
 	t.Log("phase: open_error")
 	_, stat, _ = Open(options, &dbname)
 	if stat.Ok() {
 		t.Error("err: open_error")
 	} else {
-		t.Logf("open_error: status = ", stat)
+		t.Logf("open_error: status = %s", stat)
 	}
 
 	t.Log("phase: open")
@@ -299,7 +301,7 @@ func TestCMain(t *testing.T) {
 	t.Log("phase: filter")
 	var policy *FilterPolicy
 	tfp := testFilterPolicy{t: t, fakeResult: true}
-	for run := 0; run < 2; run++ {
+	for run := 0; run < 1; run++ {
 		if 0 == run {
 			policy = NewFilterPolicy(tfp)
 		} else {
@@ -308,7 +310,7 @@ func TestCMain(t *testing.T) {
 		table_options.SetFilterPolicy(policy)
 		db.Close()
 		stat = DestroyDB(options, &dbname)
-		t.Logf("DestroyDB: status = ", stat)
+		t.Logf("DestroyDB: status = %s", stat)
 		options.SetTableFactory(table_options.NewBlockBasedTableFactory())
 		db, stat, _ = Open(options, &dbname)
 		if !stat.Ok() {
@@ -331,7 +333,9 @@ func TestCMain(t *testing.T) {
 		if 0 == run {
 			// Must not find value when custom filter returns false
 			tfp.fakeResult = false
+			t.Logf("checkGet = foo")
 			db.checkGet(t, ropts, []byte("foo"), nil)
+			t.Logf("checkGet = bar")
 			db.checkGet(t, ropts, []byte("bar"), nil)
 
 			tfp.fakeResult = true

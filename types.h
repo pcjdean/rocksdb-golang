@@ -311,6 +311,11 @@ static inline size_t uint64ToSizeT(uint64_t v)
     return (size_t)v;
 }
 
+static inline const char* NullCharPtr()
+{
+    return (const char*)NULL;
+}
+
 #endif //  __cplusplus
 
 #endif //  GO_ROCKSDB_INCLUDE_TYPES_H_

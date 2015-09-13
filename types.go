@@ -18,7 +18,7 @@ import (
 
 var (
 	// Map to keep all the go callbacks from garbage collected
-	callbackInterfaceSet map[interface{}]bool
+	callbackInterfaceSet map[*interface{}]bool
 
 	// Mutext to protect callbackInterfaceSet
 	callbackInterfaceSetMutex sync.Mutex = sync.Mutex{}
@@ -48,7 +48,7 @@ func finalize(obj finalizer) {
 // Remove interface citf from the callbackInterfaceSet 
 // to leave citf garbage collected
 func InterfaceRemoveReference(citf unsafe.Pointer) {
-	itf := *(*interface{})(citf)
+	itf := (*interface{})(citf)
 	defer callbackInterfaceSetMutex.Unlock()
 	callbackInterfaceSetMutex.Lock()
 	if nil != callbackInterfaceSet {
@@ -61,11 +61,11 @@ func InterfaceRemoveReference(citf unsafe.Pointer) {
 //export InterfaceAddReference
 // Add interface citf to the callbackInterfaceSet to keep itf alive
 func InterfaceAddReference(citf unsafe.Pointer) {
-	itf := *(*interface{})(citf)
+	itf := (*interface{})(citf)
 	defer callbackInterfaceSetMutex.Unlock()
 	callbackInterfaceSetMutex.Lock()
 	if nil == callbackInterfaceSet {
-		callbackInterfaceSet = make(map[interface{}]bool, initialInterfaceSetSize)
+		callbackInterfaceSet = make(map[*interface{}]bool, initialInterfaceSetSize)
 	}
 	callbackInterfaceSet[itf] = true
 }
