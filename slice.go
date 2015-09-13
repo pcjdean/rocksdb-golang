@@ -53,8 +53,13 @@ func (slc *cSlice) goBytes(del bool) (val []byte) {
 
 // Bytes to Go wrap C slice. The caller is responsible for delete the returned slc
 func newSliceFromBytes(bytes []byte) (slc *cSlice) {
-	cptr := C.CString(string(bytes))
-	slc = &cSlice{slc: C.NewSliceTRawArgs(cptr, C.uint64ToSizeT(C.uint64_t(len(bytes)))), cptr: cptr}
+	if  nil == bytes {
+		// Create a cSlice with a NULL c slice
+		slc = &cSlice{slc: C.NewSliceT(unsafe.Pointer(nil)), cptr: nil}
+	} else {
+		cptr := C.CString(string(bytes))
+		slc = &cSlice{slc: C.NewSliceTRawArgs(cptr, C.uint64ToSizeT(C.uint64_t(len(bytes)))), cptr: cptr}
+	}
 	return
 }
 

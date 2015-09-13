@@ -48,12 +48,12 @@ func (tfp testFilterPolicy) Name() string {
 }
 
 func (tfp testFilterPolicy) CreateFilter(keys [][]byte) []byte {
-	tfp.t.Logf("CreateFilter keys = %v", keys)
+	// tfp.t.Logf("CreateFilter keys = %v", keys)
 	return []byte("fake")
 }
 
 func (tfp testFilterPolicy) KeyMayMatch(key, filter []byte) bool {
-	tfp.t.Logf("KeyMayMatch keys = %v, filter = %v", key, filter)
+	// tfp.t.Logf("KeyMayMatch keys = %v, filter = %v, tfp.fakeResult = %v", key, filter, tfp.fakeResult)
 	checkCondition(tfp.t, 4 == len(filter))
 	checkCondition(tfp.t, bytes.Equal(filter, []byte("fake")));
 	return tfp.fakeResult
@@ -300,8 +300,8 @@ func TestCMain(t *testing.T) {
 
 	t.Log("phase: filter")
 	var policy *FilterPolicy
-	tfp := testFilterPolicy{t: t, fakeResult: true}
-	for run := 0; run < 1; run++ {
+	tfp := &testFilterPolicy{t: t, fakeResult: true}
+	for run := 0; run < 2; run++ {
 		if 0 == run {
 			policy = NewFilterPolicy(tfp)
 		} else {
@@ -333,9 +333,7 @@ func TestCMain(t *testing.T) {
 		if 0 == run {
 			// Must not find value when custom filter returns false
 			tfp.fakeResult = false
-			t.Logf("checkGet = foo")
 			db.checkGet(t, ropts, []byte("foo"), nil)
-			t.Logf("checkGet = bar")
 			db.checkGet(t, ropts, []byte("bar"), nil)
 
 			tfp.fakeResult = true

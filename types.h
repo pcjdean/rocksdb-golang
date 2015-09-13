@@ -34,7 +34,7 @@ enum bool_t {
     
 
 // Used internally by the C/C++ code
-// Construct the new wrap object from the raw c++ object
+// Construct the new wrap object from the raw c++ object - ptr
 #define DEFINE_C_WRAP_CONSTRUCTOR_DEC_R(x) x##_t New##x##T(void* ptr)
 #define DEFINE_C_WRAP_CONSTRUCTOR_BODY(x) { \
         x##_t wrap_t; \
@@ -49,7 +49,7 @@ enum bool_t {
 
 
 // Used internally by the C/C++ code
-// Construct the new wrap object from the copied raw c++ object
+// Construct the new wrap object from the copied raw c++ object - ptr
 #define DEFINE_C_WRAP_CONSTRUCTOR_COPY_DEC_R(x)  x##_t New##x##TCopy(void* ptr)
 #define DEFINE_C_WRAP_CONSTRUCTOR_COPY_BODY(x) { \
         x##_t wrap_t; \
@@ -64,7 +64,7 @@ enum bool_t {
 
 
 // Used internally by the C/C++ code
-// Construct the new wrap object from the moved raw c++ object
+// Construct the new wrap object from the moved raw c++ object - ptr
 #define DEFINE_C_WRAP_CONSTRUCTOR_MOVE_DEC_R(x) x##_t New##x##TMove(void* ptr)
 #define DEFINE_C_WRAP_CONSTRUCTOR_MOVE_BODY(x) { \
         x##_t wrap_t; \
@@ -306,6 +306,7 @@ enum bool_t {
 
 #ifndef __cplusplus
 
+// Convert uint64_t to size_t
 static inline size_t uint64ToSizeT(uint64_t v)
 {
     return (size_t)v;

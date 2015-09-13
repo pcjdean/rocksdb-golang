@@ -10,28 +10,11 @@ package rocksdb
 */
 import "C"
 
-import (
-	"unsafe"
-	"log"
-	"sync"
-)
-
-var (
-	// Map to keep all the go callbacks from garbage collected
-	callbackInterfaceSet map[*interface{}]bool
-
-	// Mutext to protect callbackInterfaceSet
-	callbackInterfaceSetMutex sync.Mutex = sync.Mutex{}
-)
-
 type SequenceNumber uint64
 
 const (
 	// Max array dimension
 	arrayDimenMax = 0xFFFFFFFF
-
-	// The initial size of callbackInterfaceSet
-	initialInterfaceSetSize = 100
 )
 
 // Interface to release C pointer
@@ -42,32 +25,6 @@ type finalizer interface {
 // Called by go finalizer
 func finalize(obj finalizer) {
 	obj.finalize()
-}
-
-//export InterfaceRemoveReference
-// Remove interface citf from the callbackInterfaceSet 
-// to leave citf garbage collected
-func InterfaceRemoveReference(citf unsafe.Pointer) {
-	itf := (*interface{})(citf)
-	defer callbackInterfaceSetMutex.Unlock()
-	callbackInterfaceSetMutex.Lock()
-	if nil != callbackInterfaceSet {
-		delete(callbackInterfaceSet, itf)
-	} else {
-		log.Println("InterfaceRemoveReference: callbackInterfaceSet is not created!")
-	}
-}
-
-//export InterfaceAddReference
-// Add interface citf to the callbackInterfaceSet to keep itf alive
-func InterfaceAddReference(citf unsafe.Pointer) {
-	itf := (*interface{})(citf)
-	defer callbackInterfaceSetMutex.Unlock()
-	callbackInterfaceSetMutex.Lock()
-	if nil == callbackInterfaceSet {
-		callbackInterfaceSet = make(map[*interface{}]bool, initialInterfaceSetSize)
-	}
-	callbackInterfaceSet[itf] = true
 }
 
 // Convert C int64 array to go int64 array

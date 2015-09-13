@@ -37,7 +37,6 @@ public:
     {
         if (go_flp)
         {
-            InterfaceAddReference(go_flp);
             m_name = IFilterPolicyName(go_flp);
         }
     }
@@ -47,7 +46,7 @@ public:
     {
         if (m_go_flp)
         {
-            InterfaceRemoveReference(m_go_flp);
+            IFilterPolicyRemoveReference(m_go_flp);
         }
 
         if (m_name)
@@ -141,7 +140,7 @@ private:
 PFilterPolicy_t NewPFilterPolicy(void* go_flp)
 {
     PFilterPolicy_t wrap_t;
-    wrap_t.rep = new PFilterPolicy(new FilterPolicyGo(go_flp));
+    wrap_t.rep = new PFilterPolicy(go_flp ? new FilterPolicyGo(go_flp) : NULL);
     return wrap_t;
 }
 

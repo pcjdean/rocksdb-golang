@@ -25,7 +25,61 @@ import "C"
 import (
 	"runtime"
 	"unsafe"
+	"log"
+	"sync"
 )
+
+const (
+	// The initial size of callbackIFilterPolicy
+	initialIFilterPolicySize = 100
+)
+
+var (
+	// Map to keep all the IFilterPolicy callbacks from garbage collected
+	callbackIFilterPolicy map[unsafe.Pointer]IFilterPolicy
+
+	// Mutext to protect callbackIFilterPolicy
+	callbackIFilterPolicyMutex sync.Mutex = sync.Mutex{}
+)
+
+//export IFilterPolicyRemoveReference
+// Remove interface citf from the callbackIFilterPolicy 
+// to leave citf garbage collected
+func IFilterPolicyRemoveReference(citf unsafe.Pointer) {
+	defer callbackIFilterPolicyMutex.Unlock()
+	callbackIFilterPolicyMutex.Lock()
+	if nil != callbackIFilterPolicy {
+		delete(callbackIFilterPolicy, citf)
+	} else {
+		log.Println("IFilterPolicyRemoveReference: callbackIFilterPolicy is not created!")
+	}
+}
+
+// Get interface itf from the callbackIFilterPolicy
+// with citf as the key
+func IFilterPolicyGet(citf unsafe.Pointer) (itf IFilterPolicy) {
+	defer callbackIFilterPolicyMutex.Unlock()
+	callbackIFilterPolicyMutex.Lock()
+	if nil != callbackIFilterPolicy {
+		itf = callbackIFilterPolicy[citf]
+	} else {
+		log.Println("IFilterPolicyGet: callbackIFilterPolicy is not created!")
+	}
+	return
+}
+
+// Add interface itf to the callbackIFilterPolicy to keep itf alive
+// Return the key of the IFilterPolicy in map callbackIFilterPolicy
+func IFilterPolicyAddReference(itf IFilterPolicy) (citf unsafe.Pointer) {
+	defer callbackIFilterPolicyMutex.Unlock()
+	callbackIFilterPolicyMutex.Lock()
+	if nil == callbackIFilterPolicy {
+		callbackIFilterPolicy = make(map[unsafe.Pointer]IFilterPolicy, initialIFilterPolicySize)
+	}
+	citf = unsafe.Pointer(&itf)
+	callbackIFilterPolicy[citf] = itf
+	return
+}
 
 // A class that takes a bunch of keys, then generates filter
 type IFilterBitsBuilder interface {
@@ -97,13 +151,13 @@ type IFilterPolicy interface {
 
 //export IFilterPolicyName
 func IFilterPolicyName(cflp unsafe.Pointer) *C.char {
-	flp := *(*IFilterPolicy)(cflp)
+	flp := IFilterPolicyGet(cflp)
 	return C.CString(flp.Name())
 }
 
 //export IFilterPolicyCreateFilter
 func IFilterPolicyCreateFilter(cflp unsafe.Pointer, ckeys *C.Slice_t, sz C.int) C.String_t {
-	flp := *(*IFilterPolicy)(cflp)
+	flp := IFilterPolicyGet(cflp)
 	keys := newBytesFromCSliceArray(ckeys, uint(sz), false, false)
 	filter := string(flp.CreateFilter(keys))
 	str := newCStringFromString(&filter)
@@ -112,19 +166,19 @@ func IFilterPolicyCreateFilter(cflp unsafe.Pointer, ckeys *C.Slice_t, sz C.int) 
 
 //export IFilterPolicyKeyMayMatch
 func IFilterPolicyKeyMayMatch(cflp unsafe.Pointer, key, filter *C.Slice_t) C.bool {
-	flp := *(*IFilterPolicy)(cflp)
+	flp := IFilterPolicyGet(cflp)
 	return toCBool(flp.KeyMayMatch(key.cToBytes(false), filter.cToBytes(false)))
 }
 
 //export IFilterPolicyGetFilterBitsBuilder
 func IFilterPolicyGetFilterBitsBuilder(cflp unsafe.Pointer) unsafe.Pointer {
-	flp := *(*IFilterPolicy)(cflp)
+	flp := IFilterPolicyGet(cflp)
 	return unsafe.Pointer(flp.GetFilterBitsBuilder())
 }
 
 //export IFilterPolicyGetFilterBitsReader
 func IFilterPolicyGetFilterBitsReader(cflp unsafe.Pointer) unsafe.Pointer {
-	flp := *(*IFilterPolicy)(cflp)
+	flp := IFilterPolicyGet(cflp)
 	return unsafe.Pointer(flp.GetFilterBitsReader())
 }
 
@@ -148,7 +202,12 @@ func (cflp *C.PFilterPolicy_t) toFilterPolicy() (flp *FilterPolicy) {
 
 // Return a new filter policy that uses IFilterPolicy
 func NewFilterPolicy(itf IFilterPolicy) (flp *FilterPolicy) {
-	cflp := C.NewPFilterPolicy(unsafe.Pointer(&itf))
+	var iftp unsafe.Pointer = nil
+
+	if nil != itf {
+		iftp =IFilterPolicyAddReference(itf)
+	}
+	cflp := C.NewPFilterPolicy(iftp)
 	return cflp.toFilterPolicy()
 }
 
