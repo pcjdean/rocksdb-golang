@@ -27,7 +27,7 @@ DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(PFilterPolicy, int, bool)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(PFilterPolicy)
 
 // Return a filter policy from a go filter policy
-PFilterPolicy_t NewPFilterPolicy(void* go_flp);
+PFilterPolicy_t PFilterPolicyNewPFilterPolicy(void* go_flp);
 
 
 #ifdef __cplusplus

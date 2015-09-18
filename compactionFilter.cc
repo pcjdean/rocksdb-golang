@@ -1,35 +1,37 @@
 // Copyright (c) 2015, Dean ChaoJun Pan.  All rights reserved.
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
-//
-// A database can be configured with a custom FilterPolicy object.
-// This object is responsible for creating a small filter from a set
-// of keys.  These filters are stored in rocksdb and are consulted
-// automatically by rocksdb to decide whether or not to read some
-// information from disk. In many cases, a filter can cut down the
-// number of disk seeks form a handful to a single disk seek per
-// DB::Get() call.
-//
-// Most people will want to use the builtin bloom filter support (see
-// NewBloomFilterPolicy() below).
 
 #include <assert.h>
-#include <string>
-#include "cstring.h"
 #include <rocksdb/slice.h>
 #include "slice.h"
-#include "filterPolicy.h"
 
 extern "C" {
 #include "_cgo_export.h"
 }
 
-DEFINE_C_WRAP_CONSTRUCTOR(PFilterPolicy)
-DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(PFilterPolicy)
-DEFINE_C_WRAP_DESTRUCTOR(PFilterPolicy)
+DEFINE_C_WRAP_CONSTRUCTOR(CompactionFilterContext)
+DEFINE_C_WRAP_DESTRUCTOR(CompactionFilterContext)
 
-// C++ wrap class for go IFilterPolicy
-class FilterPolicyGo : public FilterPolicy {
+DEFINE_C_WRAP_CONSTRUCTOR(CompactionFilter)
+DEFINE_C_WRAP_DESTRUCTOR(CompactionFilter)
+
+DEFINE_C_WRAP_CONSTRUCTOR(CompactionFilter_Context)
+DEFINE_C_WRAP_DESTRUCTOR(CompactionFilter_Context)
+
+DEFINE_C_WRAP_CONSTRUCTOR(CompactionFilterV2)
+DEFINE_C_WRAP_DESTRUCTOR(CompactionFilterV2)
+
+DEFINE_C_WRAP_CONSTRUCTOR(PCompactionFilterFactory)
+DEFINE_C_WRAP_DESTRUCTOR(PCompactionFilterFactory)
+
+DEFINE_C_WRAP_CONSTRUCTOR(PCompactionFilterFactoryV2)
+DEFINE_C_WRAP_DESTRUCTOR(PCompactionFilterFactoryV2)
+
+// C++ wrap class for go ICompactionFilter
+// CompactionFilter allows an application to modify/delete a key-value at
+// the time of compaction.
+class CompactionFilterGo : public CompactionFilter {
 public:
     FilterPolicyGo(void* go_flp)
         : m_go_flp(go_flp)
@@ -137,7 +139,7 @@ private:
 };
 
 // Return a filter policy from a go filter policy
-PFilterPolicy_t PFilterPolicyNewPFilterPolicy(void* go_flp)
+PFilterPolicy_t NewPFilterPolicy(void* go_flp)
 {
     PFilterPolicy_t wrap_t;
     wrap_t.rep = new PFilterPolicy(go_flp ? new FilterPolicyGo(go_flp) : NULL);
