@@ -14,6 +14,7 @@ DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(String)
 DEFINE_C_WRAP_DESTRUCTOR(String)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY(String)
 
+// Return a c string of str
 const char* StringGetCStr(String_t * str)
 {
     return ((str && GET_REP(str, String)) ?
@@ -21,10 +22,21 @@ const char* StringGetCStr(String_t * str)
             nullptr);
 }
 
+// Return the length og str
 int StringGetCStrLen(String_t *str)
 {
     return ((str && GET_REP(str, String)) ?
             GET_REP(str, String)->length() :
             0);
 }
+
+//Set str to catr
+void StringSetCStr(String_t * str, const char* cstr, size_t len)
+{
+    if (str && GET_REP(str, String))
+    {
+        GET_REP(str, String)->assign(cstr, len);
+    }
+}
+
 

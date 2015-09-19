@@ -76,6 +76,13 @@ func (ccstr *C.String_t) cToBytes() (str []byte) {
 	return
 }
 
+// Set C string to go bytes
+func (ccstr *C.String_t) setBytes(str []byte) {
+	cstr := C.CString(str)
+	defer C.free(cstr)
+	C.StringSetCStr(ccstr, cstr, C.uint64ToSizeT(C.uint64_t(len(str))))
+}
+
 // The caller is responsible for delete the returned cstr
 func newCStringFromString(str *string) (cstr *cString) {
 	var ccstr *C.char = C.CString(*str)

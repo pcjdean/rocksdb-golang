@@ -15,6 +15,8 @@ using namespace rocksdb;
 #ifdef __cplusplus
 typedef rocksdb::CompactionFilter::Context CompactionFilter_Context;
 
+typedef CompactionFilterV2::SliceVector CompactionFilterV2_SliceVector
+
 typedef std::shared_ptr<CompactionFilterFactory> PCompactionFilterFactory;
 typedef std::shared_ptr<CompactionFilterFactoryV2> PCompactionFilterFactoryV2;
 #endif
@@ -39,6 +41,10 @@ DEFINE_C_WRAP_DESTRUCTOR_DEC(CompactionFilter_Context)
 DEFINE_C_WRAP_STRUCT(CompactionFilterV2)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(CompactionFilterV2)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(CompactionFilterV2)
+
+DEFINE_C_WRAP_STRUCT(CompactionFilterV2_SliceVector)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(CompactionFilterV2_SliceVector)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(CompactionFilterV2_SliceVector)
 
 DEFINE_C_WRAP_STRUCT(PCompactionFilterFactory)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(PCompactionFilterFactory)

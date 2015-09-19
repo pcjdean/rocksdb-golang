@@ -22,6 +22,9 @@ DEFINE_C_WRAP_DESTRUCTOR(CompactionFilter_Context)
 DEFINE_C_WRAP_CONSTRUCTOR(CompactionFilterV2)
 DEFINE_C_WRAP_DESTRUCTOR(CompactionFilterV2)
 
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(CompactionFilterV2_SliceVector)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(CompactionFilterV2_SliceVector)
+
 DEFINE_C_WRAP_CONSTRUCTOR(PCompactionFilterFactory)
 DEFINE_C_WRAP_DESTRUCTOR(PCompactionFilterFactory)
 
@@ -33,22 +36,22 @@ DEFINE_C_WRAP_DESTRUCTOR(PCompactionFilterFactoryV2)
 // the time of compaction.
 class CompactionFilterGo : public CompactionFilter {
 public:
-    FilterPolicyGo(void* go_flp)
-        : m_go_flp(go_flp)
+    CompactionFilterGo(void* go_cpflt)
+        : m_go_cpflt(go_cpflt)
         , m_name(nullptr)
     {
-        if (go_flp)
+        if (go_cpflt)
         {
-            m_name = IFilterPolicyName(go_flp);
+            m_name = IFilterPolicyName(go_cpflt);
         }
     }
 
     // Destructor
-    ~FilterPolicyGo()
+    ~CompactionFilterGo()
     {
-        if (m_go_flp)
+        if (m_go_cpflt)
         {
-            IFilterPolicyRemoveReference(m_go_flp);
+            IFilterPolicyRemoveReference(m_go_cpflt);
         }
 
         if (m_name)
@@ -57,92 +60,66 @@ public:
         }
     }
 
-    // Return the name of this policy.  Note that if the filter encoding
-    // changes in an incompatible way, the name returned by this method
-    // must be changed.  Otherwise, old incompatible filters may be
-    // passed to methods of this type.
-    virtual const char* Name() const
-    {
-        return m_name;
-    }
-
-    // keys[0,n-1] contains a list of keys (potentially with duplicates)
-    // that are ordered according to the user supplied comparator.
-    // Append a filter that summarizes keys[0,n-1] to *dst.
+    // The compaction process invokes this
+    // method for kv that is being compacted. A return value
+    // of false indicates that the kv should be preserved in the
+    // output of this compaction run and a return value of true
+    // indicates that this key-value should be removed from the
+    // output of the compaction.  The application can inspect
+    // the existing value of the key and make decision based on it.
     //
-    // Warning: do not change the initial contents of *dst.  Instead,
-    // append the newly constructed filter to *dst.
-    virtual void CreateFilter(const Slice* keys, int n, std::string* dst) const
-    {
-        Slice_t* slcs = new Slice_t[n];
-        assert(slcs != NULL);
-        for (int j = 0; j < n; j++)
-        {
-            slcs[j].rep = const_cast<Slice *>(&keys[j]);
-        }
-
-        if (m_go_flp)
-        {
-            String_t str = IFilterPolicyCreateFilter(m_go_flp, slcs, n);
-            dst->append(GET_REP_REF(&str, String));
-            DeleteStringT(&str, false);
-        }
-
-        if (slcs)
-        {
-            delete[] slcs;
-        }
-    }
-
-    // "filter" contains the data appended by a preceding call to
-    // CreateFilter() on this class.  This method must return true if
-    // the key was in the list of keys passed to CreateFilter().
-    // This method may return true or false if the key was not on the
-    // list, but it should aim to return false with a high probability.
-    virtual bool KeyMayMatch(const Slice& key, const Slice& filter) const
+    // When the value is to be preserved, the application has the option
+    // to modify the existing_value and pass it back through new_value.
+    // value_changed needs to be set to true in this case.
+    //
+    // If multithreaded compaction is being used *and* a single CompactionFilter
+    // instance was supplied via Options::compaction_filter, this method may be
+    // called from different threads concurrently.  The application must ensure
+    // that the call is thread-safe.
+    //
+    // If the CompactionFilter was created by a factory, then it will only ever
+    // be used by a single thread that is doing the compaction run, and this
+    // call does not need to be thread-safe.  However, multiple filters may be
+    // in existence and operating concurrently.
+    virtual bool Filter(int level,
+                        const Slice& key,
+                        const Slice& existing_value,
+                        std::string* new_value,
+                        bool* value_changed) const
     {
         bool ret = false;
-
-        if (m_go_flp)
+        
+        if (m_go_cpflt)
         {
-            Slice_t keyslc{ const_cast<Slice *>(&key) };
-            Slice_t filterslc{ const_cast<Slice *>(&filter) };
-            ret = IFilterPolicyKeyMayMatch(m_go_flp, &keyslc, &filterslc);
+            Slice_t slc_key{&key};
+            Slice_t slc_exval{&existing_value};
+            String_t str{new_value};
+            ret = ICompactionFilterFilter(m_go_cpflt, level, &slc_key, &slc_exval, &str, value_changed);
         }
 
         return ret;
     }
 
-    // Get the FilterBitsBuilder, which is ONLY used for full filter block
-    // It contains interface to take individual key, then generate filter
-    virtual FilterBitsBuilder* GetFilterBitsBuilder()
+    // Returns a name that identifies this compaction filter.
+    // The name will be printed to LOG file on start up for diagnosis.
+    virtual const char* Name() const
     {
-        // TODO
-        return nullptr;
-    }
-
-    // Get the FilterBitsReader, which is ONLY used for full filter block
-    // It contains interface to tell if key can be in filter
-    // The input slice should NOT be deleted by FilterPolicy
-    virtual FilterBitsReader* GetFilterBitsReader(const Slice& contents)
-    {
-        // TODO
-        return nullptr;
+        return m_name;
     }
 
 private:
     // Wrapped go IFilterPolicy
-    void* m_go_flp;
+    void* m_go_cpflt;
 
     // The name of the filter policy
     char* m_name;
 };
 
 // Return a filter policy from a go filter policy
-PFilterPolicy_t NewPFilterPolicy(void* go_flp)
+PFilterPolicy_t NewPFilterPolicy(void* go_cpflt)
 {
     PFilterPolicy_t wrap_t;
-    wrap_t.rep = new PFilterPolicy(go_flp ? new FilterPolicyGo(go_flp) : NULL);
+    wrap_t.rep = new PFilterPolicy(go_cpflt ? new FilterPolicyGo(go_cpflt) : NULL);
     return wrap_t;
 }
 

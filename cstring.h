@@ -26,6 +26,8 @@ DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(String)
 
 const char* StringGetCStr(String_t * str);
 int StringGetCStrLen(String_t * str);
+//Set str to catr
+void StringSetCStr(String_t * str, const char* cstr, size_t len);
 
 #ifdef __cplusplus
 }  /* end extern "C" */
