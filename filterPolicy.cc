@@ -18,6 +18,7 @@
 #include "cstring.h"
 #include <rocksdb/slice.h>
 #include "slice.h"
+#include "filterPolicyPrivate.h"
 #include "filterPolicy.h"
 
 extern "C" {
@@ -137,7 +138,7 @@ private:
 };
 
 // Return a filter policy from a go filter policy
-PFilterPolicy_t PFilterPolicyNewPFilterPolicy(void* go_flp)
+PFilterPolicy_t NewPFilterPolicy(void* go_flp)
 {
     PFilterPolicy_t wrap_t;
     wrap_t.rep = new PFilterPolicy(go_flp ? new FilterPolicyGo(go_flp) : NULL);

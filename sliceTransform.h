@@ -6,6 +6,7 @@
 #define GO_ROCKSDB_INCLUDE_SLICE_TRANSFORM_H_
 
 #include "types.h"
+#include "slice.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,16 +18,14 @@ DEFINE_C_WRAP_DESTRUCTOR_DEC(SliceTransform)
 
 
 // Return a SliceTransform from a go SliceTransform interface
-SliceTransform_t SliceTransformNewSliceTransform(void* go_stf);
+SliceTransform_t NewSliceTransform(void* go_stf);
 
-SliceTransform_t SliceTransformNewFixedPrefixTransform(size_t prefix_len);
-SliceTransform_t SliceTransformNewCappedPrefixTransform(size_t cap_len);
-SliceTransform_t SliceTransformNewNoopTransform();
+SliceTransform_t GoNewFixedPrefixTransform(size_t prefix_len);
+SliceTransform_t GoNewCappedPrefixTransform(size_t cap_len);
+SliceTransform_t GoNewNoopTransform();
 
 #ifdef __cplusplus
 }  /* end extern "C" */
 #endif
-
-}
 
 #endif  // GO_ROCKSDB_INCLUDE_SLICE_TRANSFORM_H_

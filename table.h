@@ -42,6 +42,7 @@ PTableFactory_t NewCuckooTableFactory(const CuckooTableOptions_t* table_options)
 
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(PTableFactory)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(PTableFactory)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(PTableFactory)
 #ifdef __cplusplus
 DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(PTableFactory, TableFactory*)
 #endif

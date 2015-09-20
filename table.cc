@@ -16,6 +16,7 @@
 //   https://github.com/facebook/rocksdb/wiki/A-Tutorial-of-RocksDB-SST-formats#wiki-examples
 
 #include <rocksdb/table.h>
+#include "filterPolicyPrivate.h"
 #include "table.h"
 
 using namespace rocksdb;
@@ -73,3 +74,4 @@ PTableFactory_t NewCuckooTableFactory(const CuckooTableOptions_t* table_options)
 DEFINE_C_WRAP_CONSTRUCTOR(PTableFactory)
 DEFINE_C_WRAP_DESTRUCTOR(PTableFactory)
 DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(PTableFactory, TableFactory*)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(PTableFactory)

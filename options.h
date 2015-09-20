@@ -13,6 +13,7 @@ using namespace rocksdb;
 #include "types.h"
 #include "snapshot.h"
 #include "table.h"
+#include "compactionfilter.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,6 +44,10 @@ DEFINE_C_WRAP_SETTER_DEC(ColumnFamilyOptions, compression, int)
 DEFINE_C_WRAP_GETTER_DEC(ColumnFamilyOptions, write_buffer_size, size_t)
 DEFINE_C_WRAP_SETTER_DEC(ColumnFamilyOptions, write_buffer_size, size_t)
 DEFINE_C_WRAP_SETTER_WRAP_DEC(ColumnFamilyOptions, table_factory, PTableFactory)
+// Get/Set methods for compaction filter
+DEFINE_C_WRAP_SETTER_WRAP_DEC(ColumnFamilyOptions, compaction_filter, CompactionFilter)
+DEFINE_C_WRAP_SETTER_WRAP_DEC(ColumnFamilyOptions, compaction_filter_factory, PCompactionFilterFactory)
+DEFINE_C_WRAP_SETTER_WRAP_DEC(ColumnFamilyOptions, compaction_filter_factory_v2, PCompactionFilterFactoryV2)
 void ColumnFamilyOptions_set_compression_per_level(ColumnFamilyOptions_t* opt,
                                                    int* level_values,
                                                    size_t num_levels);

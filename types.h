@@ -257,10 +257,12 @@ enum bool_t {
 // Get the member y of x, in type z
 #define DEFINE_C_WRAP_GETTER_DEC_R(x,y,z) z x##_get_##y(x##_t* ptr)
 #define DEFINE_C_WRAP_GETTER_BODY(x,y,z) { \
-        if (ptr) \
+        if (ptr && GET_REP(ptr, x)) \
         {                                       \
-            return (z)(((x*)ptr->rep)->y);      \
+            return (z)(GET_REP(ptr, x)->y);      \
         }                                       \
+        z ret;                                  \
+        return ret;                             \
     } 
 
 #define DEFINE_C_WRAP_GETTER_DEC(x,y,z) DEFINE_C_WRAP_GETTER_DEC_R(x,y,z);
@@ -275,9 +277,9 @@ enum bool_t {
 // Set the member y of x to the raw value of v
 #define DEFINE_C_WRAP_SETTER_DEC_R(x,y,z) void x##_set_##y(x##_t* ptr, z v)
 #define DEFINE_C_WRAP_SETTER_BODY(x,y,z) { \
-        if (ptr) \
+        if (ptr && GET_REP(ptr, x)) \
         {                                       \
-            ((x*)ptr->rep)->y = (z)v;            \
+            GET_REP(ptr, x)->y = (z)v;            \
         }                                       \
     } 
 
@@ -291,16 +293,27 @@ enum bool_t {
 
 // Set the member y of x to the wrapped raw value of v
 #define DEFINE_C_WRAP_SETTER_WRAP_DEC_R(x,y,z) void x##_set_##y(x##_t* ptr, z##_t* v)
-#define DEFINE_C_WRAP_SETTER_WRAP_BODY(x,y,z) { \
-        if (ptr) \
-        {                                       \
-            GET_REP(ptr, x)->y = GET_REP_REF(v,z);       \
-        }                                       \
+// Set non-pointer member of wrapped object to the wrapped raw object of v
+#define DEFINE_C_WRAP_SETTER_WRAP_BODY(x,y,z) {     \
+        if (ptr && GET_REP(ptr, x) && v)            \
+        {                                           \
+            GET_REP(ptr, x)->y = GET_REP_REF(v, z); \
+        }                                           \
+    } 
+
+// Set pointer member of wrapped object to the wrapped raw pointer of v
+#define DEFINE_C_WRAP_SETTER_PTR_WRAP_BODY(x,y,z) {     \
+        if (ptr && GET_REP(ptr, x) && v)            \
+        {                                           \
+            GET_REP(ptr, x)->y = GET_REP(v, z); \
+        }                                           \
     } 
 
 #define DEFINE_C_WRAP_SETTER_WRAP_DEC(x,y,z) DEFINE_C_WRAP_SETTER_WRAP_DEC_R(x,y,z);
 #define DEFINE_C_WRAP_SETTER_WRAP(x,y,z) DEFINE_C_WRAP_SETTER_WRAP_DEC_R(x,y,z) \
     DEFINE_C_WRAP_SETTER_WRAP_BODY(x,y,z)
+#define DEFINE_C_WRAP_SETTER_PTR_WRAP(x,y,z) DEFINE_C_WRAP_SETTER_WRAP_DEC_R(x,y,z) \
+    DEFINE_C_WRAP_SETTER_PTR_WRAP_BODY(x,y,z)
 
 
 

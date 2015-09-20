@@ -140,6 +140,57 @@ func (cfopt *ColumnFamilyOptions) SetTableFactory(tbf *TableFactory) {
 	C.ColumnFamilyOptions_set_table_factory(ccfopt, &tbf.tbf)
 }
 
+// A single CompactionFilter instance to call into during compaction.
+// Allows an application to modify/delete a key-value during background
+// compaction.
+//
+// If the client requires a new compaction filter to be used for different
+// compaction runs, it can specify compaction_filter_factory instead of this
+// option.  The client should specify only one of the two.
+// compaction_filter takes precedence over compaction_filter_factory if
+// client specifies both.
+//
+// If multithreaded compaction is being used, the supplied CompactionFilter
+// instance may be used from different threads concurrently and so should be
+// thread-safe.
+//
+// Default: nullptr
+func (cfopt *ColumnFamilyOptions) SetCompactionFilter(cpf *CompactionFilter) {
+	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
+	if nil == cpf {
+		cpf = NewDefaultCompactionFilter()
+	}
+	C.ColumnFamilyOptions_set_compaction_filter(ccfopt, &cpf.cpf)
+}
+
+// This is a factory that provides compaction filter objects which allow
+// an application to modify/delete a key-value during background compaction.
+//
+// A new filter will be created on each compaction run.  If multithreaded
+// compaction is being used, each created CompactionFilter will only be used
+// from a single thread and so does not need to be thread-safe.
+//
+// Default: a factory that doesn't provide any object
+func (cfopt *ColumnFamilyOptions) SetCompactionFilterFactory(cff *CompactionFilterFactory) {
+	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
+	if nil == cff {
+		cff = NewDefaultCompactionFilterFactory()
+	}
+	C.ColumnFamilyOptions_set_compaction_filter_factory(ccfopt, &cff.cff)
+}
+
+// Version TWO of the compaction_filter_factory
+// It supports rolling compaction
+//
+// Default: a factory that doesn't provide any object
+func (cfopt *ColumnFamilyOptions) SetCompactionFilterFactoryV2(cff *CompactionFilterFactoryV2) {
+	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
+	if nil == cff {
+		cff = NewDefaultCompactionFilterFactoryV2()
+	}
+	C.ColumnFamilyOptions_set_compaction_filter_factory_v2(ccfopt, &cff.cff)
+}
+
 type DBOptions struct {
 	dbopt C.DBOptions_t
 }
@@ -189,11 +240,23 @@ type Options struct {
 	DBOptions
 	ColumnFamilyOptions
 	opt C.Options_t
+	// True if he CompactionFilter is closed
+	closed bool
 }
 
+// Release the @opt
 func (opt *Options) finalize() {
-	var copt *C.Options_t = &opt.opt
-	C.DeleteOptionsT(copt, toCBool(false))
+	if !opt.closed {
+		opt.closed = true
+		var copt *C.Options_t = &opt.opt
+		C.DeleteOptionsT(copt, toCBool(false))
+	}
+}
+
+// Close the @opt
+func (opt *Options) Close() {
+	runtime.SetFinalizer(opt, nil)
+	opt.finalize()
 }
 
 func NewOptions() *Options {

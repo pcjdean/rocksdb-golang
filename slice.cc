@@ -12,15 +12,15 @@
 // non-const method, all threads accessing the same Slice must use
 // external synchronization.
 
-#include <rocksdb/slice.h>
 #include "slice.h"
-
-using namespace rocksdb;
 
 DEFINE_C_WRAP_CONSTRUCTOR(Slice)
 DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(Slice, const char*, size_t)
 DEFINE_C_WRAP_DESTRUCTOR(Slice)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY(Slice)
+
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(SliceVector)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(SliceVector)
 
 // Return a pointer to the beginning of the referenced data
 const char* SliceData(Slice_t *slc)
@@ -43,3 +43,20 @@ size_t SliceSize(Slice_t *slc)
     }
     return ret;
 }
+
+// Return the size of the SliceVector_t @slcv
+size_t SliceVectorSize(SliceVector_t *slcv)
+{
+    return (slcv && GET_REP(slcv, SliceVector) ? GET_REP(slcv, SliceVector)->size() : 0);
+}
+
+// Return the Slice in the @index position of the SliceVector_t @slcv
+Slice_t SliceVectorIndex(SliceVector_t *slcv, size_t index)
+{
+    Slice_t ret{nullptr};
+    
+    return (slcv && GET_REP(slcv, SliceVector) &&
+            index < GET_REP(slcv, SliceVector)->size() ?
+            Slice_t{&GET_REP_REF(slcv, SliceVector)[index]} : ret);
+}
+

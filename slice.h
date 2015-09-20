@@ -5,6 +5,17 @@
 #ifndef GO_ROCKSDB_INCLUDE_SLICE_H_
 #define GO_ROCKSDB_INCLUDE_SLICE_H_
 
+#ifdef __cplusplus
+
+#include <vector>
+#include <rocksdb/slice.h>
+
+using namespace rocksdb;
+
+typedef std::vector<Slice> SliceVector;
+
+#endif
+
 #include "types.h"
 
 #ifdef __cplusplus
@@ -17,8 +28,18 @@ DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(Slice, const char*, size_t)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(Slice)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(Slice)
 
+DEFINE_C_WRAP_STRUCT(SliceVector)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(SliceVector)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(SliceVector)
+
 const char* SliceData(Slice_t *slc);
 size_t SliceSize(Slice_t *slc);
+
+// Return the size of the SliceVector_t
+size_t SliceVectorSize(SliceVector_t *slcv);
+
+// Return the Slice in the @index position of the SliceVector_t
+Slice_t SliceVectorIndex(SliceVector_t *slcv, size_t index);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

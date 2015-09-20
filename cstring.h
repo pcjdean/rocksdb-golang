@@ -5,11 +5,17 @@
 #ifndef GO_ROCKSDB_INCLUDE_STRING_H_
 #define GO_ROCKSDB_INCLUDE_STRING_H_
 
-#include "types.h"
-
 #ifdef __cplusplus
+
+#include <string>
+#include <vector>
+
 typedef std::string String;
+typedef std::vector<String> StringVector;
+
 #endif
+
+#include "types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,10 +30,18 @@ DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(String)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(String)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY_DEC(String)
 
+DEFINE_C_WRAP_STRUCT(StringVector)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(StringVector)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(StringVector)
+
 const char* StringGetCStr(String_t * str);
 int StringGetCStrLen(String_t * str);
-//Set str to catr
+
+//Set str to cstr
 void StringSetCStr(String_t * str, const char* cstr, size_t len);
+
+// Push the @cstr at the end of @slcv
+void StringVectorPushBack(StringVector_t *slcv, const char* cstr, size_t len);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

@@ -117,3 +117,16 @@ func (slcs *cSlicePtrAry) toCArray() (cslcs []C.Slice_t) {
 	}
 	return
 }
+
+// C slice vector to go bytes array
+func (slcv *C.SliceVector_t) toBytesArray() (slcs [][]byte) {
+	sz := C.SliceVectorSize(slcv)
+	if sz > 0 {
+		slcs = make([][]byte, sz)
+		for i, _ := range slcs {
+			slc := C.SliceVectorIndex(slcv, C.uint64ToSizeT(C.uint64_t(i)))
+			slcs[i] = slc.cToBytes(false)
+		}
+	}
+	return
+}

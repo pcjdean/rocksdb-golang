@@ -2,6 +2,7 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
+#include "compactionfilterPrivate.h"
 #include "options.h"
 
 DEFINE_C_WRAP_STATIC_CAST(Options, DBOptions)
@@ -45,6 +46,38 @@ void ColumnFamilyOptions_set_compression_options(
     GET_REP(opt, ColumnFamilyOptions)->compression_opts.strategy = strategy;
 }
 
+// A single CompactionFilter instance to call into during compaction.
+// Allows an application to modify/delete a key-value during background
+// compaction.
+//
+// If the client requires a new compaction filter to be used for different
+// compaction runs, it can specify compaction_filter_factory instead of this
+// option.  The client should specify only one of the two.
+// compaction_filter takes precedence over compaction_filter_factory if
+// client specifies both.
+//
+// If multithreaded compaction is being used, the supplied CompactionFilter
+// instance may be used from different threads concurrently and so should be
+// thread-safe.
+//
+// Default: nullptr
+DEFINE_C_WRAP_SETTER_PTR_WRAP(ColumnFamilyOptions, compaction_filter, CompactionFilter)
+
+// This is a factory that provides compaction filter objects which allow
+// an application to modify/delete a key-value during background compaction.
+//
+// A new filter will be created on each compaction run.  If multithreaded
+// compaction is being used, each created CompactionFilter will only be used
+// from a single thread and so does not need to be thread-safe.
+//
+// Default: a factory that doesn't provide any object
+DEFINE_C_WRAP_SETTER_WRAP(ColumnFamilyOptions, compaction_filter_factory, PCompactionFilterFactory)
+
+// Version TWO of the compaction_filter_factory
+// It supports rolling compaction
+//
+// Default: a factory that doesn't provide any object
+DEFINE_C_WRAP_SETTER_WRAP(ColumnFamilyOptions, compaction_filter_factory_v2, PCompactionFilterFactoryV2)
 
 DEFINE_C_WRAP_CONSTRUCTOR(DBOptions)
 DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(DBOptions, const Options&)

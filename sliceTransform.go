@@ -17,6 +17,7 @@ import "C"
 
 import (
 	"unsafe"
+	"runtime"
 	"log"
 	"sync"
 )
@@ -79,7 +80,7 @@ type ISliceTransform interface {
 	Name() string
 
 	// transform a src in domain to a dst in the range
-	Transform(src []byte) []byte
+	Transform(src []byte) (offset, sz uint64)
 
 	// determine whether this is a valid src upon the function applies
 	InDomain(src []byte) bool
@@ -122,27 +123,28 @@ func ISliceTransformName(cstf unsafe.Pointer) *C.char {
 }
 
 //export ISliceTransformTransform
-func ISliceTransformTransform(cstf unsafe.Pointer, src *C.Slice_t, slen *C.int) *C.char {
+func ISliceTransformTransform(cstf unsafe.Pointer, src *C.Slice_t, soffset, slen *C.size_t) {
 	stf := ISliceTransformGet(cstf)
-	str := string(stf.Transform(src.cToBytes(false)))
-	*slen = len(str)
-	return C.CString(str)
+	offset, sz := stf.Transform(src.cToBytes(false))
+	*soffset = C.uint64ToSizeT(C.uint64_t(offset))
+	*slen = C.uint64ToSizeT(C.uint64_t(sz))
+	return
 }
 
 //export ISliceTransformInDomain
-func ISliceTransformInDomain(cstf unsafe.Pointer, src *C.Slice_t) *C.bool {
+func ISliceTransformInDomain(cstf unsafe.Pointer, src *C.Slice_t) C.bool {
 	stf := ISliceTransformGet(cstf)
 	return toCBool(stf.InDomain(src.cToBytes(false)))
 }
 
 //export ISliceTransformInRange
-func ISliceTransformInRange(cstf unsafe.Pointer, dst *C.Slice_t) *C.bool {
+func ISliceTransformInRange(cstf unsafe.Pointer, dst *C.Slice_t) C.bool {
 	stf := ISliceTransformGet(cstf)
 	return toCBool(stf.InRange(dst.cToBytes(false)))
 }
 
 //export ISliceTransformSameResultWhenAppended
-func ISliceTransformSameResultWhenAppended(cstf unsafe.Pointer, prefix *C.Slice_t) *C.bool {
+func ISliceTransformSameResultWhenAppended(cstf unsafe.Pointer, prefix *C.Slice_t) C.bool {
 	stf := ISliceTransformGet(cstf)
 	return toCBool(stf.SameResultWhenAppended(prefix.cToBytes(false)))
 }
@@ -159,38 +161,40 @@ func (stf *SliceTransform) finalize() {
 }
 
 // C SliceTransform to go SliceTransform
-func (cstf *C.SliceTransform_t) toSliceTransform() (stf *SliceTransform) {
+func (cstf *C.SliceTransform_t) toSliceTransform(del bool) (stf *SliceTransform) {
 	stf = &SliceTransform{stf: *cstf}	
-	runtime.SetFinalizer(stf, finalize)
+	if del {
+		runtime.SetFinalizer(stf, finalize)
+	}
 	return
 }
 
 // Return a new SliceTransform that uses ISliceTransform
-func NewSliceTransform(itf ISliceTransform) (stf *SliceTransform) {
+func NewSliceTransform(itf ISliceTransform, del bool) (stf *SliceTransform) {
 	var citf unsafe.Pointer = nil
 
 	if nil != itf {
 		citf =ISliceTransformAddReference(itf)
 	}
-	cstf := C.SliceTransformNewSliceTransform(citf)
-	return cstf.toSliceTransform()
+	cstf := C.NewSliceTransform(citf)
+	return cstf.toSliceTransform(del)
 }
 
 
 // Return a new SliceTransform that uses length of prefix.
-func NewFixedPrefixTransform(preflen uint64) (stf *SliceTransform) {
-	cstf := C.SliceTransformNewFixedPrefixTransform(C.uint64ToSizeT(preflen))
-	return cstf.toSliceTransform()
+func NewFixedPrefixTransform(preflen uint64, del bool) (stf *SliceTransform) {
+	cstf := C.GoNewFixedPrefixTransform(C.uint64ToSizeT(C.uint64_t(preflen)))
+	return cstf.toSliceTransform(del)
 }
 
 // Return a new SliceTransform that uses capped length of prefix.
-func NewCappedPrefixTransform(caplen uint64) (stf *SliceTransform) {
-	cstf := C.SliceTransformNewCappedPrefixTransform(C.uint64ToSizeT(caplen))
-	return cstf.toSliceTransform()
+func NewCappedPrefixTransform(caplen uint64, del bool) (stf *SliceTransform) {
+	cstf := C.GoNewCappedPrefixTransform(C.uint64ToSizeT(C.uint64_t(caplen)))
+	return cstf.toSliceTransform(del)
 }
 
 // Return a new SliceTransform that has no transform.
-func NewNoopTransform() (stf *SliceTransform) {
-	cstf := C.SliceTransformNewNoopTransform())
-	return cstf.toSliceTransform()
+func NewNoopTransform(del bool) (stf *SliceTransform) {
+	cstf := C.GoNewNoopTransform()
+	return cstf.toSliceTransform(del)
 }

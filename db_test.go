@@ -25,6 +25,41 @@ func (db *DB) checkGet(t *testing.T, ropts *ReadOptions, key []byte, valExp []by
 	}
 }
 
+func checkCompaction(t *testing.T, dbname *string, options *Options, roptions *ReadOptions, woptions *WriteOptions) (db *DB) {
+	var stat *Status
+	db, stat, _ = Open(options, dbname)
+	if !stat.Ok() {
+		t.Fatalf("checkCompaction err: open: stat = %s", stat)
+	}
+
+	stat = db.Put(woptions, []byte("foo"), []byte("foovalue"))
+	if !stat.Ok() {
+		t.Fatalf("checkCompaction err: put err: stat = %s", stat)
+	}
+	db.checkGet(t, roptions, []byte("foo"), []byte("foovalue"))
+
+	stat = db.Put(woptions, []byte("bar"), []byte("barvalue"))
+	if !stat.Ok() {
+		t.Fatalf("checkCompaction err: put err: stat = %s", stat)
+	}
+	db.checkGet(t, roptions, []byte("bar"), []byte("barvalue"))
+
+	stat = db.Put(woptions, []byte("baz"), []byte("bazvalue"))
+	if !stat.Ok() {
+		t.Fatalf("checkCompaction err: put err: stat = %s", stat)
+	}
+	db.checkGet(t, roptions, []byte("baz"), []byte("bazvalue"))
+
+	// Force compaction
+	db.CompactRange(nil, nil)
+
+	// should have filtered bar, but not foo
+	db.checkGet(t, roptions, []byte("foo"), []byte("foovalue"))
+	db.checkGet(t, roptions, []byte("bar"), nil)
+	db.checkGet(t, roptions, []byte("baz"), []byte("newbazvalue"))
+	return
+}
+
 func checkCondition(t *testing.T, cond bool) {
 	if !cond {
 		t.Fatal("err: checkCondition:")
@@ -43,6 +78,7 @@ type testFilterPolicy struct {
 	fakeResult bool
 }
 
+// Custom FilterPolicy
 func (tfp testFilterPolicy) Name() string {
 	return "testFilterPolicy"
 }
@@ -59,12 +95,35 @@ func (tfp testFilterPolicy) KeyMayMatch(key, filter []byte) bool {
 	return tfp.fakeResult
 }
 
-func (tfp testFilterPolicy) GetFilterBitsBuilder() *IFilterBitsBuilder {
+func (tfp testFilterPolicy) GetFilterBitsBuilder() IFilterBitsBuilder {
 	return nil
 }
 
-func (tfp testFilterPolicy) GetFilterBitsReader() *IFilterBitsReader {
+func (tfp testFilterPolicy) GetFilterBitsReader() IFilterBitsReader {
 	return nil
+}
+
+// Custom compaction filter
+type testCompactionFilter struct {
+	t *testing.T
+}
+
+func (tcf testCompactionFilter) Name() string {
+	return "foo"
+}
+
+func (tcf testCompactionFilter) Filter(level int, key, exval []byte) (newval []byte, valchg bool, removed bool) {
+	if 3 == len(key) {
+		if  bytes.Equal([]byte("bar"), key) {
+			removed = true
+		} else if bytes.Equal([]byte("baz"), key) {
+			valchg = true;
+			newval = []byte("newbazvalue");
+			removed = false
+		}
+	}
+	// tcf.t.Logf("testCompactionFilter level = %v, key = %v, exval = %v, newval = %v, valchg = %v, removed = %v", level, string(key), string(exval), string(newval), valchg, removed)
+	return
 }
 
 
@@ -345,23 +404,19 @@ func TestCMain(t *testing.T) {
 		options.SetTableFactory(table_options.NewBlockBasedTableFactory())
 	}
 
-	// StartPhase("compaction_filter");
-	// {
-	// 	rocksdb_options_t* options_with_filter = rocksdb_options_create();
-	// 	rocksdb_options_set_create_if_missing(options_with_filter, 1);
-	// 	rocksdb_compactionfilter_t* cfilter;
-	// 	cfilter = rocksdb_compactionfilter_create(NULL, CFilterDestroy,
-	// 		CFilterFilter, CFilterName);
-	// 	// Create new database
-	// 	rocksdb_close(db);
-	// 	rocksdb_destroy_db(options_with_filter, dbname, &err);
-	// 	rocksdb_options_set_compaction_filter(options_with_filter, cfilter);
-	// 	db = CheckCompaction(db, options_with_filter, roptions, woptions);
-
-	// 	rocksdb_options_set_compaction_filter(options_with_filter, NULL);
-	// 	rocksdb_compactionfilter_destroy(cfilter);
-	// 	rocksdb_options_destroy(options_with_filter);
-	// }
+	t.Log("phase: compaction_filter")
+	options_with_filter := NewOptions()
+	options_with_filter.SetCreateIfMissing(true)
+	cpf := &testCompactionFilter{t: t}
+	db.Close()
+	stat = DestroyDB(options_with_filter, &dbname)
+	t.Logf("DestroyDB: status = %s", stat)
+	cfilter := NewCompactionFilter(cpf)
+	options_with_filter.SetCompactionFilter(cfilter)
+	db = checkCompaction(t, &dbname, options_with_filter, ropts, woptions)
+	options_with_filter.SetCompactionFilter(nil)
+	cfilter.Close()
+	options_with_filter.Close()
 
 	// StartPhase("compaction_filter_factory");
 	// {

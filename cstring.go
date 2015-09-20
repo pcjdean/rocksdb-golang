@@ -78,8 +78,8 @@ func (ccstr *C.String_t) cToBytes() (str []byte) {
 
 // Set C string to go bytes
 func (ccstr *C.String_t) setBytes(str []byte) {
-	cstr := C.CString(str)
-	defer C.free(cstr)
+	cstr := C.CString(string(str))
+	defer C.free(unsafe.Pointer(cstr))
 	C.StringSetCStr(ccstr, cstr, C.uint64ToSizeT(C.uint64_t(len(str))))
 }
 
@@ -140,6 +140,14 @@ func (cstrs *cStringPtrAry) toCArray() (ccstrs []C.String_t) {
 	ccstrs = make([]C.String_t, len(*cstrs))
 	for i, cstr := range *cstrs {
 		ccstrs[i] = cstr.str
+	}
+	return
+}
+
+// Set the C string vector to bytes array @strs
+func (svc *C.StringVector_t) setBytesArray(strs [][]byte) {
+	for _, str := range strs {
+		C.StringVectorPushBack(svc, C.CString(string(str)), C.uint64ToSizeT(C.uint64_t(len(str))))
 	}
 	return
 }

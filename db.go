@@ -128,6 +128,7 @@ type DB struct {
 	closed bool
 }
 
+// Release the @db
 func (db *DB) finalize() {
 	if !db.closed {
 		db.closed = true
@@ -136,6 +137,7 @@ func (db *DB) finalize() {
 	}
 }
 
+// Close the @db
 func (db *DB) Close() {
 	runtime.SetFinalizer(db, nil)
 	db.finalize()

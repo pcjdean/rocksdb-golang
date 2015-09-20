@@ -9,11 +9,15 @@
 // of these sets respectively.
 
 #include <rocksdb/slice_transform.h>
-#include "sliceTransform.h"
 
 using namespace rocksdb;
 
-DEFINE_C_WRAP_STRUCT(SliceTransform)
+#include "sliceTransform.h"
+
+extern "C" {
+#include "_cgo_export.h"
+}
+
 DEFINE_C_WRAP_CONSTRUCTOR(SliceTransform)
 DEFINE_C_WRAP_DESTRUCTOR(SliceTransform)
 
@@ -26,7 +30,7 @@ public:
     {
         if (go_stf)
         {
-            m_name = ISliceTransformName(go_flp);
+            m_name = ISliceTransformName(go_stf);
         }
     }
 
@@ -55,18 +59,11 @@ public:
     {
         if (m_go_stf)
         {
-            Slice_t slc{&src};
-            int len = 0;
-            const char* str = ISliceTransformTransform(m_go_stf, &slc, &len);
-            if (str)
-            {
-                const char* pos = strstr(src.data(), str);
-                if (pos)
-                {
-                    return Slice{pos, len};
-                }
-                free(str);
-            }
+            Slice_t slc{const_cast<Slice *>(&src)};
+            size_t offset = 0;
+            size_t len = 0;
+            ISliceTransformTransform(m_go_stf, &slc, &offset, &len);
+            return Slice{src.data() + offset, len};
         }
 
         return Slice{};
@@ -78,8 +75,8 @@ public:
         bool ret = false;
         if (m_go_stf)
         {
-            Slice_t slc{&src};
-            ret = ISliceTransformInDomain(m_go_stf, &slc) 
+            Slice_t slc{const_cast<Slice *>(&src)};
+            ret = ISliceTransformInDomain(m_go_stf, &slc);
         }
         return ret;
     }
@@ -90,8 +87,8 @@ public:
         bool ret = false;
         if (m_go_stf)
         {
-            Slice_t slc{&src};
-            ret = ISliceTransformInRange(m_go_stf, &slc) 
+            Slice_t slc{const_cast<Slice *>(&dst)};
+            ret = ISliceTransformInRange(m_go_stf, &slc); 
         }
         return ret;
     }
@@ -124,48 +121,48 @@ public:
         bool ret = false;
         if (m_go_stf)
         {
-            Slice_t slc{&prefix};
-            ret = ISliceTransformSameResultWhenAppended(m_go_stf, &slc) 
+            Slice_t slc{const_cast<Slice *>(&prefix)};
+            ret = ISliceTransformSameResultWhenAppended(m_go_stf, &slc); 
         }
         return ret;
     }
 
 private:
-    // Wrapped go IFilterPolicy
+    // Wrapped go ISliceTransform
     void* m_go_stf;
 
-    // The name of the filter policy
+    // The name of the SliceTransform
     char* m_name;
 };
 
 // Return a SliceTransform from a go SliceTransform interface
-SliceTransform_t SliceTransformNewSliceTransform(void* go_stf)
+SliceTransform_t NewSliceTransform(void* go_stf)
 {
     SliceTransform_t wrap_t;
-    wrap_t.rep = new SliceTransform(go_stf ? new SliceTransformGo(go_stf) : NULL);
+    wrap_t.rep = (go_stf ? new SliceTransformGo(go_stf) : NULL);
     return wrap_t;
 }
 
 // Create a fixed prefix transform
-SliceTransform_t SliceTransformNewFixedPrefixTransform(size_t prefix_len)
+SliceTransform_t GoNewFixedPrefixTransform(size_t prefix_len)
 {
     SliceTransform_t wrap_t;
-    wrap_t.rep = new NewFixedPrefixTransform(prefix_len);
+    wrap_t.rep = const_cast<SliceTransform *>(NewFixedPrefixTransform(prefix_len));
     return wrap_t;
 }
 
 // Create a capped prefix transform
-SliceTransform_t SliceTransformNewCappedPrefixTransform(size_t cap_len)
+SliceTransform_t GoNewCappedPrefixTransform(size_t cap_len)
 {
     SliceTransform_t wrap_t;
-    wrap_t.rep = new NewCappedPrefixTransform(cap_len);
+    wrap_t.rep = const_cast<SliceTransform *>(NewCappedPrefixTransform(cap_len));
     return wrap_t;
 }
 
 // Create a noop transform
-SliceTransform_t SliceTransformNewNoopTransform()
+SliceTransform_t GoNewNoopTransform()
 {
     SliceTransform_t wrap_t;
-    wrap_t.rep = new NewNoopTransform();
+    wrap_t.rep = const_cast<SliceTransform *>(NewNoopTransform());
     return wrap_t;
 }

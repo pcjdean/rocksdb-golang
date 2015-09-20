@@ -139,12 +139,12 @@ type IFilterPolicy interface {
 
 	// Get the FilterBitsBuilder, which is ONLY used for full filter block
 	// It contains interface to take individual key, then generate filter
-	GetFilterBitsBuilder() *IFilterBitsBuilder
+	GetFilterBitsBuilder() IFilterBitsBuilder
 
 	// Get the FilterBitsReader, which is ONLY used for full filter block
 	// It contains interface to tell if key can be in filter
 	// The input slice should NOT be deleted by FilterPolicy
-	GetFilterBitsReader() *IFilterBitsReader
+	GetFilterBitsReader() IFilterBitsReader
 }
 
 // Wrap functions for IFilterPolicy
@@ -172,14 +172,16 @@ func IFilterPolicyKeyMayMatch(cflp unsafe.Pointer, key, filter *C.Slice_t) C.boo
 
 //export IFilterPolicyGetFilterBitsBuilder
 func IFilterPolicyGetFilterBitsBuilder(cflp unsafe.Pointer) unsafe.Pointer {
-	flp := IFilterPolicyGet(cflp)
-	return unsafe.Pointer(flp.GetFilterBitsBuilder())
+	// flp := IFilterPolicyGet(cflp)
+	// TODO
+	return nil
 }
 
 //export IFilterPolicyGetFilterBitsReader
 func IFilterPolicyGetFilterBitsReader(cflp unsafe.Pointer) unsafe.Pointer {
-	flp := IFilterPolicyGet(cflp)
-	return unsafe.Pointer(flp.GetFilterBitsReader())
+	// flp := IFilterPolicyGet(cflp)
+	// TODO
+	return nil
 }
 
 // Wrap go FilterPolicy
@@ -207,7 +209,7 @@ func NewFilterPolicy(itf IFilterPolicy) (flp *FilterPolicy) {
 	if nil != itf {
 		iftp =IFilterPolicyAddReference(itf)
 	}
-	cflp := C.PFilterPolicyNewPFilterPolicy(iftp)
+	cflp := C.NewPFilterPolicy(iftp)
 	return cflp.toFilterPolicy()
 }
 
