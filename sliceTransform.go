@@ -161,40 +161,38 @@ func (stf *SliceTransform) finalize() {
 }
 
 // C SliceTransform to go SliceTransform
-func (cstf *C.SliceTransform_t) toSliceTransform(del bool) (stf *SliceTransform) {
+func (cstf *C.SliceTransform_t) toSliceTransform() (stf *SliceTransform) {
 	stf = &SliceTransform{stf: *cstf}	
-	if del {
-		runtime.SetFinalizer(stf, finalize)
-	}
+	runtime.SetFinalizer(stf, finalize)
 	return
 }
 
 // Return a new SliceTransform that uses ISliceTransform
-func NewSliceTransform(itf ISliceTransform, del bool) (stf *SliceTransform) {
+func NewSliceTransform(itf ISliceTransform) (stf *SliceTransform) {
 	var citf unsafe.Pointer = nil
 
 	if nil != itf {
 		citf =ISliceTransformAddReference(itf)
 	}
 	cstf := C.NewSliceTransform(citf)
-	return cstf.toSliceTransform(del)
+	return cstf.toSliceTransform()
 }
 
 
 // Return a new SliceTransform that uses length of prefix.
-func NewFixedPrefixTransform(preflen uint64, del bool) (stf *SliceTransform) {
+func NewFixedPrefixTransform(preflen uint64) (stf *SliceTransform) {
 	cstf := C.GoNewFixedPrefixTransform(C.uint64ToSizeT(C.uint64_t(preflen)))
-	return cstf.toSliceTransform(del)
+	return cstf.toSliceTransform()
 }
 
 // Return a new SliceTransform that uses capped length of prefix.
-func NewCappedPrefixTransform(caplen uint64, del bool) (stf *SliceTransform) {
+func NewCappedPrefixTransform(caplen uint64) (stf *SliceTransform) {
 	cstf := C.GoNewCappedPrefixTransform(C.uint64ToSizeT(C.uint64_t(caplen)))
-	return cstf.toSliceTransform(del)
+	return cstf.toSliceTransform()
 }
 
 // Return a new SliceTransform that has no transform.
-func NewNoopTransform(del bool) (stf *SliceTransform) {
+func NewNoopTransform() (stf *SliceTransform) {
 	cstf := C.GoNewNoopTransform()
-	return cstf.toSliceTransform(del)
+	return cstf.toSliceTransform()
 }

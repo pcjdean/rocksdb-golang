@@ -464,7 +464,8 @@ type ICompactionFilterFactoryV2 interface {
 	// Set the prefix extractor
 	// There is no effect once underlying CompactionFilterFactoryV2 is created.
 	// See notes on GetPrefixExtractor(). Create a new CompactionFilterFactoryV2
-	// if we want to use a new ISliceTransform.
+	// if we want to use a new ISliceTransform. Set ISliceTransform somewhere 
+	// internaly to keep @prextrc from garbage collected.
 	SetPrefixExtractor(prextrc ISliceTransform)
 }
 
@@ -486,7 +487,7 @@ func ICompactionFilterFactoryV2CreateCompactionFilterV2(ccpf unsafe.Pointer, con
 //export ICompactionFilterFactoryV2GetPrefixExtractor
 func ICompactionFilterFactoryV2GetPrefixExtractor(ccpf unsafe.Pointer) (cstf C.SliceTransform_t) {
 	cpf := ICompactionFilterFactoryV2Get(ccpf)
-	stf := NewSliceTransform(cpf.GetPrefixExtractor(), false)
+	stf := NewSliceTransform(cpf.GetPrefixExtractor())
 	cstf = stf.stf
 	return
 }
@@ -519,14 +520,13 @@ func NewDefaultCompactionFilterFactoryV2() (cff *CompactionFilterFactoryV2) {
 // Return a new CompactionFilterFactoryV2 that uses ICompactionFilterFactoryV2
 func NewCompactionFilterFactoryV2(itf ICompactionFilterFactoryV2, sitf ISliceTransform) (cff *CompactionFilterFactoryV2) {
 	var iftp unsafe.Pointer = nil
-	var sitfp unsafe.Pointer = nil
 
 	if nil != itf {
 		iftp =ICompactionFilterFactoryV2AddReference(itf)
-		if nil != sitf {
-			sitfp =ISliceTransformAddReference(sitf)
-		}
+		itf.SetPrefixExtractor(sitf)
 	}
-	ccff := C.NewPCompactionFilterFactoryV2(iftp, sitfp)
+	// SliceTransform of CompactionFilterFactoryV2 will be initialised
+	// from GetPrefixExtractor of ICompactionFilterFactoryV2
+	ccff := C.NewPCompactionFilterFactoryV2(iftp, nil)
 	return ccff.toCompactionFilterFactoryV2()
 }

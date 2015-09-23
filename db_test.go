@@ -21,7 +21,7 @@ func (db *DB) checkGet(t *testing.T, ropts *ReadOptions, key []byte, valExp []by
 	if nil == valExp && !stat.IsNotFound() {
 		t.Fatalf("err: get nil err: stat = %s", stat)
 	} else if !bytes.Equal(val, valExp) {
-		t.Fatalf("err: get err: expected = %v, got = %v", valExp, val)
+		t.Fatalf("err: get err: expected = %s, got = %s", valExp, val)
 	}
 }
 
@@ -84,12 +84,12 @@ func (tfp testFilterPolicy) Name() string {
 }
 
 func (tfp testFilterPolicy) CreateFilter(keys [][]byte) []byte {
-	// tfp.t.Logf("CreateFilter keys = %v", keys)
+	// tfp.t.Logf("CreateFilter keys = %s", keys)
 	return []byte("fake")
 }
 
 func (tfp testFilterPolicy) KeyMayMatch(key, filter []byte) bool {
-	// tfp.t.Logf("KeyMayMatch keys = %v, filter = %v, tfp.fakeResult = %v", key, filter, tfp.fakeResult)
+	// tfp.t.Logf("KeyMayMatch keys = %s, filter = %s, tfp.fakeResult = %v", key, filter, tfp.fakeResult)
 	checkCondition(tfp.t, 4 == len(filter))
 	checkCondition(tfp.t, bytes.Equal(filter, []byte("fake")));
 	return tfp.fakeResult
@@ -108,11 +108,11 @@ type testCompactionFilter struct {
 	t *testing.T
 }
 
-func (tcf testCompactionFilter) Name() string {
+func (tcf *testCompactionFilter) Name() string {
 	return "foo"
 }
 
-func (tcf testCompactionFilter) Filter(level int, key, exval []byte) (newval []byte, valchg bool, removed bool) {
+func (tcf *testCompactionFilter) Filter(level int, key, exval []byte) (newval []byte, valchg bool, removed bool) {
 	if 3 == len(key) {
 		if  bytes.Equal([]byte("bar"), key) {
 			removed = true
@@ -122,10 +122,127 @@ func (tcf testCompactionFilter) Filter(level int, key, exval []byte) (newval []b
 			removed = false
 		}
 	}
-	// tcf.t.Logf("testCompactionFilter level = %v, key = %v, exval = %v, newval = %v, valchg = %v, removed = %v", level, string(key), string(exval), string(newval), valchg, removed)
+	// tcf.t.Logf("testCompactionFilter level = %v, key = %s, exval = %s, newval = %s, valchg = %v, removed = %v", level, string(key), string(exval), string(newval), valchg, removed)
 	return
 }
 
+// Custom CompactionFilterFactory filter
+type testCompactionFilterFactory struct {
+	t *testing.T
+}
+
+func (tcff *testCompactionFilterFactory) Name() string {
+	return "foo"
+}
+
+func (tcff *testCompactionFilterFactory) CreateCompactionFilter(context *CompactionFilter_Context) ICompactionFilter {
+	// tcff.t.Logf("testCompactionFilterFactory context = %v", context)
+	cff := &testCompactionFilter{t: tcff.t}
+	return cff
+}
+
+// Custom CompactionFilterV2 filter
+type testCompactionFilterV2 struct {
+	t *testing.T
+}
+
+func (tcf *testCompactionFilterV2) Name() string {
+	return "TestCompactionFilterV2"
+}
+
+func (tcf *testCompactionFilterV2) Filter(level int, keys, exvals [][]byte) (newvals [][]byte, valchgs []bool, removed []bool) {
+	l := len(keys)
+	if 0 < l {
+		removed = make([]bool, l)
+		valchgs = make([]bool, l)
+	}
+
+	for i, _ := range keys {
+		lv := len(exvals[i])
+		// If any value is "gc", it's removed.
+		if 2 == lv && bytes.Equal([]byte("gc"), exvals[i]) {
+			removed[i] = true;
+		} else if 6 == lv && bytes.Equal([]byte("gc all"), exvals[i]) {
+			// If any value is "gc all", all keys are removed.
+			for j, _ := range keys {
+				removed[j] = true;
+			}
+			// tcf.t.Logf("testCompactionFilter - gc all - level = %v, keys = %s, exvals = %s, newvals = %s, valchgs = %v, removed = %v", level, keys, exvals, newvals, valchgs, removed)
+			return;
+		} else if 6 == lv && bytes.Equal([]byte("change"), exvals[i]) {
+			// If value is "change", set changed value to "changed".
+			newvals = append(newvals, []byte("changed"))
+			valchgs[i] = true
+		} else {
+			// Otherwise, no keys are removed.
+		}
+	}
+
+	// tcf.t.Logf("testCompactionFilter level = %v, keys = %s, exvals = %s, newvals = %s, valchgs = %v, removed = %v", level, keys, exvals, newvals, valchgs, removed)
+	return
+}
+
+// Custom SliceTransform filter
+type testSliceTransform struct {
+	t *testing.T
+}
+
+func (tstf *testSliceTransform) Name() string {
+	return "TestCFV2PrefixExtractor"
+}
+
+func (tstf *testSliceTransform) Transform(src []byte) (offset, sz uint64) {
+	// Verify keys are maximum length 4; this verifies fix for a
+	// prior bug which was passing the RocksDB-encoded key with
+	// logical timestamp suffix instead of parsed user key.
+	l := uint64(len(src))
+	if 4 < l {
+		tstf.t.Fatalf("testSliceTransform::Transform - key %v is not user key\n", string(src))
+	}
+	if 3 > l {
+		sz = l
+	} else {
+		sz = 3
+	}
+	offset = 0
+	return 
+}
+
+func (tstf *testSliceTransform) InDomain(src []byte) bool {
+	return true
+}
+
+func (tstf *testSliceTransform) InRange(dst []byte) bool {
+	return true
+}
+
+func (tstf *testSliceTransform) SameResultWhenAppended(prefix []byte) bool {
+	return false
+}
+
+// Custom CompactionFilterFactoryV2 filter
+type testCompactionFilterFactoryV2 struct {
+	t *testing.T
+	istf ISliceTransform
+}
+
+func (tcff *testCompactionFilterFactoryV2) Name() string {
+	return "TestCompactionFilterV2"
+}
+
+func (tcff *testCompactionFilterFactoryV2) CreateCompactionFilterV2(context *CompactionFilterContext) ICompactionFilterV2 {
+	// tcff.t.Logf("testCompactionFilterFactoryV2 context = %v", context)
+	cff := &testCompactionFilterV2{t: tcff.t}
+	return cff
+}
+
+func (tcff *testCompactionFilterFactoryV2) GetPrefixExtractor() ISliceTransform {
+	return tcff.istf
+}
+
+func (tcff *testCompactionFilterFactoryV2) SetPrefixExtractor(prextrc ISliceTransform) {
+	tcff.istf = prextrc
+}
 
 // Test from rocksdb's c_test.c.
 func TestCMain(t *testing.T) {
@@ -369,7 +486,7 @@ func TestCMain(t *testing.T) {
 		table_options.SetFilterPolicy(policy)
 		db.Close()
 		stat = DestroyDB(options, &dbname)
-		t.Logf("DestroyDB: status = %s", stat)
+		t.Logf("filter: DestroyDB: status = %s", stat)
 		options.SetTableFactory(table_options.NewBlockBasedTableFactory())
 		db, stat, _ = Open(options, &dbname)
 		if !stat.Ok() {
@@ -410,7 +527,7 @@ func TestCMain(t *testing.T) {
 	cpf := &testCompactionFilter{t: t}
 	db.Close()
 	stat = DestroyDB(options_with_filter, &dbname)
-	t.Logf("DestroyDB: status = %s", stat)
+	t.Logf("compaction_filter: DestroyDB: status = %s", stat)
 	cfilter := NewCompactionFilter(cpf)
 	options_with_filter.SetCompactionFilter(cfilter)
 	db = checkCompaction(t, &dbname, options_with_filter, ropts, woptions)
@@ -418,68 +535,68 @@ func TestCMain(t *testing.T) {
 	cfilter.Close()
 	options_with_filter.Close()
 
-	// StartPhase("compaction_filter_factory");
-	// {
-	// 	rocksdb_options_t* options_with_filter_factory = rocksdb_options_create();
-	// 	rocksdb_options_set_create_if_missing(options_with_filter_factory, 1);
-	// 	rocksdb_compactionfilterfactory_t* factory;
-	// 	factory = rocksdb_compactionfilterfactory_create(
-	// 		NULL, CFilterFactoryDestroy, CFilterCreate, CFilterFactoryName);
-	// 	// Create new database
-	// 	rocksdb_close(db);
-	// 	rocksdb_destroy_db(options_with_filter_factory, dbname, &err);
-	// 	rocksdb_options_set_compaction_filter_factory(options_with_filter_factory,
-	// 		factory);
-	// 	db = CheckCompaction(db, options_with_filter_factory, roptions, woptions);
+	t.Log("phase: compaction_filter_factory")
+	options_with_filter_factory := NewOptions()
+	options_with_filter_factory.SetCreateIfMissing(true)
+	cff := &testCompactionFilterFactory{t: t}
+	factory := NewCompactionFilterFactory(cff)
+	db.Close()
+	stat = DestroyDB(options_with_filter_factory, &dbname)
+	t.Logf("compaction_filter_factory: DestroyDB: status = %s", stat)
+	options_with_filter_factory.SetCompactionFilterFactory(factory)
+	db = checkCompaction(t, &dbname, options_with_filter_factory, ropts, woptions)
+	options_with_filter_factory.SetCompactionFilterFactory(nil)
+	options_with_filter_factory.Close()
 
-	// 	rocksdb_options_set_compaction_filter_factory(
-	// 		options_with_filter_factory, NULL);
-	// 	rocksdb_options_destroy(options_with_filter_factory);
-	// }
+	t.Log("phase: compaction_filter_v2")
+	tstf := &testSliceTransform{t: t}
+	tcfv2 := &testCompactionFilterFactoryV2{t: t}
+	factoryv2 := NewCompactionFilterFactoryV2(tcfv2, tstf)
+	db.Close()
+	stat = DestroyDB(options, &dbname)
+	t.Logf("compaction_filter_v2: DestroyDB: status = %s", stat)
+	options.SetCompactionFilterFactoryV2(factoryv2)
+	db, stat, _ = Open(options, &dbname)
+	if !stat.Ok() {
+		t.Fatalf("compaction_filter_v2: err: open: stat = %s", stat)
+	}
+	// Only foo2 is GC'd, foo3 is changed.
+	stat = db.Put(woptions, []byte("foo1"), []byte("no gc"))
+	if !stat.Ok() {
+		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("foo2"), []byte("gc"))
+	if !stat.Ok() {
+		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("foo3"), []byte("change"))
+	if !stat.Ok() {
+		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
+	}
+	// All bars are GC'd.
+	stat = db.Put(woptions, []byte("bar1"), []byte("no gc"))
+	if !stat.Ok() {
+		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("bar2"), []byte("gc all"))
+	if !stat.Ok() {
+		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("bar3"), []byte("no gc"))
+	if !stat.Ok() {
+		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
+	}
+	// Compact the DB to garbage collect.
+	db.CompactRange(nil, nil)
 
-	// StartPhase("compaction_filter_v2");
-	// {
-	// 	rocksdb_compactionfilterfactoryv2_t* factory;
-	// 	rocksdb_slicetransform_t* prefix_extractor;
-	// 	prefix_extractor = rocksdb_slicetransform_create(
-	// 		NULL, CFV2PrefixExtractorDestroy, CFV2PrefixExtractorTransform,
-	// 		CFV2PrefixExtractorInDomain, CFV2PrefixExtractorInRange,
-	// 		CFV2PrefixExtractorName);
-	// 	factory = rocksdb_compactionfilterfactoryv2_create(
-	// 		prefix_extractor, prefix_extractor, CompactionFilterFactoryV2Destroy,
-	// 		CompactionFilterFactoryV2Create, CompactionFilterFactoryV2Name);
-	// 	// Create new database
-	// 	rocksdb_close(db);
-	// 	rocksdb_destroy_db(options, dbname, &err);
-	// 	rocksdb_options_set_compaction_filter_factory_v2(options, factory);
-	// 	db = rocksdb_open(options, dbname, &err);
-	// 	CheckNoError(err);
-	// 	// Only foo2 is GC'd, foo3 is changed.
-	// 	rocksdb_put(db, woptions, "foo1", 4, "no gc", 5, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "foo2", 4, "gc", 2, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "foo3", 4, "change", 6, &err);
-	// 	CheckNoError(err);
-	// 	// All bars are GC'd.
-	// 	rocksdb_put(db, woptions, "bar1", 4, "no gc", 5, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "bar2", 4, "gc all", 6, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "bar3", 4, "no gc", 5, &err);
-	// 	CheckNoError(err);
-	// 	// Compact the DB to garbage collect.
-	// 	rocksdb_compact_range(db, NULL, 0, NULL, 0);
-
-	// 	// Verify foo entries.
-	// 	CheckGet(db, roptions, "foo1", "no gc");
-	// 	CheckGet(db, roptions, "foo2", NULL);
-	// 	CheckGet(db, roptions, "foo3", "changed");
-	// 	// Verify bar entries were all deleted.
-	// 	CheckGet(db, roptions, "bar1", NULL);
-	// 	CheckGet(db, roptions, "bar2", NULL);
-	// 	CheckGet(db, roptions, "bar3", NULL);
-	// }
+	// Verify foo entries.
+	db.checkGet(t, ropts, []byte("foo1"), []byte("no gc"))
+	db.checkGet(t, ropts, []byte("foo2"), nil)
+	db.checkGet(t, ropts, []byte("foo3"), []byte("changed"))
+	// Verify bar entries were all deleted.
+	db.checkGet(t, ropts, []byte("bar1"), nil)
+	db.checkGet(t, ropts, []byte("bar2"), nil)
+	db.checkGet(t, ropts, []byte("bar3"), nil)
 
 	// StartPhase("merge_operator");
 	// {

@@ -155,6 +155,7 @@ func (cfopt *ColumnFamilyOptions) SetTableFactory(tbf *TableFactory) {
 // thread-safe.
 //
 // Default: nullptr
+// The @cpf needs to be cleaned manually by SetCompactionFilter(nil)
 func (cfopt *ColumnFamilyOptions) SetCompactionFilter(cpf *CompactionFilter) {
 	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
 	if nil == cpf {
