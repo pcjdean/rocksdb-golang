@@ -49,13 +49,13 @@ public:
     }
 
     // Return the name of this transformation.
-    virtual const char* Name() const
+    virtual const char* Name() const override
     {
         return m_name;
     }
 
     // transform a src in domain to a dst in the range
-    virtual Slice Transform(const Slice& src) const
+    virtual Slice Transform(const Slice& src) const override
     {
         if (m_go_stf)
         {
@@ -70,7 +70,7 @@ public:
     }
     
     // determine whether this is a valid src upon the function applies
-    virtual bool InDomain(const Slice& src) const
+    virtual bool InDomain(const Slice& src) const override
     {
         bool ret = false;
         if (m_go_stf)
@@ -82,7 +82,7 @@ public:
     }
 
     // determine whether dst=Transform(src) for some src
-    virtual bool InRange(const Slice& dst) const
+    virtual bool InRange(const Slice& dst) const override
     {
         bool ret = false;
         if (m_go_stf)
@@ -116,7 +116,7 @@ public:
     //    "abcd,e", the file can be filtered out and the key will be invisible.
     //
     // i.e., an implementation always returning false is safe.
-    virtual bool SameResultWhenAppended(const Slice& prefix) const
+    virtual bool SameResultWhenAppended(const Slice& prefix) const override
     {
         bool ret = false;
         if (m_go_stf)

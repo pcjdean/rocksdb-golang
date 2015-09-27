@@ -73,6 +73,29 @@ func checkIter(t *testing.T, iter *Iterator, key, val string) {
 	checkCondition(t, bytes.Equal(str, []byte(val)));
 }
 
+// Custom Comparator filter
+type testComparator struct {
+	t *testing.T
+}
+
+func (tcf *testComparator) Name() string {
+	return "foo"
+}
+	
+func (tcf *testComparator) Compare(a, b []byte) int {
+	ret := bytes.Compare(a, b)
+	// tcf.t.Logf("testComparator a = %s, b = %s, ret = %v", a, b, ret)
+	return ret
+}
+	
+func (tcf *testComparator) FindShortestSeparator(start, limit []byte) []byte {
+	return nil
+}
+	
+func (tcf *testComparator) FindShortSuccessor(key []byte) []byte {
+	return nil
+}
+
 type testFilterPolicy struct {
 	t *testing.T
 	fakeResult bool
@@ -256,14 +279,16 @@ func TestCMain(t *testing.T) {
 	t.Log("phase: create_objects")
 	fmt.Printf("dbname = %s\n", dbname)
 	fmt.Printf("dbbackupname = %s\n", dbbackupname)
-	// cmp = rocksdb_comparator_create(NULL, CmpDestroy, CmpCompare, CmpName);
+	
+	icmp := &testComparator{t: t}
+	cmp := NewComparator(icmp)
 	// env = rocksdb_create_default_env();
 	cache := NewLRUCache(100000)
 
 	options := NewOptions()
 
-	// rocksdb_options_set_comparator(options, cmp);
-	options.SetErrorIfExists(true);
+	options.SetComparator(cmp)
+	options.SetErrorIfExists(true)
 	// rocksdb_options_set_env(options, env);
 	// rocksdb_options_set_info_log(options, NULL);
 	options.SetWriteBufferSize(100000)
@@ -273,7 +298,7 @@ func TestCMain(t *testing.T) {
 	table_options.SetBlockCache(cache)
 	options.SetTableFactory(table_options.NewBlockBasedTableFactory())
 
-	options.SetCompression(NoCompression);
+	options.SetCompression(NoCompression)
 	options.SetCompressionOptions(-14, -1, 0)
 	compressionLevels := []int{
 		NoCompression, NoCompression, NoCompression, NoCompression}
@@ -833,7 +858,8 @@ func TestCMain(t *testing.T) {
 	// rocksdb_readoptions_destroy(roptions);
 	// rocksdb_writeoptions_destroy(woptions);
 	// rocksdb_cache_destroy(cache);
-	// rocksdb_comparator_destroy(cmp);
+	// Kepp cmp from being garbage collected eariler
+	cmp.Close()
 	// rocksdb_env_destroy(env);
 
 	// fprintf(stderr, "PASS\n");

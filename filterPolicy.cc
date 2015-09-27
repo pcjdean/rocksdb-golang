@@ -60,7 +60,7 @@ public:
     // changes in an incompatible way, the name returned by this method
     // must be changed.  Otherwise, old incompatible filters may be
     // passed to methods of this type.
-    virtual const char* Name() const
+    virtual const char* Name() const override
     {
         return m_name;
     }
@@ -71,7 +71,7 @@ public:
     //
     // Warning: do not change the initial contents of *dst.  Instead,
     // append the newly constructed filter to *dst.
-    virtual void CreateFilter(const Slice* keys, int n, std::string* dst) const
+    virtual void CreateFilter(const Slice* keys, int n, std::string* dst) const override
     {
         Slice_t* slcs = new Slice_t[n];
         assert(slcs != NULL);
@@ -98,7 +98,7 @@ public:
     // the key was in the list of keys passed to CreateFilter().
     // This method may return true or false if the key was not on the
     // list, but it should aim to return false with a high probability.
-    virtual bool KeyMayMatch(const Slice& key, const Slice& filter) const
+    virtual bool KeyMayMatch(const Slice& key, const Slice& filter) const override
     {
         bool ret = false;
 
@@ -114,7 +114,7 @@ public:
 
     // Get the FilterBitsBuilder, which is ONLY used for full filter block
     // It contains interface to take individual key, then generate filter
-    virtual FilterBitsBuilder* GetFilterBitsBuilder()
+    virtual FilterBitsBuilder* GetFilterBitsBuilder() const override
     {
         // TODO
         return nullptr;
@@ -123,7 +123,7 @@ public:
     // Get the FilterBitsReader, which is ONLY used for full filter block
     // It contains interface to tell if key can be in filter
     // The input slice should NOT be deleted by FilterPolicy
-    virtual FilterBitsReader* GetFilterBitsReader(const Slice& contents)
+    virtual FilterBitsReader* GetFilterBitsReader(const Slice& contents) const override
     {
         // TODO
         return nullptr;

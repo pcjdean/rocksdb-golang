@@ -69,10 +69,11 @@ func (ccstr *C.String_t) cToString() (str string) {
 	return
 }
 
-// C string to go bytes
-func (ccstr *C.String_t) cToBytes() (str []byte) {
+// C string to go bytes. Delete the underlying 
+// @ccstr if del is true.
+func (ccstr *C.String_t) cToBytes(del bool) (str []byte) {
 	cstr := cString{str: *ccstr}
-	str = cstr.goBytes(true)
+	str = cstr.goBytes(del)
 	return
 }
 

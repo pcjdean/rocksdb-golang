@@ -149,7 +149,7 @@ func ICompactionFilterFilter(ccpf unsafe.Pointer, level C.int, key, exval *C.Sli
 // Wrap go CompactionFilter
 type CompactionFilter struct {
 	cpf C.CompactionFilter_t
-	// True if he CompactionFilter is closed
+	// True if the CompactionFilter is closed
 	closed bool
 }
 

@@ -46,6 +46,17 @@ void ColumnFamilyOptions_set_compression_options(
     GET_REP(opt, ColumnFamilyOptions)->compression_opts.strategy = strategy;
 }
 
+// -------------------
+// Parameters that affect behavior
+
+// Comparator used to define the order of keys in the table.
+// Default: a comparator that uses lexicographic byte-wise ordering
+//
+// REQUIRES: The client must ensure that the comparator supplied
+// here has the same name and orders keys *exactly* the same as the
+// comparator provided to previous open calls on the same DB.
+DEFINE_C_WRAP_SETTER_PTR_WRAP(ColumnFamilyOptions, comparator, Comparator)
+
 // A single CompactionFilter instance to call into during compaction.
 // Allows an application to modify/delete a key-value during background
 // compaction.

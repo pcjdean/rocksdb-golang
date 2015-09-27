@@ -196,7 +196,7 @@ func (wbt *WriteBatch) Data() []byte {
 
 	cstr := C.WriteBatchData(cwbt)
 
-	return cstr.cToBytes()
+	return cstr.cToBytes(true)
 }
 
 // Retrieve data size of the batch.

@@ -140,6 +140,23 @@ func (cfopt *ColumnFamilyOptions) SetTableFactory(tbf *TableFactory) {
 	C.ColumnFamilyOptions_set_table_factory(ccfopt, &tbf.tbf)
 }
 
+// -------------------
+// Parameters that affect behavior
+
+// Comparator used to define the order of keys in the table.
+// Default: a comparator that uses lexicographic byte-wise ordering
+//
+// REQUIRES: The client must ensure that the comparator supplied
+// here has the same name and orders keys *exactly* the same as the
+// comparator provided to previous open calls on the same DB.
+func (cfopt *ColumnFamilyOptions) SetComparator(cmp *Comparator) {
+	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
+	if nil == cmp {
+		cmp = NewDefaultComparator()
+	}
+	C.ColumnFamilyOptions_set_comparator(ccfopt, &cmp.cmp)
+}
+
 // A single CompactionFilter instance to call into during compaction.
 // Allows an application to modify/delete a key-value during background
 // compaction.

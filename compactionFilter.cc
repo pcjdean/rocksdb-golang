@@ -85,7 +85,7 @@ public:
                         const Slice& key,
                         const Slice& existing_value,
                         std::string* new_value,
-                        bool* value_changed) const
+                        bool* value_changed) const override
     {
         bool ret = false;
         
@@ -102,7 +102,7 @@ public:
 
     // Returns a name that identifies this compaction filter.
     // The name will be printed to LOG file on start up for diagnosis.
-    virtual const char* Name() const
+    virtual const char* Name() const override
     {
         return m_name;
     }
