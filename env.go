@@ -13,12 +13,24 @@
 package rocksdb
 
 /*
+#include <stdlib.h>
 #include "env.h"
 */
 import "C"
 
 import (
 	"runtime"
+	"fmt"
+	"unsafe"
+)
+
+const ( 
+	DEBUG_LEVEL = iota
+	INFO_LEVEL
+	WARN_LEVEL
+	ERROR_LEVEL
+	FATAL_LEVEL
+	NUM_INFO_LOG_LEVELS
 )
 
 // Wrap go Env
@@ -37,4 +49,75 @@ func (cenv *C.Env_t) toEnv() (env *Env) {
 	env = &Env{env: *cenv}	
 	runtime.SetFinalizer(env, finalize)
 	return
+}
+
+// Wrap go Logger
+type Logger struct {
+	log C.Logger_t
+}
+
+// Release resources
+func (log *Logger) finalize() {
+	var clog *C.Logger_t = &log.log
+	C.DeleteLoggerT(clog, toCBool(false))
+}
+
+// C logger to go logger. Delete the underlying c++ wrap object
+// if del is true. 
+func (clog *C.Logger_t) toLogger(del bool) (log *Logger) {
+	log = &Logger{log: *clog}
+	if del {	
+		runtime.SetFinalizer(log, finalize)
+	}
+	return
+}
+
+// Flush to the OS buffers
+func (log *Logger) Flush() {
+	C.LoggerFlush(&log.log)
+}
+
+// Return the log level    
+func (log *Logger) GetInfoLogLevel() {
+	C.LoggerGetInfoLogLevel(&log.log)
+}
+
+// Set the log level. The level lower will not be logged.    
+func (log *Logger) SetInfoLogLevel(level int) {
+	C.LoggerSetInfoLogLevel(&log.log, C.int(level))
+}
+
+// a set of log functions with different log levels.
+func (log *Logger) Header(format string, a ...interface{}) {
+	str := C.CString(fmt.Sprintf(format, a...))
+	defer C.free(unsafe.Pointer(str))
+	C.LoggerHeader(&log.log, str)
+}
+
+// log functions with Debug log levels.
+func (log *Logger) Debug(format string, a ...interface{}) {
+	str := C.CString(fmt.Sprintf(format, a...))
+	defer C.free(unsafe.Pointer(str))
+	C.LoggerDebug(&log.log, str)
+}
+
+// log functions with Info log levels.
+func (log *Logger) Info(format string, a ...interface{}) {
+	str := C.CString(fmt.Sprintf(format, a...))
+	defer C.free(unsafe.Pointer(str))
+	C.LoggerInfo(&log.log, str)
+}
+
+// log functions with Error log levels.
+func (log *Logger) Error(format string, a ...interface{}) {
+	str := C.CString(fmt.Sprintf(format, a...))
+	defer C.free(unsafe.Pointer(str))
+	C.LoggerError(&log.log, str)
+}
+
+// log functions with Fatal log levels.
+func (log *Logger) Fatal(format string, a ...interface{}) {
+	str := C.CString(fmt.Sprintf(format, a...))
+	defer C.free(unsafe.Pointer(str))
+	C.LoggerFatal(&log.log, str)
 }

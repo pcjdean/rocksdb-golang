@@ -15,6 +15,24 @@ DEFINE_C_WRAP_STRUCT(Env)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(Env)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(Env)
 
+DEFINE_C_WRAP_STRUCT(Logger)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(Logger)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(Logger)
+// Flush to the OS buffers
+void LoggerFlush(Logger_t* info_log);
+// Return the log level    
+int LoggerGetInfoLogLevel(Logger_t* info_log);
+// Set the log level. The level lower will not be logged.    
+void LoggerSetInfoLogLevel(Logger_t* info_log, int log_level);
+    
+// a set of log functions with different log levels.
+void LoggerHeader(Logger_t* info_log, const char* msg);
+void LoggerDebug(Logger_t* info_log, const char* msg);
+void LoggerInfo(Logger_t* info_log, const char* msg);
+void LoggerWarn(Logger_t* info_log, const char* msg);
+void LoggerError(Logger_t* info_log, const char* msg);
+void LoggerFatal(Logger_t* info_log, const char* msg);
+
 #ifdef __cplusplus
 }  /* end extern "C" */
 #endif
