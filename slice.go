@@ -130,3 +130,16 @@ func (slcv *C.SliceVector_t) toBytesArray() (slcs [][]byte) {
 	}
 	return
 }
+
+// C slice deque to go bytes array
+func (slcdq *C.SliceDeque_t) toBytesArray() (slcs [][]byte) {
+	sz := C.SliceDequeSize(slcdq)
+	if sz > 0 {
+		slcs = make([][]byte, sz)
+		for i, _ := range slcs {
+			slc := C.SliceDequeIndex(slcdq, C.uint64ToSizeT(C.uint64_t(i)))
+			slcs[i] = slc.cToBytes(false)
+		}
+	}
+	return
+}

@@ -15,6 +15,7 @@ using namespace rocksdb;
 #include "table.h"
 #include "comparator.h"
 #include "compactionfilter.h"
+#include "mergeOperator.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -45,6 +46,8 @@ DEFINE_C_WRAP_SETTER_DEC(ColumnFamilyOptions, compression, int)
 DEFINE_C_WRAP_GETTER_DEC(ColumnFamilyOptions, write_buffer_size, size_t)
 DEFINE_C_WRAP_SETTER_DEC(ColumnFamilyOptions, write_buffer_size, size_t)
 DEFINE_C_WRAP_SETTER_WRAP_DEC(ColumnFamilyOptions, table_factory, PTableFactory)
+// Set method for merge operator.
+DEFINE_C_WRAP_SETTER_WRAP_DEC(ColumnFamilyOptions, merge_operator, PMergeOperator)
 // Get/Set methods for comparator
 DEFINE_C_WRAP_SETTER_WRAP_DEC(ColumnFamilyOptions, comparator, Comparator)
 // Get/Set methods for compaction filter

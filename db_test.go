@@ -96,6 +96,35 @@ func (tcf *testComparator) FindShortSuccessor(key []byte) []byte {
 	return nil
 }
 
+// Custom Merge Operator
+type testMergeOperator struct {
+	t *testing.T
+}
+
+func (tcf *testMergeOperator) Name() string {
+	return "TestMergeOperator"
+}
+	
+func (tcf *testMergeOperator) FullMerge(key []byte, exval []byte, opdlist [][]byte, logger *Logger) (suc bool, newval []byte) {
+	tcf.t.Logf("testMergeOperator::FullMerge key = %s, exval = %s, opdlist = %s", key, exval, opdlist)
+	newval = []byte("fake")
+	suc = true
+	return
+}
+	
+func (tcf *testMergeOperator) PartialMerge(key []byte, leftopd []byte, rightopd []byte, logger *Logger) (suc bool, newval []byte) {
+	// tcf.t.Logf("testMergeOperator::PartialMerge key = %s, leftopd = %s, rightopd = %s", key, leftopd, rightopd)
+	newval = []byte("fake")
+	suc = true
+	return
+}
+	
+func (tcf *testMergeOperator) PartialMergeMulti(key []byte, opdlist [][]byte, logger *Logger) (suc bool, newval []byte) {
+	// tcf.t.Logf("testMergeOperator::PartialMergeMulti key = %s, opdlist = %s", key, opdlist)
+	suc = false
+	return
+}
+
 type testFilterPolicy struct {
 	t *testing.T
 	fakeResult bool
@@ -623,31 +652,32 @@ func TestCMain(t *testing.T) {
 	db.checkGet(t, ropts, []byte("bar2"), nil)
 	db.checkGet(t, ropts, []byte("bar3"), nil)
 
-	// StartPhase("merge_operator");
-	// {
-	// 	rocksdb_mergeoperator_t* merge_operator;
-	// 	merge_operator = rocksdb_mergeoperator_create(
-	// 		NULL, MergeOperatorDestroy, MergeOperatorFullMerge,
-	// 		MergeOperatorPartialMerge, NULL, MergeOperatorName);
-	// 	// Create new database
-	// 	rocksdb_close(db);
-	// 	rocksdb_destroy_db(options, dbname, &err);
-	// 	rocksdb_options_set_merge_operator(options, merge_operator);
-	// 	db = rocksdb_open(options, dbname, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "foo", 3, "foovalue", 8, &err);
-	// 	CheckNoError(err);
-	// 	CheckGet(db, roptions, "foo", "foovalue");
-	// 	rocksdb_merge(db, woptions, "foo", 3, "barvalue", 8, &err);
-	// 	CheckNoError(err);
-	// 	CheckGet(db, roptions, "foo", "fake");
-
-	// 	// Merge of a non-existing value
-	// 	rocksdb_merge(db, woptions, "bar", 3, "barvalue", 8, &err);
-	// 	CheckNoError(err);
-	// 	CheckGet(db, roptions, "bar", "fake");
-
-	// }
+	t.Log("phase: merge_operator")
+	cmop := &testMergeOperator{t: t}
+	merge_operator := NewMergeOperator(cmop)
+	db.Close()
+	stat = DestroyDB(options, &dbname)
+	t.Logf("merge_operator: DestroyDB: status = %s", stat)
+	options.SetMergeOperator(merge_operator)
+	db, stat, _ = Open(options, &dbname)
+	if !stat.Ok() {
+		t.Fatalf("compaction_filter_v2: err: open: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("foo"), []byte("foovalue"))
+	if !stat.Ok() {
+		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
+	}
+	db.checkGet(t, ropts, []byte("foo"), []byte("foovalue"))
+	stat = db.Merge(woptions, []byte("foo"), []byte("barvalue"))
+	if !stat.Ok() {
+		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
+	}
+	db.checkGet(t, ropts, []byte("foo"), []byte("fake"))
+	stat = db.Merge(woptions, []byte("bar"), []byte("barvalue"))
+	if !stat.Ok() {
+		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
+	}
+	db.checkGet(t, ropts, []byte("bar"), []byte("fake"))
 
 	// StartPhase("columnfamilies");
 	// {

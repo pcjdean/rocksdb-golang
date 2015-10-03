@@ -75,7 +75,7 @@ size_t StringDequeSize(StringDeque_t * strdeq)
 String_t StringDequeAt(StringDeque_t * strdeq, size_t index)
 {
     String_t ret{nullptr};
-    if (strdeq && GET_REP(strdeq, StringDeque))
+    if (strdeq && GET_REP(strdeq, StringDeque) && index < GET_REP(strdeq, StringDeque)->size())
     {
         ret.rep = &GET_REP_REF(strdeq, StringDeque)[index];
     }

@@ -6,6 +6,7 @@
 #define GO_ROCKSDB_INCLUDE_MERGE_OPERATOR_H_
 
 #include "types.h"
+#include "env.h"
 #include "slice.h"
 #include "cstring.h"
 
@@ -13,9 +14,13 @@
 extern "C" {
 #endif
 
-DEFINE_C_WRAP_STRUCT(MergeOperator)
-DEFINE_C_WRAP_CONSTRUCTOR_DEC(MergeOperator)
-DEFINE_C_WRAP_DESTRUCTOR_DEC(MergeOperator)
+DEFINE_C_WRAP_STRUCT(PMergeOperator)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(PMergeOperator)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(PMergeOperator)
+
+// Return a MergeOperator from a go MergeOperator interface
+PMergeOperator_t NewMergeOperator(void* go_cmp);
+
 
 #ifdef __cplusplus
 }  /* end extern "C" */

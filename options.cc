@@ -3,6 +3,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "compactionfilterPrivate.h"
+#include "mergeOperatorPrivate.h"
 #include "options.h"
 
 DEFINE_C_WRAP_STATIC_CAST(Options, DBOptions)
@@ -22,6 +23,18 @@ DEFINE_C_WRAP_SETTER(ColumnFamilyOptions, write_buffer_size, size_t)
 // implementation of TableBuilder and TableReader with default
 // BlockBasedTableOptions.
 DEFINE_C_WRAP_SETTER_WRAP(ColumnFamilyOptions, table_factory, PTableFactory)
+
+// REQUIRES: The client must provide a merge operator if Merge operation
+// needs to be accessed. Calling Merge on a DB without a merge operator
+// would result in Status::NotSupported. The client must ensure that the
+// merge operator supplied here has the same name and *exactly* the same
+// semantics as the merge operator provided to previous open calls on
+// the same DB. The only exception is reserved for upgrade, where a DB
+// previously without a merge operator is introduced to Merge operation
+// for the first time. It's necessary to specify a merge operator when
+// openning the DB in this case.
+// Default: nullptr
+DEFINE_C_WRAP_SETTER_WRAP(ColumnFamilyOptions, merge_operator, PMergeOperator)
 
 void ColumnFamilyOptions_set_compression_per_level(ColumnFamilyOptions_t* opt,
                                                    int* level_values,

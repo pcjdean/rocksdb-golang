@@ -28,14 +28,14 @@ func (rstr *cString) goString(del bool) (str string) {
 	var (
 		cplustr *C.String_t = &rstr.str
 		cstr *C.char = C.StringGetCStr(cplustr)
-		sz C.int = C.StringGetCStrLen(cplustr)
+		sz C.size_t = C.StringGetCStrLen(cplustr)
 	)
 	if del {
 		defer C.DeleteStringT(cplustr, toCBool(false))
 	}
 
 	if unsafe.Pointer(cstr) != nil && sz > 0 {
-		str = C.GoStringN(cstr, sz);
+		str = C.GoStringN(cstr, C.int(sz));
 	}
 	return
 }
@@ -45,14 +45,14 @@ func (rstr *cString) goBytes(del bool) (str []byte) {
 	var (
 		cplustr *C.String_t = &rstr.str
 		cstr *C.char = C.StringGetCStr(cplustr)
-		sz C.int = C.StringGetCStrLen(cplustr)
+		sz C.size_t = C.StringGetCStrLen(cplustr)
 	)
 	if del {
 		defer C.DeleteStringT(cplustr, toCBool(false))
 	}
 
 	if unsafe.Pointer(cstr) != nil && sz > 0 {
-		str = C.GoBytes(unsafe.Pointer(cstr), sz);
+		str = C.GoBytes(unsafe.Pointer(cstr), C.int(sz));
 	}
 	return
 }
@@ -154,12 +154,12 @@ func (svc *C.StringVector_t) setBytesArray(strs [][]byte) {
 }
 
 // Convert the C string deque to bytes array @strs
-func (strdeq *C.StringDeque_t) toBytesArray(strs [][]byte) {
+func (strdeq *C.StringDeque_t) toBytesArray() (strs [][]byte) {
 	sz := C.StringDequeSize(strdeq)
 	if 0 < sz {
 		strs = make([][]byte, sz)
-		for i := 0; i < sz; i++ {
-			cstr := C.StringDequeAt(i)
+		for i := C.size_t(0); i < sz; i++ {
+			cstr := C.StringDequeAt(strdeq, i)
 			strs[i] = cstr.cToBytes(false)
 		}
 	}

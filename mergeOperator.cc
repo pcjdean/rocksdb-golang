@@ -2,18 +2,15 @@
 // This source code is licensed under the BSD-style license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <rocksdb/mergeOperator.h>
-
-using namespace rocksdb;
-
+#include "mergeOperatorPrivate.h"
 #include "mergeOperator.h"
 
 extern "C" {
 #include "_cgo_export.h"
 }
 
-DEFINE_C_WRAP_CONSTRUCTOR(MergeOperator)
-DEFINE_C_WRAP_DESTRUCTOR(MergeOperator)
+DEFINE_C_WRAP_CONSTRUCTOR(PMergeOperator)
+DEFINE_C_WRAP_DESTRUCTOR(PMergeOperator)
 
 // The Merge Operator
 //
@@ -58,7 +55,7 @@ public:
     {
         if (m_go_cmp)
         {
-            IMergeOperatorRemoveReference(m_go_cmp);
+            InterfacesRemoveReference(m_go_cmp);
         }
 
         if (m_name)
@@ -88,14 +85,19 @@ public:
                            const Slice* existing_value,
                            const std::deque<std::string>& operand_list,
                            std::string* new_value,
-                           Logger* logger) override
+                           Logger* logger) const override
     {
+        int ret = false;
         if (m_go_cmp)
         {
-            Slice_t a_slc{const_cast<Slice *>(&a)};
-            Slice_t b_slc{const_cast<Slice *>(&b)};
-            ret = IMergeOperatorCompare(m_go_cmp, &a_slc, &b_slc); 
+            Slice_t key_slc{const_cast<Slice *>(&key)};
+            Slice_t exval_slc{const_cast<Slice *>(existing_value)};
+            StringDeque_t opndlist_slc{const_cast<StringDeque *>(&operand_list)};
+            String_t nval_slc{new_value};
+            Logger_t log_slc{logger};
+            ret = IMergeOperatorFullMerge(m_go_cmp, &key_slc, &exval_slc, &opndlist_slc, &nval_slc, &log_slc); 
         }
+        return ret;
     }
 
     // This function performs merge(left_op, right_op)
@@ -134,9 +136,12 @@ public:
         int ret = false;
         if (m_go_cmp)
         {
-            Slice_t a_slc{const_cast<Slice *>(&a)};
-            Slice_t b_slc{const_cast<Slice *>(&b)};
-            ret = IMergeOperatorCompare(m_go_cmp, &a_slc, &b_slc); 
+            Slice_t key_slc{const_cast<Slice *>(&key)};
+            Slice_t lopnd_slc{const_cast<Slice *>(&left_operand)};
+            Slice_t ropnd_slc{const_cast<Slice *>(&right_operand)};
+            String_t nval_slc{new_value};
+            Logger_t log_slc{logger};
+            ret = IMergeOperatorPartialMerge(m_go_cmp, &key_slc, &lopnd_slc, &ropnd_slc, &nval_slc, &log_slc); 
         }
         else
         {
@@ -168,18 +173,16 @@ public:
     // is served as the helper function of the default PartialMergeMulti.
     virtual bool PartialMergeMulti(const Slice& key,
                                    const std::deque<Slice>& operand_list,
-                                   std::string* new_value, Logger* logger) override
+                                   std::string* new_value, Logger* logger) const override
     {
         int ret = false;
         if (m_go_cmp)
         {
-            Slice_t a_slc{const_cast<Slice *>(&a)};
-            Slice_t b_slc{const_cast<Slice *>(&b)};
-            ret = IMergeOperatorCompare(m_go_cmp, &a_slc, &b_slc); 
-        }
-        else
-        {
-            ret = MergeOperator::PartialMerge(key, left_operand, right_operand, new_value, logger);
+            Slice_t key_slc{const_cast<Slice *>(&key)};
+            SliceDeque_t opndlist_slc{const_cast<SliceDeque *>(&operand_list)};
+            String_t nval_slc{new_value};
+            Logger_t log_slc{logger};
+            ret = IMergeOperatorPartialMergeMulti(m_go_cmp, &key_slc, &opndlist_slc, &nval_slc, &log_slc); 
         }
         return ret;
     }
@@ -195,47 +198,26 @@ public:
         return m_name;
     }
 
-private:
+protected:
     // Wrapped go IMergeOperator
     void* m_go_cmp;
 
+private:
     // The name of the MergeOperator
     char* m_name;
 };
 
-// Return a MergeOperator from a go MergeOperator interface
-MergeOperator_t NewMergeOperator(void* go_cmp)
-{
-    MergeOperator_t wrap_t;
-    wrap_t.rep = (go_cmp ? new MergeOperatorGo(go_cmp) : NULL);
-    return wrap_t;
-}
-
 // The simpler, associative merge operator.
-class AssociativeMergeOperatorGo : public MergeOperator {
+class AssociativeMergeOperatorGo : public MergeOperatorGo {
 public:
-    AssociativeMergeOperatorrGo(void* go_cmp)
-        : m_go_cmp(go_cmp)
-        , m_name(nullptr)
+    AssociativeMergeOperatorGo(void* go_cmp)
+        : MergeOperatorGo(go_cmp)
     {
-        if (go_cmp)
-        {
-            m_name = IMergeOperatorName(go_cmp);
-        }
     }
 
     // Destructor
-    ~AssociativeMergeOperatorrGo()
+    ~AssociativeMergeOperatorGo()
     {
-        if (m_go_cmp)
-        {
-            IMergeOperatorRemoveReference(m_go_cmp);
-        }
-
-        if (m_name)
-        {
-            free(m_name);
-        }
     }
 
     // Gives the client a way to express the read -> modify -> write semantics
@@ -254,72 +236,26 @@ public:
                        const Slice* existing_value,
                        const Slice& value,
                        std::string* new_value,
-                       Logger* logger) const override
-    {
-        if (m_go_cmp)
-        {
-            Slice_t a_slc{const_cast<Slice *>(&a)};
-            Slice_t b_slc{const_cast<Slice *>(&b)};
-            ret = IMergeOperatorCompare(m_go_cmp, &a_slc, &b_slc); 
-        }
-    }
-
-    // The name of the MergeOperator. Used to check for MergeOperator
-    // mismatches (i.e., a DB created with one MergeOperator is
-    // accessed using a different MergeOperator)
-    // TODO: the name is currently not stored persistently and thus
-    //       no checking is enforced. Client is responsible for providing
-    //       consistent MergeOperator between DB opens.
-    virtual const char* Name() const override
-    {
-        return m_name;
-    }
-
- private:
-    // Default implementations of the MergeOperator functions
-    virtual bool FullMerge(const Slice& key,
-                           const Slice* existing_value,
-                           const std::deque<std::string>& operand_list,
-                           std::string* new_value,
-                           Logger* logger) const override
-    {
-        if (m_go_cmp)
-        {
-            Slice_t a_slc{const_cast<Slice *>(&a)};
-            Slice_t b_slc{const_cast<Slice *>(&b)};
-            ret = IMergeOperatorCompare(m_go_cmp, &a_slc, &b_slc); 
-        }
-        else
-        {
-            ret = AssociativeMergeOperator::FullMerge(key, existing_value, operand_list, new_value, logger);
-        }
-    }
-
-    // See comments above in MergeOperator.
-    virtual bool PartialMerge(const Slice& key,
-                              const Slice& left_operand,
-                              const Slice& right_operand,
-                              std::string* new_value,
-                              Logger* logger) const override
+                       Logger* logger) const
     {
         int ret = false;
         if (m_go_cmp)
         {
-            Slice_t a_slc{const_cast<Slice *>(&a)};
-            Slice_t b_slc{const_cast<Slice *>(&b)};
-            ret = IMergeOperatorCompare(m_go_cmp, &a_slc, &b_slc); 
-        }
-        else
-        {
-            ret = AssociativeMergeOperator::PartialMerge(key, left_operand, right_operand, new_value, logger);
+            Slice_t key_slc{const_cast<Slice *>(&key)};
+            Slice_t eval_slc{const_cast<Slice *>(existing_value)};
+            Slice_t val_slc{const_cast<Slice *>(&value)};
+            String_t nval_slc{new_value};
+            Logger_t log_slc{logger};
+            ret = IAssociativeMergeOperatorMerge(m_go_cmp, &key_slc, &eval_slc, &val_slc, &nval_slc, &log_slc); 
         }
         return ret;
     }
-
-private:
-    // Wrapped go IMergeOperator
-    void* m_go_cmp;
-
-    // The name of the MergeOperator
-    char* m_name;
 };
+
+// Return a MergeOperator from a go MergeOperator interface
+PMergeOperator_t NewMergeOperator(void* go_cmp)
+{
+    PMergeOperator_t wrap_t;
+    wrap_t.rep = new PMergeOperator(go_cmp ? new MergeOperatorGo(go_cmp) : NULL);
+    return wrap_t;
+}

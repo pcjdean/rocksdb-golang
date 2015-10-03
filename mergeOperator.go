@@ -12,61 +12,7 @@ import "C"
 import (
 	"unsafe"
 	"runtime"
-	"log"
-	"sync"
 )
-
-const (
-	// The initial size of callbackIMergeOperator
-	initialIMergeOperatorSize = 100
-)
-
-var (
-	// Map to keep all the IMergeOperator callbacks from garbage collected
-	callbackIMergeOperator map[unsafe.Pointer]IMergeOperator
-
-	// Mutext to protect callbackIMergeOperator
-	callbackIMergeOperatorMutex sync.Mutex = sync.Mutex{}
-)
-
-//export IMergeOperatorRemoveReference
-// Remove interface citf from the callbackIMergeOperator 
-// to leave citf garbage collected
-func IMergeOperatorRemoveReference(citf unsafe.Pointer) {
-	defer callbackIMergeOperatorMutex.Unlock()
-	callbackIMergeOperatorMutex.Lock()
-	if nil != callbackIMergeOperator {
-		delete(callbackIMergeOperator, citf)
-	} else {
-		log.Println("IMergeOperatorRemoveReference: callbackIMergeOperator is not created!")
-	}
-}
-
-// Get interface itf from the callbackIMergeOperator
-// with citf as the key
-func IMergeOperatorGet(citf unsafe.Pointer) (itf IMergeOperator) {
-	defer callbackIMergeOperatorMutex.Unlock()
-	callbackIMergeOperatorMutex.Lock()
-	if nil != callbackIMergeOperator {
-		itf = callbackIMergeOperator[citf]
-	} else {
-		log.Println("IMergeOperatorGet: callbackIMergeOperator is not created!")
-	}
-	return
-}
-
-// Add interface itf to the callbackIMergeOperator to keep itf alive
-// Return the key of the IMergeOperator in map callbackIMergeOperator
-func IMergeOperatorAddReference(itf IMergeOperator) (citf unsafe.Pointer) {
-	defer callbackIMergeOperatorMutex.Unlock()
-	callbackIMergeOperatorMutex.Lock()
-	if nil == callbackIMergeOperator {
-		callbackIMergeOperator = make(map[unsafe.Pointer]IMergeOperator, initialIMergeOperatorSize)
-	}
-	citf = unsafe.Pointer(&itf)
-	callbackIMergeOperator[citf] = itf
-	return
-}
 
 // The Merge Operator
 //
@@ -181,10 +127,10 @@ type IMergeOperator interface {
 // Wrap functions for IMergeOperator
 
 //export IMergeOperatorFullMerge
-func IMergeOperatorFullMerge(key *C.Slice_t, exval *C.Slice_t, opdlist *C.StringDeque_t, cnewval *C.String_t, clogger *C.Logger_t) C.bool {
-	mop := IMergeOperatorGet(cmop)
-	logger := logger.toLogger()
-	suc, newval := mop.FullMerge(key.cToBytes(false), exval.cToBytes(false), opdlist.toBytesArray(), &logger)
+func IMergeOperatorFullMerge(cmop unsafe.Pointer, key *C.Slice_t, exval *C.Slice_t, opdlist *C.StringDeque_t, cnewval *C.String_t, clogger *C.Logger_t) C.bool {
+	mop := InterfacesGet(cmop).(IMergeOperator)
+	logger := clogger.toLogger(false)
+	suc, newval := mop.FullMerge(key.cToBytes(false), exval.cToBytes(false), opdlist.toBytesArray(), logger)
 	if suc {
 		cnewval.setBytes(newval)
 	}
@@ -192,10 +138,10 @@ func IMergeOperatorFullMerge(key *C.Slice_t, exval *C.Slice_t, opdlist *C.String
 }
 
 //export IMergeOperatorPartialMerge
-func IMergeOperatorPartialMerge(key *C.Slice_t, leftopd *C.Slice_t, rightopd *C.Slice_t, cnewval *C.String_t, clogger *C.Logger_t) C.bool {
-	mop := IMergeOperatorGet(cmop)
-	logger := logger.toLogger()
-	suc, newval := mop.PartialMerge(key.cToBytes(false), leftopd.cToBytes(false), rightopd.cToBytes(false), &logger)
+func IMergeOperatorPartialMerge(cmop unsafe.Pointer, key *C.Slice_t, leftopd *C.Slice_t, rightopd *C.Slice_t, cnewval *C.String_t, clogger *C.Logger_t) C.bool {
+	mop := InterfacesGet(cmop).(IMergeOperator)
+	logger := clogger.toLogger(false)
+	suc, newval := mop.PartialMerge(key.cToBytes(false), leftopd.cToBytes(false), rightopd.cToBytes(false), logger)
 	if suc {
 		cnewval.setBytes(newval)
 	}
@@ -203,10 +149,10 @@ func IMergeOperatorPartialMerge(key *C.Slice_t, leftopd *C.Slice_t, rightopd *C.
 }
 
 //export IMergeOperatorPartialMergeMulti
-func IMergOperatorePartialMergeMulti(key *C.Slice_t, opdlist *C.StringDeque_t, cnewval *C.String_t, logger *C.Logger_t) C.bool {
-	mop := IMergeOperatorGet(cmop)
-	logger := logger.toLogger()
-	suc, newval := mop.PartialMergeMulti(key.cToBytes(false), opdlist.toBytesArray(), &logger)
+func IMergeOperatorPartialMergeMulti(cmop unsafe.Pointer, key *C.Slice_t, opdlist *C.SliceDeque_t, cnewval *C.String_t, clogger *C.Logger_t) C.bool {
+	mop := InterfacesGet(cmop).(IMergeOperator)
+	logger := clogger.toLogger(false)
+	suc, newval := mop.PartialMergeMulti(key.cToBytes(false), opdlist.toBytesArray(), logger)
 	if suc {
 		cnewval.setBytes(newval)
 	}
@@ -215,7 +161,7 @@ func IMergOperatorePartialMergeMulti(key *C.Slice_t, opdlist *C.StringDeque_t, c
 
 //export IMergeOperatorName
 func IMergeOperatorName(cmop unsafe.Pointer) *C.char {
-	mop := IMergeOperatorGet(cmop)
+	mop := InterfacesGet(cmop).(IMergeOperator)
 	return C.CString(mop.Name())
 }
 
@@ -239,10 +185,10 @@ type IAssociativeMergeOperator interface {
 }
 
 //export IAssociativeMergeOperatorMerge
-func IAssociativeMergeOperatorMerge(key *C.Slice_t, exval *C.Slice_t, val *C.Slice_t, cnewval *C.String_t, clogger *C.Logger_t) C.bool {
-	mop := IMergeOperatorGet(cmop)
-	logger := logger.toLogger()
-	suc, newval := mop.Merge(key.cToBytes(false), leftopd.cToBytes(false), rightopd.cToBytes(false), &logger)
+func IAssociativeMergeOperatorMerge(cmop unsafe.Pointer, key *C.Slice_t, exval *C.Slice_t, val *C.Slice_t, cnewval *C.String_t, clogger *C.Logger_t) C.bool {
+	mop := InterfacesGet(cmop).(IAssociativeMergeOperator)
+	logger := clogger.toLogger(false)
+	suc, newval := mop.Merge(key.cToBytes(false), exval.cToBytes(false), val.cToBytes(false), logger)
 	if suc {
 		cnewval.setBytes(newval)
 	}
@@ -251,32 +197,19 @@ func IAssociativeMergeOperatorMerge(key *C.Slice_t, exval *C.Slice_t, val *C.Sli
 
 // Wrap go MergeOperator
 type MergeOperator struct {
-	mop C.MergeOperator_t
-	// True if the MergeOperator is closed
-	closed bool
+	mop C.PMergeOperator_t
 }
 
 // Release resources
 func (mop *MergeOperator) finalize() {
-	if !mop.closed {
-		mop.closed = true
-		var cmop *C.MergeOperator_t= &mop.mop
-		C.DeleteMergeOperatorT(cmop, toCBool(false))
-	}
-}
-
-// Close the @mop
-func (mop *MergeOperator) Close() {
-	runtime.SetFinalizer(mop, nil)
-	mop.finalize()
+	var cmop *C.PMergeOperator_t= &mop.mop
+	C.DeletePMergeOperatorT(cmop, toCBool(false))
 }
 
 // C MergeOperator to go MergeOperator
-func (cmop *C.MergeOperator_t) toMergeOperator(del bool) (mop *MergeOperator) {
+func (cmop *C.PMergeOperator_t) toMergeOperator() (mop *MergeOperator) {
 	mop = &MergeOperator{mop: *cmop}	
-	if del {
-		runtime.SetFinalizer(mop, finalize)
-	}
+	runtime.SetFinalizer(mop, finalize)
 	return
 }
 
@@ -285,8 +218,8 @@ func NewMergeOperator(itf IMergeOperator) (mop *MergeOperator) {
 	var citf unsafe.Pointer = nil
 
 	if nil != itf {
-		citf = IMergeOperatorAddReference(itf)
+		citf = InterfacesAddReference(itf)
 	}
 	cmop := C.NewMergeOperator(citf)
-	return cmop.toMergeOperator(true)
+	return cmop.toMergeOperator()
 }

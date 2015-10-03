@@ -8,11 +8,13 @@
 #ifdef __cplusplus
 
 #include <vector>
+#include <deque>
 #include <rocksdb/slice.h>
 
 using namespace rocksdb;
 
 typedef std::vector<Slice> SliceVector;
+typedef std::deque<Slice> SliceDeque;
 
 #endif
 
@@ -32,6 +34,10 @@ DEFINE_C_WRAP_STRUCT(SliceVector)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(SliceVector)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(SliceVector)
 
+DEFINE_C_WRAP_STRUCT(SliceDeque)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(SliceDeque)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(SliceDeque)
+
 const char* SliceData(Slice_t *slc);
 size_t SliceSize(Slice_t *slc);
 
@@ -40,6 +46,12 @@ size_t SliceVectorSize(SliceVector_t *slcv);
 
 // Return the Slice in the @index position of the SliceVector_t
 Slice_t SliceVectorIndex(SliceVector_t *slcv, size_t index);
+
+// Return the size of the SliceDeque_t
+size_t SliceDequeSize(SliceDeque_t *slcv);
+
+// Return the Slice in the @index position of the SliceDeque_t
+Slice_t SliceDequeIndex(SliceDeque_t *slcv, size_t index);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

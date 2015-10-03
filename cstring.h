@@ -9,6 +9,7 @@
 
 #include <string>
 #include <vector>
+#include <deque>
 
 typedef std::string String;
 typedef std::vector<String> StringVector;

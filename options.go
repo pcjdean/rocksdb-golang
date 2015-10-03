@@ -140,6 +140,21 @@ func (cfopt *ColumnFamilyOptions) SetTableFactory(tbf *TableFactory) {
 	C.ColumnFamilyOptions_set_table_factory(ccfopt, &tbf.tbf)
 }
 
+// REQUIRES: The client must provide a merge operator if Merge operation
+// needs to be accessed. Calling Merge on a DB without a merge operator
+// would result in Status::NotSupported. The client must ensure that the
+// merge operator supplied here has the same name and *exactly* the same
+// semantics as the merge operator provided to previous open calls on
+// the same DB. The only exception is reserved for upgrade, where a DB
+// previously without a merge operator is introduced to Merge operation
+// for the first time. It's necessary to specify a merge operator when
+// openning the DB in this case.
+// Default: nullptr
+func (cfopt *ColumnFamilyOptions) SetMergeOperator(mop *MergeOperator) {
+	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
+	C.ColumnFamilyOptions_set_merge_operator(ccfopt, &mop.mop)
+}
+
 // -------------------
 // Parameters that affect behavior
 

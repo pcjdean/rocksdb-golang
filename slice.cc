@@ -22,6 +22,9 @@ DEFINE_C_WRAP_DESTRUCTOR_ARRAY(Slice)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(SliceVector)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(SliceVector)
 
+DEFINE_C_WRAP_CONSTRUCTOR(SliceDeque)
+DEFINE_C_WRAP_DESTRUCTOR(SliceDeque)
+
 // Return a pointer to the beginning of the referenced data
 const char* SliceData(Slice_t *slc)
 {
@@ -58,5 +61,21 @@ Slice_t SliceVectorIndex(SliceVector_t *slcv, size_t index)
     return (slcv && GET_REP(slcv, SliceVector) &&
             index < GET_REP(slcv, SliceVector)->size() ?
             Slice_t{&GET_REP_REF(slcv, SliceVector)[index]} : ret);
+}
+
+// Return the size of the SliceDeque_t
+size_t SliceDequeSize(SliceDeque_t *slcdq)
+{
+    return (slcdq && GET_REP(slcdq, SliceDeque) ? GET_REP(slcdq, SliceDeque)->size() : 0);
+}
+
+// Return the Slice in the @index position of the SliceDeque_t
+Slice_t SliceDequeIndex(SliceDeque_t *slcdq, size_t index)
+{
+    Slice_t ret{nullptr};
+    
+    return (slcdq && GET_REP(slcdq, SliceDeque) &&
+            index < GET_REP(slcdq, SliceDeque)->size() ?
+            Slice_t{&GET_REP_REF(slcdq, SliceDeque)[index]} : ret);
 }
 
