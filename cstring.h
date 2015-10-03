@@ -12,6 +12,7 @@
 
 typedef std::string String;
 typedef std::vector<String> StringVector;
+typedef std::deque<String> StringDeque;
 
 #endif
 
@@ -34,14 +35,24 @@ DEFINE_C_WRAP_STRUCT(StringVector)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(StringVector)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(StringVector)
 
+DEFINE_C_WRAP_STRUCT(StringDeque)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(StringDeque)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(StringDeque)
+
 const char* StringGetCStr(String_t * str);
-int StringGetCStrLen(String_t * str);
+size_t StringGetCStrLen(String_t * str);
+
+// Return the string at @index of the StringDeque
+String_t StringDequeAt(StringDeque_t * strdeq, size_t index);
+
+// Return the length of the StringDeque
+size_t StringDequeSize(StringDeque_t * strdeq);
 
 //Set str to cstr
 void StringSetCStr(String_t * str, const char* cstr, size_t len);
 
 // Push the @cstr at the end of @slcv
-void StringVectorPushBack(StringVector_t *slcv, const char* cstr, size_t len);
+void StringVectorPushBack(StringVector_t *slcv, const char * cstr, size_t len);
 
 #ifdef __cplusplus
 }  /* end extern "C" */

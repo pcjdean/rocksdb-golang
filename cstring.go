@@ -152,3 +152,16 @@ func (svc *C.StringVector_t) setBytesArray(strs [][]byte) {
 	}
 	return
 }
+
+// Convert the C string deque to bytes array @strs
+func (strdeq *C.StringDeque_t) toBytesArray(strs [][]byte) {
+	sz := C.StringDequeSize(strdeq)
+	if 0 < sz {
+		strs = make([][]byte, sz)
+		for i := 0; i < sz; i++ {
+			cstr := C.StringDequeAt(i)
+			strs[i] = cstr.cToBytes(false)
+		}
+	}
+	return
+}
