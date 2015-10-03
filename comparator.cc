@@ -38,7 +38,7 @@ public:
     {
         if (m_go_cmp)
         {
-            IComparatorRemoveReference(m_go_cmp);
+            InterfacesRemoveReference(m_go_cmp);
         }
 
         if (m_name)

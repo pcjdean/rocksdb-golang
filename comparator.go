@@ -12,61 +12,7 @@ import "C"
 import (
 	"unsafe"
 	"runtime"
-	"log"
-	"sync"
 )
-
-const (
-	// The initial size of callbackIComparator
-	initialIComparatorSize = 100
-)
-
-var (
-	// Map to keep all the IComparator callbacks from garbage collected
-	callbackIComparator map[unsafe.Pointer]IComparator
-
-	// Mutext to protect callbackIComparator
-	callbackIComparatorMutex sync.Mutex = sync.Mutex{}
-)
-
-//export IComparatorRemoveReference
-// Remove interface citf from the callbackIComparator 
-// to leave citf garbage collected
-func IComparatorRemoveReference(citf unsafe.Pointer) {
-	defer callbackIComparatorMutex.Unlock()
-	callbackIComparatorMutex.Lock()
-	if nil != callbackIComparator {
-		delete(callbackIComparator, citf)
-	} else {
-		log.Println("IComparatorRemoveReference: callbackIComparator is not created!")
-	}
-}
-
-// Get interface itf from the callbackIComparator
-// with citf as the key
-func IComparatorGet(citf unsafe.Pointer) (itf IComparator) {
-	defer callbackIComparatorMutex.Unlock()
-	callbackIComparatorMutex.Lock()
-	if nil != callbackIComparator {
-		itf = callbackIComparator[citf]
-	} else {
-		log.Println("IComparatorGet: callbackIComparator is not created!")
-	}
-	return
-}
-
-// Add interface itf to the callbackIComparator to keep itf alive
-// Return the key of the IComparator in map callbackIComparator
-func IComparatorAddReference(itf IComparator) (citf unsafe.Pointer) {
-	defer callbackIComparatorMutex.Unlock()
-	callbackIComparatorMutex.Lock()
-	if nil == callbackIComparator {
-		callbackIComparator = make(map[unsafe.Pointer]IComparator, initialIComparatorSize)
-	}
-	citf = unsafe.Pointer(&itf)
-	callbackIComparator[citf] = itf
-	return
-}
 
 // A Comparator object provides a total order across slices that are
 // used as keys in an sstable or a database.  A Comparator implementation
@@ -110,20 +56,20 @@ type IComparator interface {
 
 //export IComparatorCompare
 func IComparatorCompare(ccmp unsafe.Pointer, a, b *C.Slice_t) C.int {
-	cmp := IComparatorGet(ccmp)
+	cmp := InterfacesGet(ccmp).(IComparator)
 	return C.int(cmp.Compare(a.cToBytes(false), b.cToBytes(false)))
 }
 
 //export IComparatorName
 func IComparatorName(ccmp unsafe.Pointer) *C.char {
-	cmp := IComparatorGet(ccmp)
+	cmp := InterfacesGet(ccmp).(IComparator)
 	return C.CString(cmp.Name())
 }
 
 //export IComparatorFindShortestSeparator
 func IComparatorFindShortestSeparator(ccmp unsafe.Pointer, start *C.String_t, limit *C.Slice_t, sz *C.size_t) (val *C.char) {
 	val = nil
-	cmp := IComparatorGet(ccmp)
+	cmp := InterfacesGet(ccmp).(IComparator)
 	sep := cmp.FindShortestSeparator(start.cToBytes(false), limit.cToBytes(false))
 	if nil != sep {
 		val = C.CString(string(sep))
@@ -135,7 +81,7 @@ func IComparatorFindShortestSeparator(ccmp unsafe.Pointer, start *C.String_t, li
 //export IComparatorFindShortSuccessor
 func IComparatorFindShortSuccessor(ccmp unsafe.Pointer, key *C.String_t, sz *C.size_t) (val *C.char) {
 	val = nil
-	cmp := IComparatorGet(ccmp)
+	cmp := InterfacesGet(ccmp).(IComparator)
 	sep := cmp.FindShortSuccessor(key.cToBytes(false))
 	if nil != sep {
 		val = C.CString(string(sep))
@@ -180,7 +126,7 @@ func NewComparator(itf IComparator) (cmp *Comparator) {
 	var citf unsafe.Pointer = nil
 
 	if nil != itf {
-		citf = IComparatorAddReference(itf)
+		citf = InterfacesAddReference(itf)
 	}
 	ccmp := C.NewComparator(citf)
 	return ccmp.toComparator(true)
