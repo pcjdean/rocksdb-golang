@@ -20,8 +20,7 @@ DEFINE_C_WRAP_CONSTRUCTOR_ARGS(Range, Slice, Slice)
 DEFINE_C_WRAP_DESTRUCTOR(Range)
 
 DEFINE_C_WRAP_CONSTRUCTOR_ARGS(ColumnFamilyDescriptor, String, ColumnFamilyOptions)
-DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(ColumnFamilyDescriptor, String, ColumnFamilyOptions)
-DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(ColumnFamilyDescriptor, kDefaultColumnFamilyName, ColumnFamilyOptions())
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(ColumnFamilyDescriptor)
 DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyDescriptor)
 // A DB is a persistent ordered map from keys to values.
 // A DB is safe for concurrent access from multiple threads without
@@ -82,7 +81,7 @@ Status_t DBOpenForReadOnlyWithColumnFamilies(const Options_t* options,
                                              ColumnFamilyHandle_t **handles,
                                              DB_t* dbptr, bool error_if_log_file_exist)
 {
-    std::vector<ColumnFamilyDescriptor> column_families_vec = std::vector<ColumnFamilyDescriptor>(size_col);
+    std::vector<ColumnFamilyDescriptor> column_families_vec = std::vector<ColumnFamilyDescriptor>();
     for (int i = 0; i < size_col; i++)
         column_families_vec.push_back(*(ColumnFamilyDescriptor*)column_families[i].rep);
     std::vector<ColumnFamilyHandle*> handles_vec;
@@ -119,7 +118,7 @@ Status_t DBOpenWithColumnFamilies(const Options_t* options, const String_t* name
                                   const ColumnFamilyDescriptor_t column_families[], const int size_col,
                                   ColumnFamilyHandle_t **handles, DB_t* dbptr)
 {
-    std::vector<ColumnFamilyDescriptor> column_families_vec = std::vector<ColumnFamilyDescriptor>(size_col);
+    std::vector<ColumnFamilyDescriptor> column_families_vec = std::vector<ColumnFamilyDescriptor>();
     for (int i = 0; i < size_col; i++)
         column_families_vec.push_back(*(ColumnFamilyDescriptor*)column_families[i].rep);
     std::vector<ColumnFamilyHandle*> handles_vec;
@@ -358,10 +357,10 @@ Status_t* DBMultiGetWithColumnFamily(const DB_t* dbptr, const ReadOptions_t* opt
     Status_t* ret;
     if (dbptr)
     {
-        std::vector<ColumnFamilyHandle*> column_families_vec = std::vector<ColumnFamilyHandle*>(size_col);
+        std::vector<ColumnFamilyHandle*> column_families_vec = std::vector<ColumnFamilyHandle*>();
         for (int i = 0; i < size_col; i++)
             column_families_vec.push_back((ColumnFamilyHandle*)column_families[i].rep);
-        std::vector<Slice> keys_vec = std::vector<Slice>(size_col);
+        std::vector<Slice> keys_vec = std::vector<Slice>();
         for (int i = 0; i < size_keys; i++)
             keys_vec.push_back(*(Slice*)(keys[i].rep));
         std::vector<std::string> values_vec;
@@ -464,7 +463,7 @@ Status_t DBNewIterators(const DB_t* dbptr, const ReadOptions_t* options,
     Status ret;
     if (dbptr)
     {
-        std::vector<ColumnFamilyHandle*> column_families_vec = std::vector<ColumnFamilyHandle*>(size_col);
+        std::vector<ColumnFamilyHandle*> column_families_vec = std::vector<ColumnFamilyHandle*>();
         for (int i = 0; i < size_col; i++)
             column_families_vec.push_back(GET_REP(&column_families[i], ColumnFamilyHandle));
         std::vector<Iterator*> values_vec;

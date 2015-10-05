@@ -10,6 +10,8 @@ using namespace rocksdb;
 DEFINE_C_WRAP_CONSTRUCTOR(ColumnFamilyHandle)
 DEFINE_C_WRAP_DESTRUCTOR(ColumnFamilyHandle)
 DEFINE_C_WRAP_DESTRUCTOR_ARRAY(ColumnFamilyHandle)
+
+// Return the name of the ColumnFamilyHandle
 String_t ColumnFamilyGetName(const ColumnFamilyHandle_t* column_family)
 {
     assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
@@ -17,6 +19,7 @@ String_t ColumnFamilyGetName(const ColumnFamilyHandle_t* column_family)
     return NewStringT(const_cast<std::string*>(&name_str));
 }
     
+// Return the ID of the ColumnFamilyHandle
 uint32_t ColumnFamilyGetID(const ColumnFamilyHandle_t* column_family)
 {
     assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);

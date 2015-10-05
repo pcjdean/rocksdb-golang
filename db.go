@@ -65,13 +65,40 @@ func newCArrayFromRangeArray(rngs ...*Range) (crngs []C.Range_t) {
 
 type ColumnFamilyDescriptor struct {
 	cfd C.ColumnFamilyDescriptor_t
+	// true if cfd is deleted
+	closed bool
 }
 
+// Release the @cfd
 func (cfd *ColumnFamilyDescriptor) finalize() {
-	var ccfd *C.ColumnFamilyDescriptor_t = &cfd.cfd
-	C.DeleteColumnFamilyDescriptorT(ccfd, toCBool(false))
+	if !cfd.closed {
+		cfd.closed = true
+		var ccfd *C.ColumnFamilyDescriptor_t = &cfd.cfd
+		C.DeleteColumnFamilyDescriptorT(ccfd, toCBool(false))
+	}
 }
 
+// Close the @cfd
+func (cfd *ColumnFamilyDescriptor) Close() {
+	runtime.SetFinalizer(cfd, nil)
+	cfd.finalize()
+}
+
+// Return a new ColumnFamilyDescriptor from the @name and @cfo
+func NewColumnFamilyDescriptor(name *string, cfopt *ColumnFamilyOptions) (cfd *ColumnFamilyDescriptor) {
+	cstr := newCStringFromString(name)
+	defer cstr.del()
+	cfd = &ColumnFamilyDescriptor{cfd: C.NewColumnFamilyDescriptorTArgs(&cstr.str, &cfopt.cfopt)}	
+	return
+}
+
+// Return a new default ColumnFamilyDescriptor
+func NewDefaultColumnFamilyDescriptor() (cfd *ColumnFamilyDescriptor) {
+	cfd = &ColumnFamilyDescriptor{cfd: C.NewColumnFamilyDescriptorTDefault()}	
+	return
+}
+
+// go ColumnFamilyDescriptor Array to C array of ColumnFamilyDescriptor_t
 func newCArrayFromColumnFamilyDescriptorArray(cfds ...interface{}) (ccfds []C.ColumnFamilyDescriptor_t) {
 	var cfdlen int
 	if cfds != nil {
@@ -81,7 +108,7 @@ func newCArrayFromColumnFamilyDescriptorArray(cfds ...interface{}) (ccfds []C.Co
 		for i := 0; i < cfdlen; i++ {
 			v, ok := cfds[i].(*ColumnFamilyDescriptor)
 			if ok {
-				if cfds == nil {
+				if nil == ccfds {
 					ccfds = make([]C.ColumnFamilyDescriptor_t, cfdlen)
 				}
 				ccfds[i] = v.cfd
@@ -89,6 +116,7 @@ func newCArrayFromColumnFamilyDescriptorArray(cfds ...interface{}) (ccfds []C.Co
 			}
 		}
 
+		// Shrink ccfds to the actual number of ColumnFamilyDescriptors
 		if 0 < n && cfdlen != n {
 			ccfds = ccfds[:n]
 		}
@@ -125,6 +153,7 @@ func newCArrayFromColumnFamilyHandleInterface(cfhs ...interface{}) (ccfhs []C.Co
 // any external synchronization.
 type DB struct {
 	db C.DB_t
+	// The db is deleted
 	closed bool
 }
 

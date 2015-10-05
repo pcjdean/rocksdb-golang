@@ -12,8 +12,8 @@ import (
 	"testing"
 )
 
-func (db *DB) checkGet(t *testing.T, ropts *ReadOptions, key []byte, valExp []byte) {
-	val, stat := db.Get(ropts, key)
+func (db *DB) checkGet(t *testing.T, ropts *ReadOptions, key []byte, valExp []byte, cfh ...*ColumnFamilyHandle) {
+	val, stat := db.Get(ropts, key, cfh...)
 	if nil != valExp && !stat.Ok() {
 		t.Fatalf("err: get err: stat = %s", stat)
 	}
@@ -679,85 +679,90 @@ func TestCMain(t *testing.T) {
 	}
 	db.checkGet(t, ropts, []byte("bar"), []byte("fake"))
 
-	// StartPhase("columnfamilies");
-	// {
-	// 	rocksdb_close(db);
-	// 	rocksdb_destroy_db(options, dbname, &err);
-	// 	CheckNoError(err)
+	t.Log("phase: columnfamilies")
+	db.Close()
+	stat = DestroyDB(options, &dbname)
+	t.Logf("columnfamilies: DestroyDB: status = %s", stat)
+	db_options := NewOptions()
+	db_options.SetCreateIfMissing(true)
+	db, stat, _ = Open(db_options, &dbname)
+	if !stat.Ok() {
+		t.Fatalf("columnfamilies: err: open: stat = %s", stat)
+	}
+	var cfh *ColumnFamilyHandle
+	cf1 := "cf1"
+	default_s := "default"
+	cfh, stat = db.CreateColumnFamily(&db_options.ColumnFamilyOptions, &cf1)
+	if !stat.Ok() {
+		t.Fatalf("columnfamilies: err: CreateColumnFamily: stat = %s", stat)
+	}
+	cfh.Close()
+	db.Close()
+	var cfss []string
+	cfss, stat = ListColumnFamilies(&db_options.DBOptions, &dbname) 
+	if !stat.Ok() {
+		t.Fatalf("columnfamilies: err: ListColumnFamilies: stat = %s", stat)
+	}
+	checkCondition(t, default_s == cfss[0])
+	checkCondition(t, cf1 == cfss[1])
+	checkCondition(t, 2 == len(cfss))
 
-	// 	rocksdb_options_t* db_options = rocksdb_options_create();
-	// 	rocksdb_options_set_create_if_missing(db_options, 1);
-	// 	db = rocksdb_open(db_options, dbname, &err);
-	// 	CheckNoError(err)
-	// 	rocksdb_column_family_handle_t* cfh;
-	// 	cfh = rocksdb_create_column_family(db, db_options, "cf1", &err);
-	// 	rocksdb_column_family_handle_destroy(cfh);
-	// 	CheckNoError(err);
-	// 	rocksdb_close(db);
+	cf_options := NewColumnFamilyOptions()
+	cfds := []*ColumnFamilyDescriptor{NewColumnFamilyDescriptor(&default_s, cf_options), NewColumnFamilyDescriptor(&cf1, cf_options)}
+	var cfhs []*ColumnFamilyHandle
+	db, stat, cfhs = Open(db_options, &dbname, cfds...)
+	if !stat.Ok() {
+		t.Fatalf("columnfamilies: err: open with cfds: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("foo"), []byte("hello"), cfhs[1])
+	if !stat.Ok() {
+		t.Fatalf("columnfamilies:err: put err: stat = %s", stat)
+	}
+	db.checkGet(t, ropts, []byte("foo"), []byte("hello"), cfhs[1])
+	stat = db.Delete(woptions, []byte("foo"), cfhs[1])
+	if !stat.Ok() {
+		t.Fatalf("columnfamilies:err: Delete err: stat = %s", stat)
+	}
+	db.checkGet(t, ropts, []byte("foo"), nil, cfhs[1])
+	wb = NewWriteBatch()
+	wb.Put([]byte("baz"), []byte("a"), cfhs[1])
+	wb.Clear()
+	wb.Put([]byte("bar"), []byte("b"), cfhs[1])
+	wb.Put([]byte("box"), []byte("c"), cfhs[1])
+	wb.Delete([]byte("bar"), cfhs[1])
+	stat = db.Write(woptions, wb)
+	if !stat.Ok() {
+		t.Fatalf("columnfamilies: err: writebatch: stat = %s", stat)
+	}
+	db.checkGet(t, ropts, []byte("baz"), nil, cfhs[1])
+	db.checkGet(t, ropts, []byte("bar"), nil, cfhs[1])
+	db.checkGet(t, ropts, []byte("box"), []byte("c"), cfhs[1])
+	wb.Close()
 
-	// 	size_t cflen;
-	// 	char** column_fams = rocksdb_list_column_families(db_options, dbname, &cflen, &err);
-	// 	CheckNoError(err);
-	// 	CheckEqual("default", column_fams[0], 7);
-	// 	CheckEqual("cf1", column_fams[1], 3);
-	// 	CheckCondition(cflen == 2);
-	// 	rocksdb_list_column_families_destroy(column_fams, cflen);
-
-	// 	rocksdb_options_t* cf_options = rocksdb_options_create();
-
-	// 	const char* cf_names[2] = {"default", "cf1"};
-	// 	const rocksdb_options_t* cf_opts[2] = {cf_options, cf_options};
-	// 	rocksdb_column_family_handle_t* handles[2];
-	// 	db = rocksdb_open_column_families(db_options, dbname, 2, cf_names, cf_opts, handles, &err);
-	// 	CheckNoError(err);
-
-	// 	rocksdb_put_cf(db, woptions, handles[1], "foo", 3, "hello", 5, &err);
-	// 	CheckNoError(err);
-
-	// 	CheckGetCF(db, roptions, handles[1], "foo", "hello");
-
-	// 	rocksdb_delete_cf(db, woptions, handles[1], "foo", 3, &err);
-	// 	CheckNoError(err);
-
-	// 	CheckGetCF(db, roptions, handles[1], "foo", NULL);
-
-	// 	rocksdb_writebatch_t* wb = rocksdb_writebatch_create();
-	// 	rocksdb_writebatch_put_cf(wb, handles[1], "baz", 3, "a", 1);
-	// 	rocksdb_writebatch_clear(wb);
-	// 	rocksdb_writebatch_put_cf(wb, handles[1], "bar", 3, "b", 1);
-	// 	rocksdb_writebatch_put_cf(wb, handles[1], "box", 3, "c", 1);
-	// 	rocksdb_writebatch_delete_cf(wb, handles[1], "bar", 3);
-	// 	rocksdb_write(db, woptions, wb, &err);
-	// 	CheckNoError(err);
-	// 	CheckGetCF(db, roptions, handles[1], "baz", NULL);
-	// 	CheckGetCF(db, roptions, handles[1], "bar", NULL);
-	// 	CheckGetCF(db, roptions, handles[1], "box", "c");
-	// 	rocksdb_writebatch_destroy(wb);
-
-	// 	rocksdb_iterator_t* iter = rocksdb_create_iterator_cf(db, roptions, handles[1]);
-	// 	CheckCondition(!rocksdb_iter_valid(iter));
-	// 	rocksdb_iter_seek_to_first(iter);
-	// 	CheckCondition(rocksdb_iter_valid(iter));
-
-	// 	int i;
-	// 	for (i = 0; rocksdb_iter_valid(iter) != 0; rocksdb_iter_next(iter)) {
-	// 		i++;
-	// 	}
-	// 	CheckCondition(i == 1);
-	// 	rocksdb_iter_get_error(iter, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_iter_destroy(iter);
-
-	// 	rocksdb_drop_column_family(db, handles[1], &err);
-	// 	CheckNoError(err);
-	// 	for (i = 0; i < 2; i++) {
-	// 		rocksdb_column_family_handle_destroy(handles[i]);
-	// 	}
-	// 	rocksdb_close(db);
-	// 	rocksdb_destroy_db(options, dbname, &err);
-	// 	rocksdb_options_destroy(db_options);
-	// 	rocksdb_options_destroy(cf_options);
-	// }
+	iter = db.NewIterator(ropts, cfhs[1])
+	checkCondition(t, !iter.Valid())
+	iter.SeekToFirst()
+	checkCondition(t, iter.Valid())
+	i := 0
+	for ; iter.Valid(); iter.Next() {
+		i++
+	}
+	checkCondition(t, 1 == i)
+	stat = iter.Status()
+	if !stat.Ok() {
+		t.Fatalf("columnfamilies: err: iter: stat = %s", stat)
+	}
+	iter.Close()
+	stat = db.DropColumnFamily(cfhs[1])
+	if !stat.Ok() {
+		t.Fatalf("columnfamilies: err: DropColumnFamily: stat = %s", stat)
+	}
+	for _, cfd := range cfds {
+		cfd.Close()
+	}
+	db.Close()
+	db_options.Close()
+	cf_options.Close()
 
 	// StartPhase("prefix");
 	// {

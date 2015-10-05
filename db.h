@@ -28,9 +28,8 @@ DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(TablePropertiesCollection)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(TablePropertiesCollection)
 
 DEFINE_C_WRAP_STRUCT(ColumnFamilyDescriptor)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(ColumnFamilyDescriptor)
 DEFINE_C_WRAP_CONSTRUCTOR_ARGS_DEC(ColumnFamilyDescriptor, String, ColumnFamilyOptions)
-// DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(ColumnFamilyDescriptor, String, ColumnFamilyOptions)
-DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(ColumnFamilyDescriptor, kDefaultColumnFamilyName, ColumnFamilyOptions())
 DEFINE_C_WRAP_DESTRUCTOR_DEC(ColumnFamilyDescriptor)
 
 DEFINE_C_WRAP_STRUCT(Range)

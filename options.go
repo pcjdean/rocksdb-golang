@@ -31,11 +31,22 @@ const (
 
 type ColumnFamilyOptions struct {
 	cfopt C.ColumnFamilyOptions_t
+	// true if cfopt is deleted
+	closed bool
 }
 
 func (cfopt *ColumnFamilyOptions) finalize() {
-	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
-	C.DeleteColumnFamilyOptionsT(ccfopt, toCBool(false))
+	if !cfopt.closed {
+		cfopt.closed = true
+		var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
+		C.DeleteColumnFamilyOptionsT(ccfopt, toCBool(false))
+	}
+}
+
+// Close the @cfopt
+func (cfopt *ColumnFamilyOptions) Close() {
+	runtime.SetFinalizer(cfopt, nil)
+	cfopt.finalize()
 }
 
 // Create default ColumnFamilyOptions

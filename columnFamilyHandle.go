@@ -13,32 +13,49 @@ import (
 	"unsafe"
 )
 
+// Go wrap of C column family
 type ColumnFamilyHandle struct {
 	cfh C.ColumnFamilyHandle_t
+	// The cfh is deleted
+	closed bool
 }
 
+// Release the column family
 func (cfh *ColumnFamilyHandle) finalize() {
-	var ccfh *C.ColumnFamilyHandle_t = &cfh.cfh
-	C.DeleteColumnFamilyHandleT(ccfh, toCBool(false))
+	if !cfh.closed {
+		cfh.closed = true
+		var ccfh *C.ColumnFamilyHandle_t = &cfh.cfh
+		C.DeleteColumnFamilyHandleT(ccfh, toCBool(false))
+	}
 }
 
+// Close the @cfh
+func (cfh *ColumnFamilyHandle) Close() {
+	runtime.SetFinalizer(cfh, nil)
+	cfh.finalize()
+}
+
+// Return name of the column family
 func (cfh *ColumnFamilyHandle) GetName() string {
 	var ptr *C.ColumnFamilyHandle_t = &cfh.cfh
 	rstr := cString{C.ColumnFamilyGetName(ptr)}
 	return rstr.goString(true);
 }
     
+// Return ID of the column family
 func (cfh *ColumnFamilyHandle) GetID() uint32 {
 	var ptr *C.ColumnFamilyHandle_t = &cfh.cfh
 	return uint32(C.ColumnFamilyGetID(ptr))
 }
 
+// C ColumnFamilyHandle_t to go ColumnFamilyHandle
 func (ccfh *C.ColumnFamilyHandle_t) toColumnFamilyHandle() (cfh *ColumnFamilyHandle) {
 	cfh = &ColumnFamilyHandle{cfh: *ccfh}	
 	runtime.SetFinalizer(cfh, finalize)
 	return
 }
 
+// C array of ColumnFamilyHandle_t to go array of ColumnFamilyHandle
 func newColumnFamilyHandleArrayFromCArray(cfh *C.ColumnFamilyHandle_t, sz uint) (cfhs []*ColumnFamilyHandle) {
 	defer C.DeleteColumnFamilyHandleTArray(cfh)
 	cfhs = make([]*ColumnFamilyHandle, sz)
@@ -49,6 +66,7 @@ func newColumnFamilyHandleArrayFromCArray(cfh *C.ColumnFamilyHandle_t, sz uint) 
 	return
 }
 
+// Go array of ColumnFamilyHandle to C array of ColumnFamilyHandle_t
 func newCArrayFromColumnFamilyHandleArray(cfhs ...*ColumnFamilyHandle) (ccfhs []C.ColumnFamilyHandle_t) {
 	var cfhlen int
 	if cfhs != nil {
