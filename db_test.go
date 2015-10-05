@@ -106,7 +106,7 @@ func (tcf *testMergeOperator) Name() string {
 }
 	
 func (tcf *testMergeOperator) FullMerge(key []byte, exval []byte, opdlist [][]byte, logger *Logger) (suc bool, newval []byte) {
-	tcf.t.Logf("testMergeOperator::FullMerge key = %s, exval = %s, opdlist = %s", key, exval, opdlist)
+	// tcf.t.Logf("testMergeOperator::FullMerge key = %s, exval = %s, opdlist = %s", key, exval, opdlist)
 	newval = []byte("fake")
 	suc = true
 	return

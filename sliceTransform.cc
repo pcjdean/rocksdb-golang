@@ -39,7 +39,7 @@ public:
     {
         if (m_go_stf)
         {
-            ISliceTransformRemoveReference(m_go_stf);
+            InterfacesRemoveReference(m_go_stf);
         }
 
         if (m_name)

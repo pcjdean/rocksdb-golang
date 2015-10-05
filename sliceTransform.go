@@ -18,61 +18,7 @@ import "C"
 import (
 	"unsafe"
 	"runtime"
-	"log"
-	"sync"
 )
-
-const (
-	// The initial size of callbackISliceTransform
-	initialISliceTransformSize = 100
-)
-
-var (
-	// Map to keep all the ISliceTransform callbacks from garbage collected
-	callbackISliceTransform map[unsafe.Pointer]ISliceTransform
-
-	// Mutext to protect callbackISliceTransform
-	callbackISliceTransformMutex sync.Mutex = sync.Mutex{}
-)
-
-//export ISliceTransformRemoveReference
-// Remove interface citf from the callbackISliceTransform 
-// to leave citf garbage collected
-func ISliceTransformRemoveReference(citf unsafe.Pointer) {
-	defer callbackISliceTransformMutex.Unlock()
-	callbackISliceTransformMutex.Lock()
-	if nil != callbackISliceTransform {
-		delete(callbackISliceTransform, citf)
-	} else {
-		log.Println("ISliceTransformRemoveReference: callbackISliceTransform is not created!")
-	}
-}
-
-// Get interface itf from the callbackISliceTransform
-// with citf as the key
-func ISliceTransformGet(citf unsafe.Pointer) (itf ISliceTransform) {
-	defer callbackISliceTransformMutex.Unlock()
-	callbackISliceTransformMutex.Lock()
-	if nil != callbackISliceTransform {
-		itf = callbackISliceTransform[citf]
-	} else {
-		log.Println("ISliceTransformGet: callbackISliceTransform is not created!")
-	}
-	return
-}
-
-// Add interface itf to the callbackISliceTransform to keep itf alive
-// Return the key of the ISliceTransform in map callbackISliceTransform
-func ISliceTransformAddReference(itf ISliceTransform) (citf unsafe.Pointer) {
-	defer callbackISliceTransformMutex.Unlock()
-	callbackISliceTransformMutex.Lock()
-	if nil == callbackISliceTransform {
-		callbackISliceTransform = make(map[unsafe.Pointer]ISliceTransform, initialISliceTransformSize)
-	}
-	citf = unsafe.Pointer(&itf)
-	callbackISliceTransform[citf] = itf
-	return
-}
 
 type ISliceTransform interface {
 
@@ -118,13 +64,13 @@ type ISliceTransform interface {
 
 //export ISliceTransformName
 func ISliceTransformName(cstf unsafe.Pointer) *C.char {
-	stf := ISliceTransformGet(cstf)
+	stf := InterfacesGet(cstf).(ISliceTransform)
 	return C.CString(stf.Name())
 }
 
 //export ISliceTransformTransform
 func ISliceTransformTransform(cstf unsafe.Pointer, src *C.Slice_t, soffset, slen *C.size_t) {
-	stf := ISliceTransformGet(cstf)
+	stf := InterfacesGet(cstf).(ISliceTransform)
 	offset, sz := stf.Transform(src.cToBytes(false))
 	*soffset = C.uint64ToSizeT(C.uint64_t(offset))
 	*slen = C.uint64ToSizeT(C.uint64_t(sz))
@@ -133,19 +79,19 @@ func ISliceTransformTransform(cstf unsafe.Pointer, src *C.Slice_t, soffset, slen
 
 //export ISliceTransformInDomain
 func ISliceTransformInDomain(cstf unsafe.Pointer, src *C.Slice_t) C.bool {
-	stf := ISliceTransformGet(cstf)
+	stf := InterfacesGet(cstf).(ISliceTransform)
 	return toCBool(stf.InDomain(src.cToBytes(false)))
 }
 
 //export ISliceTransformInRange
 func ISliceTransformInRange(cstf unsafe.Pointer, dst *C.Slice_t) C.bool {
-	stf := ISliceTransformGet(cstf)
+	stf := InterfacesGet(cstf).(ISliceTransform)
 	return toCBool(stf.InRange(dst.cToBytes(false)))
 }
 
 //export ISliceTransformSameResultWhenAppended
 func ISliceTransformSameResultWhenAppended(cstf unsafe.Pointer, prefix *C.Slice_t) C.bool {
-	stf := ISliceTransformGet(cstf)
+	stf := InterfacesGet(cstf).(ISliceTransform)
 	return toCBool(stf.SameResultWhenAppended(prefix.cToBytes(false)))
 }
 
@@ -172,7 +118,7 @@ func NewSliceTransform(itf ISliceTransform) (stf *SliceTransform) {
 	var citf unsafe.Pointer = nil
 
 	if nil != itf {
-		citf =ISliceTransformAddReference(itf)
+		citf =InterfacesAddReference(itf)
 	}
 	cstf := C.NewSliceTransform(citf)
 	return cstf.toSliceTransform()

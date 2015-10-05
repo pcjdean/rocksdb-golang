@@ -51,7 +51,7 @@ public:
     {
         if (m_go_cpf)
         {
-            ICompactionFilterRemoveReference(m_go_cpf);
+            InterfacesRemoveReference(m_go_cpf);
         }
 
         if (m_name)
@@ -143,7 +143,7 @@ public:
     {
         if (m_go_cpfv2)
         {
-            ICompactionFilterV2RemoveReference(m_go_cpfv2);
+            InterfacesRemoveReference(m_go_cpfv2);
         }
 
         if (m_name)
@@ -220,7 +220,7 @@ public:
     {
         if (m_go_cpfac)
         {
-            ICompactionFilterFactoryRemoveReference(m_go_cpfac);
+            InterfacesRemoveReference(m_go_cpfac);
         }
 
         if (m_name)
@@ -307,7 +307,7 @@ public:
     {
         if (m_go_cpfacv2)
         {
-            ICompactionFilterFactoryV2RemoveReference(m_go_cpfacv2);
+            InterfacesRemoveReference(m_go_cpfacv2);
         }
         
         DelPrefixExtractor();

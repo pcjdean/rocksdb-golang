@@ -12,88 +12,7 @@ import "C"
 import (
 	"runtime"
 	"unsafe"
-	"log"
-	"sync"
 )
-
-const (
-	// The initial size of callbackICompactionFilter
-	initialICompactionFilterSize = 100
-
-	// The initial size of callbackICompactionFilterV2
-	initialICompactionFilterV2Size = 100
-
-	// The initial size of callbackICompactionFilterFactory
-	initialICompactionFilterFactorySize = 100
-
-	// The initial size of callbackICompactionFilterFactoryV2
-	initialICompactionFilterFactoryV2Size = 100
-)
-
-var (
-	// Map to keep all the ICompactionFilter callbacks from garbage collected
-	callbackICompactionFilter map[unsafe.Pointer]ICompactionFilter
-
-	// Mutext to protect callbackICompactionFilter
-	callbackICompactionFilterMutex sync.Mutex = sync.Mutex{}
-
-	// Map to keep all the ICompactionFilterV2 callbacks from garbage collected
-	callbackICompactionFilterV2 map[unsafe.Pointer]ICompactionFilterV2
-
-	// Mutext to protect callbackICompactionFilterV2
-	callbackICompactionFilterV2Mutex sync.Mutex = sync.Mutex{}
-
-	// Map to keep all the ICompactionFilterFactory callbacks from garbage collected
-	callbackICompactionFilterFactory map[unsafe.Pointer]ICompactionFilterFactory
-
-	// Mutext to protect callbackICompactionFilterFactory
-	callbackICompactionFilterFactoryMutex sync.Mutex = sync.Mutex{}
-
-	// Map to keep all the ICompactionFilterFactoryV2 callbacks from garbage collected
-	callbackICompactionFilterFactoryV2 map[unsafe.Pointer]ICompactionFilterFactoryV2
-
-	// Mutext to protect callbackICompactionFilterFactoryV2
-	callbackICompactionFilterFactoryV2Mutex sync.Mutex = sync.Mutex{}
-)
-
-//export ICompactionFilterRemoveReference
-// Remove interface citf from the callbackICompactionFilter 
-// to leave citf garbage collected
-func ICompactionFilterRemoveReference(citf unsafe.Pointer) {
-	defer callbackICompactionFilterMutex.Unlock()
-	callbackICompactionFilterMutex.Lock()
-	if nil != callbackICompactionFilter {
-		delete(callbackICompactionFilter, citf)
-	} else {
-		log.Println("ICompactionFilterRemoveReference: callbackICompactionFilter is not created!")
-	}
-}
-
-// Get interface itf from the callbackICompactionFilter
-// with citf as the key
-func ICompactionFilterGet(citf unsafe.Pointer) (itf ICompactionFilter) {
-	defer callbackICompactionFilterMutex.Unlock()
-	callbackICompactionFilterMutex.Lock()
-	if nil != callbackICompactionFilter {
-		itf = callbackICompactionFilter[citf]
-	} else {
-		log.Println("ICompactionFilterGet: callbackICompactionFilter is not created!")
-	}
-	return
-}
-
-// Add interface itf to the callbackICompactionFilter to keep itf alive
-// Return the key of the ICompactionFilter in map callbackICompactionFilter
-func ICompactionFilterAddReference(itf ICompactionFilter) (citf unsafe.Pointer) {
-	defer callbackICompactionFilterMutex.Unlock()
-	callbackICompactionFilterMutex.Lock()
-	if nil == callbackICompactionFilter {
-		callbackICompactionFilter = make(map[unsafe.Pointer]ICompactionFilter, initialICompactionFilterSize)
-	}
-	citf = unsafe.Pointer(&itf)
-	callbackICompactionFilter[citf] = itf
-	return
-}
 
 // CompactionFilter allows an application to modify/delete a key-value at
 // the time of compaction.
@@ -131,13 +50,13 @@ type ICompactionFilter interface {
 
 //export ICompactionFilterName
 func ICompactionFilterName(ccpf unsafe.Pointer) *C.char {
-	cpf := ICompactionFilterGet(ccpf)
+	cpf := InterfacesGet(ccpf).(ICompactionFilter)
 	return C.CString(cpf.Name())
 }
 
 //export ICompactionFilterFilter
 func ICompactionFilterFilter(ccpf unsafe.Pointer, level C.int, key, exval *C.Slice_t, newval *C.String_t, valchg *C.bool) C.bool {
-	cpf := ICompactionFilterGet(ccpf)
+	cpf := InterfacesGet(ccpf).(ICompactionFilter)
 	gnewval, gvalchg, removed := cpf.Filter(int(level), key.cToBytes(false), exval.cToBytes(false))
 	*valchg = toCBool(gvalchg)
 	if gvalchg {
@@ -186,49 +105,10 @@ func NewCompactionFilter(itf ICompactionFilter) (cpf *CompactionFilter) {
 	var iftp unsafe.Pointer = nil
 
 	if nil != itf {
-		iftp =ICompactionFilterAddReference(itf)
+		iftp =InterfacesAddReference(itf)
 	}
 	ccpf := C.NewCompactionFilter(iftp)
 	return ccpf.toCompactionFilter()
-}
-
-//export ICompactionFilterV2RemoveReference
-// Remove interface citf from the callbackICompactionFilterV2 
-// to leave citf garbage collected
-func ICompactionFilterV2RemoveReference(citf unsafe.Pointer) {
-	defer callbackICompactionFilterV2Mutex.Unlock()
-	callbackICompactionFilterV2Mutex.Lock()
-	if nil != callbackICompactionFilterV2 {
-		delete(callbackICompactionFilterV2, citf)
-	} else {
-		log.Println("ICompactionFilterV2RemoveReference: callbackICompactionFilterV2 is not created!")
-	}
-}
-
-// Get interface itf from the callbackICompactionFilterV2
-// with citf as the key
-func ICompactionFilterV2Get(citf unsafe.Pointer) (itf ICompactionFilterV2) {
-	defer callbackICompactionFilterV2Mutex.Unlock()
-	callbackICompactionFilterV2Mutex.Lock()
-	if nil != callbackICompactionFilterV2 {
-		itf = callbackICompactionFilterV2[citf]
-	} else {
-		log.Println("ICompactionFilterV2Get: callbackICompactionFilterV2 is not created!")
-	}
-	return
-}
-
-// Add interface itf to the callbackICompactionFilterV2 to keep itf alive
-// Return the key of the ICompactionFilterV2 in map callbackICompactionFilterV2
-func ICompactionFilterV2AddReference(itf ICompactionFilterV2) (citf unsafe.Pointer) {
-	defer callbackICompactionFilterV2Mutex.Unlock()
-	callbackICompactionFilterV2Mutex.Lock()
-	if nil == callbackICompactionFilterV2 {
-		callbackICompactionFilterV2 = make(map[unsafe.Pointer]ICompactionFilterV2, initialICompactionFilterV2Size)
-	}
-	citf = unsafe.Pointer(&itf)
-	callbackICompactionFilterV2[citf] = itf
-	return
 }
 
 // CompactionFilterV2 that buffers kv pairs sharing the same prefix and let
@@ -260,56 +140,17 @@ type ICompactionFilterV2 interface {
 
 //export ICompactionFilterV2Name
 func ICompactionFilterV2Name(ccpf unsafe.Pointer) *C.char {
-	cpf := ICompactionFilterV2Get(ccpf)
+	cpf := InterfacesGet(ccpf).(ICompactionFilterV2)
 	return C.CString(cpf.Name())
 }
 
 //export ICompactionFilterV2Filter
 func ICompactionFilterV2Filter(ccpf unsafe.Pointer, level C.int, keys, exvals *C.SliceVector_t, newvals *C.StringVector_t, valchgs *C.BoolVector_t, removeds *C.BoolVector_t) {
-	cpf := ICompactionFilterV2Get(ccpf)
+	cpf := InterfacesGet(ccpf).(ICompactionFilterV2)
 	gnewvals, gvalchgs, gremoveds := cpf.Filter(int(level), keys.toBytesArray(), exvals.toBytesArray())
 	newvals.setBytesArray(gnewvals)
 	valchgs.setBoolArray(gvalchgs)
 	removeds.setBoolArray(gremoveds)
-}
-
-//export ICompactionFilterFactoryRemoveReference
-// Remove interface citf from the callbackICompactionFilterFactory 
-// to leave citf garbage collected
-func ICompactionFilterFactoryRemoveReference(citf unsafe.Pointer) {
-	defer callbackICompactionFilterFactoryMutex.Unlock()
-	callbackICompactionFilterFactoryMutex.Lock()
-	if nil != callbackICompactionFilterFactory {
-		delete(callbackICompactionFilterFactory, citf)
-	} else {
-		log.Println("ICompactionFilterFactoryRemoveReference: callbackICompactionFilterFactory is not created!")
-	}
-}
-
-// Get interface itf from the callbackICompactionFilterFactory
-// with citf as the key
-func ICompactionFilterFactoryGet(citf unsafe.Pointer) (itf ICompactionFilterFactory) {
-	defer callbackICompactionFilterFactoryMutex.Unlock()
-	callbackICompactionFilterFactoryMutex.Lock()
-	if nil != callbackICompactionFilterFactory {
-		itf = callbackICompactionFilterFactory[citf]
-	} else {
-		log.Println("ICompactionFilterFactoryGet: callbackICompactionFilterFactory is not created!")
-	}
-	return
-}
-
-// Add interface itf to the callbackICompactionFilterFactory to keep itf alive
-// Return the key of the ICompactionFilterFactory in map callbackICompactionFilterFactory
-func ICompactionFilterFactoryAddReference(itf ICompactionFilterFactory) (citf unsafe.Pointer) {
-	defer callbackICompactionFilterFactoryMutex.Unlock()
-	callbackICompactionFilterFactoryMutex.Lock()
-	if nil == callbackICompactionFilterFactory {
-		callbackICompactionFilterFactory = make(map[unsafe.Pointer]ICompactionFilterFactory, initialICompactionFilterFactorySize)
-	}
-	citf = unsafe.Pointer(&itf)
-	callbackICompactionFilterFactory[citf] = itf
-	return
 }
 
 // Wrap go CompactionFilter_Context
@@ -338,14 +179,14 @@ type ICompactionFilterFactory interface {
 
 //export ICompactionFilterFactoryName
 func ICompactionFilterFactoryName(ccpf unsafe.Pointer) *C.char {
-	cpf := ICompactionFilterFactoryGet(ccpf)
+	cpf := InterfacesGet(ccpf).(ICompactionFilterFactory)
 	return C.CString(cpf.Name())
 }
 
 //export ICompactionFilterFactoryCreateCompactionFilter
 func ICompactionFilterFactoryCreateCompactionFilter(ccpf unsafe.Pointer, context *C.CompactionFilter_Context_t) (filter unsafe.Pointer) {
-	cpf := ICompactionFilterFactoryGet(ccpf)
-	filter = ICompactionFilterAddReference(cpf.CreateCompactionFilter(context.toCompactionFilter_Context()))
+	cpf := InterfacesGet(ccpf).(ICompactionFilterFactory)
+	filter = InterfacesAddReference(cpf.CreateCompactionFilter(context.toCompactionFilter_Context()))
 	return
 }
 
@@ -379,49 +220,10 @@ func NewCompactionFilterFactory(itf ICompactionFilterFactory) (cff *CompactionFi
 	var iftp unsafe.Pointer = nil
 
 	if nil != itf {
-		iftp =ICompactionFilterFactoryAddReference(itf)
+		iftp =InterfacesAddReference(itf)
 	}
 	ccff := C.NewPCompactionFilterFactory(iftp)
 	return ccff.toCompactionFilterFactory()
-}
-
-//export ICompactionFilterFactoryV2RemoveReference
-// Remove interface citf from the callbackICompactionFilterFactoryV2 
-// to leave citf garbage collected
-func ICompactionFilterFactoryV2RemoveReference(citf unsafe.Pointer) {
-	defer callbackICompactionFilterFactoryV2Mutex.Unlock()
-	callbackICompactionFilterFactoryV2Mutex.Lock()
-	if nil != callbackICompactionFilterFactoryV2 {
-		delete(callbackICompactionFilterFactoryV2, citf)
-	} else {
-		log.Println("ICompactionFilterFactoryV2RemoveReference: callbackICompactionFilterFactoryV2 is not created!")
-	}
-}
-
-// Get interface itf from the callbackICompactionFilterFactoryV2
-// with citf as the key
-func ICompactionFilterFactoryV2Get(citf unsafe.Pointer) (itf ICompactionFilterFactoryV2) {
-	defer callbackICompactionFilterFactoryV2Mutex.Unlock()
-	callbackICompactionFilterFactoryV2Mutex.Lock()
-	if nil != callbackICompactionFilterFactoryV2 {
-		itf = callbackICompactionFilterFactoryV2[citf]
-	} else {
-		log.Println("ICompactionFilterFactoryV2Get: callbackICompactionFilterFactoryV2 is not created!")
-	}
-	return
-}
-
-// Add interface itf to the callbackICompactionFilterFactoryV2 to keep itf alive
-// Return the key of the ICompactionFilterFactoryV2 in map callbackICompactionFilterFactoryV2
-func ICompactionFilterFactoryV2AddReference(itf ICompactionFilterFactoryV2) (citf unsafe.Pointer) {
-	defer callbackICompactionFilterFactoryV2Mutex.Unlock()
-	callbackICompactionFilterFactoryV2Mutex.Lock()
-	if nil == callbackICompactionFilterFactoryV2 {
-		callbackICompactionFilterFactoryV2 = make(map[unsafe.Pointer]ICompactionFilterFactoryV2, initialICompactionFilterFactoryV2Size)
-	}
-	citf = unsafe.Pointer(&itf)
-	callbackICompactionFilterFactoryV2[citf] = itf
-	return
 }
 
 // Wrap go CompactionFilterContext
@@ -473,20 +275,20 @@ type ICompactionFilterFactoryV2 interface {
 
 //export ICompactionFilterFactoryV2Name
 func ICompactionFilterFactoryV2Name(ccpf unsafe.Pointer) *C.char {
-	cpf := ICompactionFilterFactoryV2Get(ccpf)
+	cpf := InterfacesGet(ccpf).(ICompactionFilterFactoryV2)
 	return C.CString(cpf.Name())
 }
 
 //export ICompactionFilterFactoryV2CreateCompactionFilterV2
 func ICompactionFilterFactoryV2CreateCompactionFilterV2(ccpf unsafe.Pointer, context *C.CompactionFilterContext_t) (filter unsafe.Pointer) {
-	cpf := ICompactionFilterFactoryV2Get(ccpf)
-	filter = ICompactionFilterV2AddReference(cpf.CreateCompactionFilterV2(context.toCompactionFilterContext()))
+	cpf := InterfacesGet(ccpf).(ICompactionFilterFactoryV2)
+	filter = InterfacesAddReference(cpf.CreateCompactionFilterV2(context.toCompactionFilterContext()))
 	return
 }
 
 //export ICompactionFilterFactoryV2GetPrefixExtractor
 func ICompactionFilterFactoryV2GetPrefixExtractor(ccpf unsafe.Pointer) (cstf C.SliceTransform_t) {
-	cpf := ICompactionFilterFactoryV2Get(ccpf)
+	cpf := InterfacesGet(ccpf).(ICompactionFilterFactoryV2)
 	stf := NewSliceTransform(cpf.GetPrefixExtractor())
 	cstf = stf.stf
 	return
@@ -522,7 +324,7 @@ func NewCompactionFilterFactoryV2(itf ICompactionFilterFactoryV2, sitf ISliceTra
 	var iftp unsafe.Pointer = nil
 
 	if nil != itf {
-		iftp =ICompactionFilterFactoryV2AddReference(itf)
+		iftp =InterfacesAddReference(itf)
 		itf.SetPrefixExtractor(sitf)
 	}
 	// SliceTransform of CompactionFilterFactoryV2 will be initialised

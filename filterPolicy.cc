@@ -47,7 +47,7 @@ public:
     {
         if (m_go_flp)
         {
-            IFilterPolicyRemoveReference(m_go_flp);
+            InterfacesRemoveReference(m_go_flp);
         }
 
         if (m_name)
