@@ -761,53 +761,73 @@ func TestCMain(t *testing.T) {
 		cfd.Close()
 	}
 	db.Close()
+	stat = DestroyDB(options, &dbname)
+	t.Logf("columnfamilies: last: DestroyDB: status = %s", stat)
 	db_options.Close()
 	cf_options.Close()
 
-	// StartPhase("prefix");
-	// {
-	// 	// Create new database
-	// 	rocksdb_options_set_allow_mmap_reads(options, 1);
-	// 	rocksdb_options_set_prefix_extractor(options, rocksdb_slicetransform_create_fixed_prefix(3));
-	// 	rocksdb_options_set_hash_skip_list_rep(options, 5000, 4, 4);
-	// 	rocksdb_options_set_plain_table_factory(options, 4, 10, 0.75, 16);
+	t.Log("phase: prefix")
+	// Create new database
+	options.SetAllowMmapReads(true)
+	options.SetPrefixExtractor(NewFixedPrefixTransform(3))
+	options.SetMemtableFactory(NewHashSkipListRepFactory(uint64(5000), int32(4), int32(4)))
+	pto := NewPlainTableOptions()
+	pto.SetUserKeyLen(4)
+	pto.SetBloomBitsPerKey(10)
+	pto.SetHashTableRatio(0.75)
+	pto.SetIndexSparseness(16)
+	options.SetTableFactory(pto.NewPlainTableFactory())
+	db, stat, _ = Open(options, &dbname)
+	if !stat.Ok() {
+		t.Fatalf("prefix: err: open: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("foo1"), []byte("foo"))
+	if !stat.Ok() {
+		t.Fatalf("prefix:err: put err: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("foo2"), []byte("foo"))
+	if !stat.Ok() {
+		t.Fatalf("prefix:err: put err: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("foo3"), []byte("foo"))
+	if !stat.Ok() {
+		t.Fatalf("prefix:err: put err: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("bar1"), []byte("bar"))
+	if !stat.Ok() {
+		t.Fatalf("prefix:err: put err: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("bar2"), []byte("bar"))
+	if !stat.Ok() {
+		t.Fatalf("prefix:err: put err: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("bar3"), []byte("bar"))
+	if !stat.Ok() {
+		t.Fatalf("prefix:err: put err: stat = %s", stat)
+	}
 
-	// 	db = rocksdb_open(options, dbname, &err);
-	// 	CheckNoError(err);
+	iter = db.NewIterator(ropts)
+	checkCondition(t, !iter.Valid())
+	iter.Seek([]byte("bar"))
+	stat = iter.Status()
+	if !stat.Ok() {
+		t.Fatalf("prefix: err: iter: stat = %s", stat)
+	}
+	checkCondition(t, iter.Valid())
 
-	// 	rocksdb_put(db, woptions, "foo1", 4, "foo", 3, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "foo2", 4, "foo", 3, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "foo3", 4, "foo", 3, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "bar1", 4, "bar", 3, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "bar2", 4, "bar", 3, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "bar3", 4, "bar", 3, &err);
-	// 	CheckNoError(err);
-
-	// 	rocksdb_iterator_t* iter = rocksdb_create_iterator(db, roptions);
-	// 	CheckCondition(!rocksdb_iter_valid(iter));
-
-	// 	rocksdb_iter_seek(iter, "bar", 3);
-	// 	rocksdb_iter_get_error(iter, &err);
-	// 	CheckNoError(err);
-	// 	CheckCondition(rocksdb_iter_valid(iter));
-
-	// 	CheckIter(iter, "bar1", "bar");
-	// 	rocksdb_iter_next(iter);
-	// 	CheckIter(iter, "bar2", "bar");
-	// 	rocksdb_iter_next(iter);
-	// 	CheckIter(iter, "bar3", "bar");
-	// 	rocksdb_iter_get_error(iter, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_iter_destroy(iter);
-
-	// 	rocksdb_close(db);
-	// 	rocksdb_destroy_db(options, dbname, &err);
-	// }
+	checkIter(t, iter, "bar1", "bar")
+	iter.Next()
+	checkIter(t, iter, "bar2", "bar")
+	iter.Next()
+	checkIter(t, iter, "bar3", "bar")
+	stat = iter.Status()
+	if !stat.Ok() {
+		t.Fatalf("prefix: err: checkIter: stat = %s", stat)
+	}
+	iter.Close()
+	db.Close()
+	stat = DestroyDB(options, &dbname)
+	t.Logf("prefix: DestroyDB: status = %s", stat)
 
 	// StartPhase("cuckoo_options");
 	// {

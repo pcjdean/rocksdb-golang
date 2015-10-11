@@ -8,11 +8,8 @@
 // define InDomain and InRange to determine which slices are in either
 // of these sets respectively.
 
-#include <rocksdb/slice_transform.h>
-
-using namespace rocksdb;
-
 #include "sliceTransform.h"
+#include "sliceTransformPrivate.h"
 
 extern "C" {
 #include "_cgo_export.h"
@@ -20,6 +17,9 @@ extern "C" {
 
 DEFINE_C_WRAP_CONSTRUCTOR(SliceTransform)
 DEFINE_C_WRAP_DESTRUCTOR(SliceTransform)
+
+DEFINE_C_WRAP_CONSTRUCTOR(PConstSliceTransform)
+DEFINE_C_WRAP_DESTRUCTOR(PConstSliceTransform)
 
 // C++ wrap class for go ISliceTransform
 class SliceTransformGo : public SliceTransform {
@@ -143,26 +143,34 @@ SliceTransform_t NewSliceTransform(void* go_stf)
     return wrap_t;
 }
 
-// Create a fixed prefix transform
-SliceTransform_t GoNewFixedPrefixTransform(size_t prefix_len)
+// Return a SharedSliceTransform from a go SliceTransform interface
+PConstSliceTransform_t NewSharedSliceTransform(void* go_stf)
 {
-    SliceTransform_t wrap_t;
-    wrap_t.rep = const_cast<SliceTransform *>(NewFixedPrefixTransform(prefix_len));
+    PConstSliceTransform_t wrap_t;
+    wrap_t.rep = new PConstSliceTransform(go_stf ? new SliceTransformGo(go_stf) : NULL);
+    return wrap_t;
+}
+
+// Create a fixed prefix transform
+PConstSliceTransform_t GoNewFixedPrefixTransform(size_t prefix_len)
+{
+    PConstSliceTransform_t wrap_t;
+    wrap_t.rep = new PConstSliceTransform(NewFixedPrefixTransform(prefix_len));
     return wrap_t;
 }
 
 // Create a capped prefix transform
-SliceTransform_t GoNewCappedPrefixTransform(size_t cap_len)
+PConstSliceTransform_t GoNewCappedPrefixTransform(size_t cap_len)
 {
-    SliceTransform_t wrap_t;
-    wrap_t.rep = const_cast<SliceTransform *>(NewCappedPrefixTransform(cap_len));
+    PConstSliceTransform_t wrap_t;
+    wrap_t.rep = new PConstSliceTransform(NewCappedPrefixTransform(cap_len));
     return wrap_t;
 }
 
 // Create a noop transform
-SliceTransform_t GoNewNoopTransform()
+PConstSliceTransform_t GoNewNoopTransform()
 {
-    SliceTransform_t wrap_t;
-    wrap_t.rep = const_cast<SliceTransform *>(NewNoopTransform());
+    PConstSliceTransform_t wrap_t;
+    wrap_t.rep = new PConstSliceTransform(NewNoopTransform());
     return wrap_t;
 }

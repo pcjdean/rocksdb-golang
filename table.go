@@ -118,6 +118,87 @@ func NewPlainTableOptions() *PlainTableOptions {
 	return cptop.toPlainTableOptions()
 }
 
+// @user_key_len: plain table has optimization for fix-sized keys, which can
+//                be specified via user_key_len.  Alternatively, you can pass
+//                `kPlainTableVariableLength` if your keys have variable
+//                lengths.
+func (ptop *PlainTableOptions) SetUserKeyLen(keylen uint32) {
+	var cptop *C.PlainTableOptions_t= &ptop.ptop
+	C.PlainTableOptions_set_user_key_len(cptop, C.uint32_t(keylen))
+}
+
+// @bloom_bits_per_key: the number of bits used for bloom filer per prefix.
+//                      You may disable it by passing a zero.
+func (ptop *PlainTableOptions) SetBloomBitsPerKey(bits int) {
+	var cptop *C.PlainTableOptions_t= &ptop.ptop
+	C.PlainTableOptions_set_bloom_bits_per_key(cptop, C.int(bits))
+}
+
+// @hash_table_ratio: the desired utilization of the hash table used for
+//                    prefix hashing.
+//                    hash_table_ratio = number of prefixes / #buckets in the
+//                    hash table
+func (ptop *PlainTableOptions) SetHashTableRatio(ratio float64) {
+	var cptop *C.PlainTableOptions_t= &ptop.ptop
+	C.PlainTableOptions_set_hash_table_ratio(cptop, C.double(ratio))
+}
+
+// @index_sparseness: inside each prefix, need to build one index record for
+//                    how many keys for binary search inside each hash bucket.
+//                    For encoding type kPrefix, the value will be used when
+//                    writing to determine an interval to rewrite the full
+//                    key. It will also be used as a suggestion and satisfied
+//                    when possible.
+func (ptop *PlainTableOptions) SetIndexSparseness(sparseness uint64) {
+	var cptop *C.PlainTableOptions_t= &ptop.ptop
+	C.PlainTableOptions_set_index_sparseness(cptop, C.size_t(sparseness))
+}
+
+// @huge_page_tlb_size: if <=0, allocate hash indexes and blooms from malloc.
+//                      Otherwise from huge page TLB. The user needs to
+//                      reserve huge pages for it to be allocated, like:
+//                          sysctl -w vm.nr_hugepages=20
+//                      See linux doc Documentation/vm/hugetlbpage.txt
+func (ptop *PlainTableOptions) SetHugePageTlbSize(sz uint64) {
+	var cptop *C.PlainTableOptions_t= &ptop.ptop
+	C.PlainTableOptions_set_huge_page_tlb_size(cptop, C.size_t(sz))
+}
+
+// @encoding_type: how to encode the keys. See enum EncodingType above for
+//                 the choices. The value will determine how to encode keys
+//                 when writing to a new SST file. This value will be stored
+//                 inside the SST file which will be used when reading from
+//                 the file, which makes it possible for users to choose
+//                 different encoding type when reopening a DB. Files with
+//                 different encoding types can co-exist in the same DB and
+//                 can be read.
+func (ptop *PlainTableOptions) SetEncodingType(etype byte) {
+	var cptop *C.PlainTableOptions_t= &ptop.ptop
+	C.PlainTableOptions_set_encoding_type(cptop, C.char(etype))
+}
+
+// @full_scan_mode: mode for reading the whole file one record by one without
+//                  using the index.
+func (ptop *PlainTableOptions) SetFullScanMode(mode bool) {
+	var cptop *C.PlainTableOptions_t= &ptop.ptop
+	C.PlainTableOptions_set_full_scan_mode(cptop, toCBool(mode))
+}
+
+// @store_index_in_file: compute plain table index and bloom filter during
+//                       file building and store it in file. When reading
+//                       file, index will be mmaped instead of recomputation.
+func (ptop *PlainTableOptions) SetStoreIndexInFile(store bool) {
+	var cptop *C.PlainTableOptions_t= &ptop.ptop
+	C.PlainTableOptions_set_store_index_in_file(cptop, toCBool(store))
+}
+
+// Create default plain table factory.
+func (ptop *PlainTableOptions) NewPlainTableFactory() *TableFactory {
+	var cptop *C.PlainTableOptions_t= &ptop.ptop
+	ctbf := C.NewPlainTableFactory(cptop)
+	return ctbf.toTableFactory()
+}
+
 // Wrap go CuckooTableOptions
 type CuckooTableOptions struct {
 	ctop C.CuckooTableOptions_t

@@ -124,21 +124,49 @@ func NewSliceTransform(itf ISliceTransform) (stf *SliceTransform) {
 	return cstf.toSliceTransform()
 }
 
+// Wrap go SharedSliceTransform for c++ shared pointer SliceTransform.
+type SharedSliceTransform struct {
+	stf C.PConstSliceTransform_t
+}
+
+// Release resources
+func (stf *SharedSliceTransform) finalize() {
+	var cstf *C.PConstSliceTransform_t= &stf.stf
+	C.DeletePConstSliceTransformT(cstf, toCBool(false))
+}
+
+// C SharedSliceTransform to go SharedSliceTransform
+func (cstf *C.PConstSliceTransform_t) toSliceTransform() (stf *SharedSliceTransform) {
+	stf = &SharedSliceTransform{stf: *cstf}	
+	runtime.SetFinalizer(stf, finalize)
+	return
+}
+
+// Return a new SharedSliceTransform that uses ISliceTransform
+func NewSharedSliceTransform(itf ISliceTransform) (stf *SharedSliceTransform) {
+	var citf unsafe.Pointer = nil
+
+	if nil != itf {
+		citf =InterfacesAddReference(itf)
+	}
+	cstf := C.NewSharedSliceTransform(citf)
+	return cstf.toSliceTransform()
+}
 
 // Return a new SliceTransform that uses length of prefix.
-func NewFixedPrefixTransform(preflen uint64) (stf *SliceTransform) {
+func NewFixedPrefixTransform(preflen uint64) (stf *SharedSliceTransform) {
 	cstf := C.GoNewFixedPrefixTransform(C.uint64ToSizeT(C.uint64_t(preflen)))
 	return cstf.toSliceTransform()
 }
 
 // Return a new SliceTransform that uses capped length of prefix.
-func NewCappedPrefixTransform(caplen uint64) (stf *SliceTransform) {
+func NewCappedPrefixTransform(caplen uint64) (stf *SharedSliceTransform) {
 	cstf := C.GoNewCappedPrefixTransform(C.uint64ToSizeT(C.uint64_t(caplen)))
 	return cstf.toSliceTransform()
 }
 
 // Return a new SliceTransform that has no transform.
-func NewNoopTransform() (stf *SliceTransform) {
+func NewNoopTransform() (stf *SharedSliceTransform) {
 	cstf := C.GoNewNoopTransform()
 	return cstf.toSliceTransform()
 }

@@ -4,6 +4,7 @@
 
 #include "compactionfilterPrivate.h"
 #include "mergeOperatorPrivate.h"
+#include "sliceTransformPrivate.h"
 #include "options.h"
 
 DEFINE_C_WRAP_STATIC_CAST(Options, DBOptions)
@@ -18,6 +19,12 @@ DEFINE_C_WRAP_GETTER(ColumnFamilyOptions, compression, int)
 DEFINE_C_WRAP_SETTER_CAST(ColumnFamilyOptions, compression, int, CompressionType)
 DEFINE_C_WRAP_GETTER(ColumnFamilyOptions, write_buffer_size, size_t)
 DEFINE_C_WRAP_SETTER(ColumnFamilyOptions, write_buffer_size, size_t)
+
+// This is a factory that provides MemTableRep objects.
+// Default: a factory that provides a skip-list-based implementation of
+// MemTableRep.
+DEFINE_C_WRAP_SETTER_WRAP(ColumnFamilyOptions, memtable_factory, PMemTableRepFactory)
+
 // This is a factory that provides TableFactory objects.
 // Default: a block-based table factory that provides a default
 // implementation of TableBuilder and TableReader with default
@@ -35,6 +42,22 @@ DEFINE_C_WRAP_SETTER_WRAP(ColumnFamilyOptions, table_factory, PTableFactory)
 // openning the DB in this case.
 // Default: nullptr
 DEFINE_C_WRAP_SETTER_WRAP(ColumnFamilyOptions, merge_operator, PMergeOperator)
+
+// If non-nullptr, use the specified function to determine the
+// prefixes for keys.  These prefixes will be placed in the filter.
+// Depending on the workload, this can reduce the number of read-IOP
+// cost for scans when a prefix is passed via ReadOptions to
+// db.NewIterator().  For prefix filtering to work properly,
+// "prefix_extractor" and "comparator" must be such that the following
+// properties hold:
+//
+// 1) key.starts_with(prefix(key))
+// 2) Compare(prefix(key), key) <= 0.
+// 3) If Compare(k1, k2) <= 0, then Compare(prefix(k1), prefix(k2)) <= 0
+// 4) prefix(prefix(key)) == prefix(key)
+//
+// Default: nullptr
+DEFINE_C_WRAP_SETTER_WRAP(ColumnFamilyOptions, prefix_extractor, PConstSliceTransform)
 
 void ColumnFamilyOptions_set_compression_per_level(ColumnFamilyOptions_t* opt,
                                                    int* level_values,
@@ -111,6 +134,8 @@ DEFINE_C_WRAP_GETTER(DBOptions, create_if_missing, bool)
 DEFINE_C_WRAP_SETTER(DBOptions, create_if_missing, bool)
 DEFINE_C_WRAP_GETTER(DBOptions, error_if_exists, bool)
 DEFINE_C_WRAP_SETTER(DBOptions, error_if_exists, bool)
+// Allow the OS to mmap file for reading sst tables. Default: false
+DEFINE_C_WRAP_SETTER(DBOptions, allow_mmap_reads, bool)
 
 
 DEFINE_C_WRAP_CONSTRUCTOR(Options)

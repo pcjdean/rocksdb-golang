@@ -33,6 +33,15 @@ PTableFactory_t NewBlockBasedTableFactory(const BlockBasedTableOptions_t* table_
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(PlainTableOptions)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(PlainTableOptions)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(PlainTableOptions)
+// Setter methods for PlainTableOptions
+DEFINE_C_WRAP_SETTER_DEC(PlainTableOptions, user_key_len, uint32_t)
+DEFINE_C_WRAP_SETTER_DEC(PlainTableOptions, bloom_bits_per_key, int)
+DEFINE_C_WRAP_SETTER_DEC(PlainTableOptions, hash_table_ratio, double)
+DEFINE_C_WRAP_SETTER_DEC(PlainTableOptions, index_sparseness, size_t)
+DEFINE_C_WRAP_SETTER_DEC(PlainTableOptions, huge_page_tlb_size, size_t)
+DEFINE_C_WRAP_SETTER_DEC(PlainTableOptions, encoding_type, char)
+DEFINE_C_WRAP_SETTER_DEC(PlainTableOptions, full_scan_mode, bool)
+DEFINE_C_WRAP_SETTER_DEC(PlainTableOptions, store_index_in_file, bool)
 PTableFactory_t NewPlainTableFactory(const PlainTableOptions_t* table_options);
 
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(CuckooTableOptions)

@@ -16,13 +16,19 @@ DEFINE_C_WRAP_STRUCT(SliceTransform)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(SliceTransform)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(SliceTransform)
 
+DEFINE_C_WRAP_STRUCT(PConstSliceTransform)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(PConstSliceTransform)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(PConstSliceTransform)
 
 // Return a SliceTransform from a go SliceTransform interface
 SliceTransform_t NewSliceTransform(void* go_stf);
 
-SliceTransform_t GoNewFixedPrefixTransform(size_t prefix_len);
-SliceTransform_t GoNewCappedPrefixTransform(size_t cap_len);
-SliceTransform_t GoNewNoopTransform();
+// Return a SharedSliceTransform from a go SliceTransform interface
+PConstSliceTransform_t NewSharedSliceTransform(void* go_stf);
+
+PConstSliceTransform_t GoNewFixedPrefixTransform(size_t prefix_len);
+PConstSliceTransform_t GoNewCappedPrefixTransform(size_t cap_len);
+PConstSliceTransform_t GoNewNoopTransform();
 
 #ifdef __cplusplus
 }  /* end extern "C" */

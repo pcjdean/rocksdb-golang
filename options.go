@@ -142,6 +142,14 @@ func (cfopt *ColumnFamilyOptions) SetCompressionPerLevel(levelValues []int) {
 	C.ColumnFamilyOptions_set_compression_per_level(ccfopt, &cints[0], C.uint64ToSizeT(C.uint64_t(len(cints))))
 }
 
+// This is a factory that provides MemTableRep objects.
+// Default: a factory that provides a skip-list-based implementation of
+// MemTableRep.
+func (cfopt *ColumnFamilyOptions) SetMemtableFactory(mtf *MemTableRepFactory) {
+	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
+	C.ColumnFamilyOptions_set_memtable_factory(ccfopt, &mtf.mtf)
+}
+
 // This is a factory that provides TableFactory objects.
 // Default: a block-based table factory that provides a default
 // implementation of TableBuilder and TableReader with default
@@ -164,6 +172,25 @@ func (cfopt *ColumnFamilyOptions) SetTableFactory(tbf *TableFactory) {
 func (cfopt *ColumnFamilyOptions) SetMergeOperator(mop *MergeOperator) {
 	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
 	C.ColumnFamilyOptions_set_merge_operator(ccfopt, &mop.mop)
+}
+
+// If non-nullptr, use the specified function to determine the
+// prefixes for keys.  These prefixes will be placed in the filter.
+// Depending on the workload, this can reduce the number of read-IOP
+// cost for scans when a prefix is passed via ReadOptions to
+// db.NewIterator().  For prefix filtering to work properly,
+// "prefix_extractor" and "comparator" must be such that the following
+// properties hold:
+//
+// 1) key.starts_with(prefix(key))
+// 2) Compare(prefix(key), key) <= 0.
+// 3) If Compare(k1, k2) <= 0, then Compare(prefix(k1), prefix(k2)) <= 0
+// 4) prefix(prefix(key)) == prefix(key)
+//
+// Default: nullptr
+func (cfopt *ColumnFamilyOptions) SetPrefixExtractor(stf *SharedSliceTransform) {
+	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
+	C.ColumnFamilyOptions_set_prefix_extractor(ccfopt, &stf.stf)
 }
 
 // -------------------
@@ -272,6 +299,12 @@ func (dbopt *DBOptions) ErrorIfExists() bool {
 func (dbopt *DBOptions) SetErrorIfExists(val bool) {
 	var cdbopt *C.DBOptions_t = &dbopt.dbopt
 	C.DBOptions_set_error_if_exists(cdbopt, toCBool(val))
+}
+
+// Allow the OS to mmap file for reading sst tables. Default: false
+func (dbopt *DBOptions) SetAllowMmapReads(val bool) {
+	var cdbopt *C.DBOptions_t = &dbopt.dbopt
+	C.DBOptions_set_allow_mmap_reads(cdbopt, toCBool(val))
 }
 
 func (cdbopt *C.DBOptions_t) toDBOptions() (dbopt *DBOptions) {
