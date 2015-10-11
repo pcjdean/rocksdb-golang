@@ -47,6 +47,34 @@ PTableFactory_t NewPlainTableFactory(const PlainTableOptions_t* table_options);
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(CuckooTableOptions)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(CuckooTableOptions)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(CuckooTableOptions)
+// Setter methods for CuckooTableOptions
+// Determines the utilization of hash tables. Smaller values
+// result in larger hash tables with fewer collisions.
+DEFINE_C_WRAP_SETTER_DEC(CuckooTableOptions, hash_table_ratio, double)
+// A property used by builder to determine the depth to go to
+// to search for a path to displace elements in case of
+// collision. See Builder.MakeSpaceForKey method. Higher
+// values result in more efficient hash tables with fewer
+// lookups but take more time to build.
+DEFINE_C_WRAP_SETTER_DEC(CuckooTableOptions, max_search_depth, uint32_t)
+// In case of collision while inserting, the builder
+// attempts to insert in the next cuckoo_block_size
+// locations before skipping over to the next Cuckoo hash
+// function. This makes lookups more cache friendly in case
+// of collisions.
+DEFINE_C_WRAP_SETTER_DEC(CuckooTableOptions, cuckoo_block_size, uint32_t)
+// If this option is enabled, user key is treated as uint64_t and its value
+// is used as hash value directly. This option changes builder's behavior.
+// Reader ignore this option and behave according to what specified in table
+// property.
+DEFINE_C_WRAP_SETTER_DEC(CuckooTableOptions, identity_as_first_hash, bool)
+// If this option is set to true, module is used during hash calculation.
+// This often yields better space efficiency at the cost of performance.
+// If this optino is set to false, # of entries in table is constrained to be
+// power of two, and bit and is used to calculate hash, which is faster in
+// general.
+DEFINE_C_WRAP_SETTER_DEC(CuckooTableOptions, use_module_hash, bool)
+// Create a CuckooTableFactory
 PTableFactory_t NewCuckooTableFactory(const CuckooTableOptions_t* table_options);
 
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(PTableFactory)

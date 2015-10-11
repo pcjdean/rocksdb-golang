@@ -829,22 +829,19 @@ func TestCMain(t *testing.T) {
 	stat = DestroyDB(options, &dbname)
 	t.Logf("prefix: DestroyDB: status = %s", stat)
 
-	// StartPhase("cuckoo_options");
-	// {
-	// 	rocksdb_cuckoo_table_options_t* cuckoo_options;
-	// 	cuckoo_options = rocksdb_cuckoo_options_create();
-	// 	rocksdb_cuckoo_options_set_hash_ratio(cuckoo_options, 0.5);
-	// 	rocksdb_cuckoo_options_set_max_search_depth(cuckoo_options, 200);
-	// 	rocksdb_cuckoo_options_set_cuckoo_block_size(cuckoo_options, 10);
-	// 	rocksdb_cuckoo_options_set_identity_as_first_hash(cuckoo_options, 1);
-	// 	rocksdb_cuckoo_options_set_use_module_hash(cuckoo_options, 0);
-	// 	rocksdb_options_set_cuckoo_table_factory(options, cuckoo_options);
-
-	// 	db = rocksdb_open(options, dbname, &err);
-	// 	CheckNoError(err);
-
-	// 	rocksdb_cuckoo_options_destroy(cuckoo_options);
-	// }
+	t.Log("phase: cuckoo_options")
+	cuckoo_options := NewCuckooTableOptions()
+	cuckoo_options.SetHashTableRatio(0.5)
+	cuckoo_options.SetMaxSearchDepth(200)
+	cuckoo_options.SetCuckooBlockSize(10)
+	cuckoo_options.SetIdentityAsFirstHash(true)
+	cuckoo_options.SetUseModuleHash(false)
+	options.SetTableFactory(cuckoo_options.NewCuckooTableFactory())
+	db, stat, _ = Open(options, &dbname)
+	if !stat.Ok() {
+		t.Fatalf("prefix: err: open: stat = %s", stat)
+	}
+	cuckoo_options.Close()
 
 	// StartPhase("iterate_upper_bound");
 	// {

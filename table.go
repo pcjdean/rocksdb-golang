@@ -192,7 +192,7 @@ func (ptop *PlainTableOptions) SetStoreIndexInFile(store bool) {
 	C.PlainTableOptions_set_store_index_in_file(cptop, toCBool(store))
 }
 
-// Create default plain table factory.
+// Create plain table factory.
 func (ptop *PlainTableOptions) NewPlainTableFactory() *TableFactory {
 	var cptop *C.PlainTableOptions_t= &ptop.ptop
 	ctbf := C.NewPlainTableFactory(cptop)
@@ -202,12 +202,23 @@ func (ptop *PlainTableOptions) NewPlainTableFactory() *TableFactory {
 // Wrap go CuckooTableOptions
 type CuckooTableOptions struct {
 	ctop C.CuckooTableOptions_t
+	// true if ctop is deleted
+	closed bool
 }
 
 // Release resources
 func (ctop *CuckooTableOptions) finalize() {
-	var cctop *C.CuckooTableOptions_t= &ctop.ctop
-	C.DeleteCuckooTableOptionsT(cctop, toCBool(false))
+	if !ctop.closed {
+		ctop.closed = true
+		var cctop *C.CuckooTableOptions_t= &ctop.ctop
+		C.DeleteCuckooTableOptionsT(cctop, toCBool(false))
+	}
+}
+
+// Close the @ctop
+func (ctop *CuckooTableOptions) Close() {
+	runtime.SetFinalizer(ctop, nil)
+	ctop.finalize()
 }
 
 // C CuckooTableOptions to go CuckooTableOptions
@@ -215,6 +226,60 @@ func (cctop *C.CuckooTableOptions_t) toCuckooTableOptions() (ctop *CuckooTableOp
 	ctop = &CuckooTableOptions{ctop: *cctop}	
 	runtime.SetFinalizer(ctop, finalize)
 	return
+}
+
+// Setter methods for CuckooTableOptions
+// Determines the utilization of hash tables. Smaller values
+// result in larger hash tables with fewer collisions.
+func (ctop *CuckooTableOptions) SetHashTableRatio(ratio float64) {
+	var cctop *C.CuckooTableOptions_t= &ctop.ctop
+	C.CuckooTableOptions_set_hash_table_ratio(cctop, C.double(ratio))
+}
+
+// A property used by builder to determine the depth to go to
+// to search for a path to displace elements in case of
+// collision. See Builder.MakeSpaceForKey method. Higher
+// values result in more efficient hash tables with fewer
+// lookups but take more time to build.
+func (ctop *CuckooTableOptions) SetMaxSearchDepth(depth uint32) {
+	var cctop *C.CuckooTableOptions_t= &ctop.ctop
+	C.CuckooTableOptions_set_max_search_depth(cctop, C.uint32_t(depth))
+}
+
+// In case of collision while inserting, the builder
+// attempts to insert in the next cuckoo_block_size
+// locations before skipping over to the next Cuckoo hash
+// function. This makes lookups more cache friendly in case
+// of collisions.
+func (ctop *CuckooTableOptions) SetCuckooBlockSize(sz uint32) {
+	var cctop *C.CuckooTableOptions_t= &ctop.ctop
+	C.CuckooTableOptions_set_cuckoo_block_size(cctop, C.uint32_t(sz))
+}
+
+// If this option is enabled, user key is treated as uint64_t and its value
+// is used as hash value directly. This option changes builder's behavior.
+// Reader ignore this option and behave according to what specified in table
+// property.
+func (ctop *CuckooTableOptions) SetIdentityAsFirstHash(identity bool) {
+	var cctop *C.CuckooTableOptions_t= &ctop.ctop
+	C.CuckooTableOptions_set_identity_as_first_hash(cctop, toCBool(identity))
+}
+
+// If this option is set to true, module is used during hash calculation.
+// This often yields better space efficiency at the cost of performance.
+// If this optino is set to false, # of entries in table is constrained to be
+// power of two, and bit and is used to calculate hash, which is faster in
+// general.
+func (ctop *CuckooTableOptions) SetUseModuleHash(use bool) {
+	var cctop *C.CuckooTableOptions_t= &ctop.ctop
+	C.CuckooTableOptions_set_use_module_hash(cctop, toCBool(use))
+}
+
+// Create a cuckoo table factory.
+func (ctop *CuckooTableOptions) NewCuckooTableFactory() *TableFactory {
+	var cctop *C.CuckooTableOptions_t= &ctop.ctop
+	ctbf := C.NewCuckooTableFactory(cctop)
+	return ctbf.toTableFactory()
 }
 
 // Create default CuckooTableOptions
