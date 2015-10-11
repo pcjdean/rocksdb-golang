@@ -72,8 +72,8 @@ func ISliceTransformName(cstf unsafe.Pointer) *C.char {
 func ISliceTransformTransform(cstf unsafe.Pointer, src *C.Slice_t, soffset, slen *C.size_t) {
 	stf := InterfacesGet(cstf).(ISliceTransform)
 	offset, sz := stf.Transform(src.cToBytes(false))
-	*soffset = C.uint64ToSizeT(C.uint64_t(offset))
-	*slen = C.uint64ToSizeT(C.uint64_t(sz))
+	*soffset = C.size_t(offset)
+	*slen = C.size_t(sz)
 	return
 }
 
@@ -155,13 +155,13 @@ func NewSharedSliceTransform(itf ISliceTransform) (stf *SharedSliceTransform) {
 
 // Return a new SliceTransform that uses length of prefix.
 func NewFixedPrefixTransform(preflen uint64) (stf *SharedSliceTransform) {
-	cstf := C.GoNewFixedPrefixTransform(C.uint64ToSizeT(C.uint64_t(preflen)))
+	cstf := C.GoNewFixedPrefixTransform(C.size_t(preflen))
 	return cstf.toSliceTransform()
 }
 
 // Return a new SliceTransform that uses capped length of prefix.
 func NewCappedPrefixTransform(caplen uint64) (stf *SharedSliceTransform) {
-	cstf := C.GoNewCappedPrefixTransform(C.uint64ToSizeT(C.uint64_t(caplen)))
+	cstf := C.GoNewCappedPrefixTransform(C.size_t(caplen))
 	return cstf.toSliceTransform()
 }
 

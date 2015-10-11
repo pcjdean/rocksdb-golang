@@ -317,14 +317,4 @@ enum bool_t {
 
 
 
-#ifndef __cplusplus
-
-// Convert uint64_t to size_t
-static inline size_t uint64ToSizeT(uint64_t v)
-{
-    return (size_t)v;
-}
-
-#endif //  __cplusplus
-
 #endif //  GO_ROCKSDB_INCLUDE_TYPES_H_

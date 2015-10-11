@@ -106,7 +106,7 @@ func (cfopt *ColumnFamilyOptions) WriteBufferSize() uint64 {
 
 func (cfopt *ColumnFamilyOptions) SetWriteBufferSize(val uint64) {
 	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
-	C.ColumnFamilyOptions_set_write_buffer_size(ccfopt, C.uint64ToSizeT(C.uint64_t(val)))
+	C.ColumnFamilyOptions_set_write_buffer_size(ccfopt, C.size_t(val))
 }
 
 // different options for compression algorithms
@@ -139,7 +139,7 @@ func (cfopt *ColumnFamilyOptions) SetCompressionOptions(wBits int, level int, st
 func (cfopt *ColumnFamilyOptions) SetCompressionPerLevel(levelValues []int) {
 	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
 	cints := newCIntArrayFromArray(&levelValues)
-	C.ColumnFamilyOptions_set_compression_per_level(ccfopt, &cints[0], C.uint64ToSizeT(C.uint64_t(len(cints))))
+	C.ColumnFamilyOptions_set_compression_per_level(ccfopt, &cints[0], C.size_t(len(cints)))
 }
 
 // This is a factory that provides MemTableRep objects.

@@ -70,7 +70,7 @@ func (cmtf *C.PMemTableRepFactory_t) toMemTableRepFactory() (mtf *MemTableRepFac
 //     seeks with consecutive keys.
 func NewSkipListFactory (lookahead uint64) (mtf *MemTableRepFactory) {
 	var (
-		clookahead C.size_t =  C.uint64ToSizeT(C.uint64_t(lookahead))
+		clookahead C.size_t =  C.size_t(lookahead)
 	)
 	
 	cmtf := C.PMemTableRepFactoryNewSkipListFactory(clookahead)

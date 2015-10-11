@@ -81,14 +81,14 @@ func (ccstr *C.String_t) cToBytes(del bool) (str []byte) {
 func (ccstr *C.String_t) setBytes(str []byte) {
 	cstr := C.CString(string(str))
 	defer C.free(unsafe.Pointer(cstr))
-	C.StringSetCStr(ccstr, cstr, C.uint64ToSizeT(C.uint64_t(len(str))))
+	C.StringSetCStr(ccstr, cstr, C.size_t(len(str)))
 }
 
 // The caller is responsible for delete the returned cstr
 func newCStringFromString(str *string) (cstr *cString) {
 	var ccstr *C.char = C.CString(*str)
 	defer C.free(unsafe.Pointer(ccstr))
-	cstr = &cString{str: C.NewStringTRawArgs(ccstr, C.uint64ToSizeT(C.uint64_t(len(*str))))}
+	cstr = &cString{str: C.NewStringTRawArgs(ccstr, C.size_t(len(*str)))}
 	return
 }
 
@@ -148,7 +148,7 @@ func (cstrs *cStringPtrAry) toCArray() (ccstrs []C.String_t) {
 // Set the C string vector to bytes array @strs
 func (svc *C.StringVector_t) setBytesArray(strs [][]byte) {
 	for _, str := range strs {
-		C.StringVectorPushBack(svc, C.CString(string(str)), C.uint64ToSizeT(C.uint64_t(len(str))))
+		C.StringVectorPushBack(svc, C.CString(string(str)), C.size_t(len(str)))
 	}
 	return
 }

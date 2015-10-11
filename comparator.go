@@ -73,7 +73,7 @@ func IComparatorFindShortestSeparator(ccmp unsafe.Pointer, start *C.String_t, li
 	sep := cmp.FindShortestSeparator(start.cToBytes(false), limit.cToBytes(false))
 	if nil != sep {
 		val = C.CString(string(sep))
-		*sz =  C.uint64ToSizeT(C.uint64_t(len(sep)))
+		*sz =  C.size_t(len(sep))
 	}
 	return 
 }
@@ -85,7 +85,7 @@ func IComparatorFindShortSuccessor(ccmp unsafe.Pointer, key *C.String_t, sz *C.s
 	sep := cmp.FindShortSuccessor(key.cToBytes(false))
 	if nil != sep {
 		val = C.CString(string(sep))
-		*sz =  C.uint64ToSizeT(C.uint64_t(len(sep)))
+		*sz =  C.size_t(len(sep))
 	}
 	return 
 }
