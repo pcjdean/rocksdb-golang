@@ -190,7 +190,11 @@ func (cfopt *ColumnFamilyOptions) SetMergeOperator(mop *MergeOperator) {
 // Default: nullptr
 func (cfopt *ColumnFamilyOptions) SetPrefixExtractor(stf *SharedSliceTransform) {
 	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
-	C.ColumnFamilyOptions_set_prefix_extractor(ccfopt, &stf.stf)
+	var cstf *C.PConstSliceTransform_t = nil
+	if nil != stf {
+		cstf = &stf.stf
+	}
+	C.ColumnFamilyOptions_set_prefix_extractor(ccfopt, cstf)
 }
 
 // -------------------
@@ -354,11 +358,22 @@ func (copt *C.Options_t) toOptions() (opt *Options) {
 
 type WriteOptions struct {
 	wopt C.WriteOptions_t
+	// true if wopt is deleted
+	closed bool
 }
 
 func (wopt *WriteOptions) finalize() {
-	var cwopt *C.WriteOptions_t = &wopt.wopt
-	C.DeleteWriteOptionsT(cwopt, toCBool(false))
+	if !wopt.closed {
+		wopt.closed = true
+		var cwopt *C.WriteOptions_t = &wopt.wopt
+		C.DeleteWriteOptionsT(cwopt, toCBool(false))
+	}
+}
+
+// Close the @wopt
+func (wopt *WriteOptions) Close() {
+	runtime.SetFinalizer(wopt, nil)
+	wopt.finalize()
 }
 
 func NewWriteOptions() *WriteOptions {
@@ -379,13 +394,28 @@ func (wopt *WriteOptions) SetSync(val bool) {
 
 type ReadOptions struct {
 	ropt C.ReadOptions_t
+	// Keep snp from garbage collected
 	snp *Snapshot
+	// Keep slc from garbage collected
+	slc *cSlice
+	// true if ropt is deleted
+	closed bool
 }
 
 func (ropt *ReadOptions) finalize() {
-	ropt.SetSnapshot(nil)
-	var cropt *C.ReadOptions_t = &ropt.ropt
-	C.DeleteReadOptionsT(cropt, toCBool(false))
+	if !ropt.closed {
+		ropt.closed = true
+		ropt.SetSnapshot(nil)
+		ropt.SetIterateUpperBound(nil)
+		var cropt *C.ReadOptions_t = &ropt.ropt
+		C.DeleteReadOptionsT(cropt, toCBool(false))
+	}
+}
+
+// Close the @ropt
+func (ropt *ReadOptions) Close() {
+	runtime.SetFinalizer(ropt, nil)
+	ropt.finalize()
 }
 
 func NewReadOptions() *ReadOptions {
@@ -394,6 +424,11 @@ func NewReadOptions() *ReadOptions {
 	return ropt
 }
 
+// If "snapshot" is non-nullptr, read as of the supplied snapshot
+// (which must belong to the DB that is being read and which must
+// not have been released).  If "snapshot" is nullptr, use an impliicit
+// snapshot of the state at the beginning of this read operation.
+// Default: nullptr
 func (ropt *ReadOptions) SetSnapshot(snp *Snapshot) {
 	ropt.snp = snp
 	var (
@@ -407,6 +442,28 @@ func (ropt *ReadOptions) SetSnapshot(snp *Snapshot) {
 
 	C.ReadOptions_set_snapshot(cropt, csnp)
 }
+
+// "iterate_upper_bound" defines the extent upto which the forward iterator
+// can returns entries. Once the bound is reached, Valid() will be false.
+// "iterate_upper_bound" is exclusive ie the bound value is
+// not a valid entry.  If iterator_extractor is not null, the Seek target
+// and iterator_upper_bound need to have the same prefix.
+// This is because ordering is not guaranteed outside of prefix domain.
+// There is no lower bound on the iterator. If needed, that can be easily
+// implemented
+//
+// Default: nullptr
+func (ropt *ReadOptions) SetIterateUpperBound(upperbound []byte) {
+	var cropt *C.ReadOptions_t = &ropt.ropt
+	slc := newSliceFromBytes(upperbound)
+	if nil != ropt.slc {
+		ropt.slc.del()
+	}
+	ropt.slc = slc
+
+	C.ReadOptions_set_iterate_upper_bound(cropt, &slc.slc)
+}
+
 
 type FlushOptions struct {
 	fopt C.FlushOptions_t

@@ -295,9 +295,17 @@ enum bool_t {
 #define DEFINE_C_WRAP_SETTER_WRAP_DEC_R(x,y,z) void x##_set_##y(x##_t* ptr, z##_t* v)
 // Set non-pointer member of wrapped object to the wrapped raw object of v
 #define DEFINE_C_WRAP_SETTER_WRAP_BODY(x,y,z) {     \
-        if (ptr && GET_REP(ptr, x) && v)            \
+        if (ptr && GET_REP(ptr, x))            \
         {                                           \
-            GET_REP(ptr, x)->y = GET_REP_REF(v, z); \
+            if (v && GET_REP(v, z))                 \
+            {                                       \
+                GET_REP(ptr, x)->y = GET_REP_REF(v, z); \
+            }                                           \
+            else                                   \
+            {                                      \
+                z vz;                                 \
+                GET_REP(ptr, x)->y = vz;                \
+            }                                      \
         }                                           \
     } 
 
@@ -305,7 +313,14 @@ enum bool_t {
 #define DEFINE_C_WRAP_SETTER_PTR_WRAP_BODY(x,y,z) {     \
         if (ptr && GET_REP(ptr, x) && v)            \
         {                                           \
-            GET_REP(ptr, x)->y = GET_REP(v, z); \
+            if (v)                 \
+            {                                       \
+                GET_REP(ptr, x)->y = GET_REP(v, z); \
+            }                                           \
+            else                                   \
+            {                                      \
+                GET_REP(ptr, x)->y = NULL;                \
+            }                                      \
         }                                           \
     } 
 

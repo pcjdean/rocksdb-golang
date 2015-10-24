@@ -47,12 +47,23 @@ func (ctbf *C.PTableFactory_t) toTableFactory() (tbf *TableFactory) {
 // Wrap go BlockBasedTableOptions
 type BlockBasedTableOptions struct {
 	btop C.BlockBasedTableOptions_t
+	// true if btop is deleted
+	closed bool
 }
 
 // Release resources
 func (btop *BlockBasedTableOptions) finalize() {
-	var cbtop *C.BlockBasedTableOptions_t= &btop.btop
-	C.DeleteBlockBasedTableOptionsT(cbtop, toCBool(false))
+	if !btop.closed {
+		btop.closed = true
+		var cbtop *C.BlockBasedTableOptions_t= &btop.btop
+		C.DeleteBlockBasedTableOptionsT(cbtop, toCBool(false))
+	}
+}
+
+// Close the @btop
+func (btop *BlockBasedTableOptions) Close() {
+	runtime.SetFinalizer(btop, nil)
+	btop.finalize()
 }
 
 // C BlockBasedTableOptions to go BlockBasedTableOptions
@@ -97,12 +108,23 @@ func (btop *BlockBasedTableOptions) NewBlockBasedTableFactory() *TableFactory {
 // Wrap go PlainTableOptions
 type PlainTableOptions struct {
 	ptop C.PlainTableOptions_t
+	// true if ptop is deleted
+	closed bool
 }
 
 // Release resources
 func (ptop *PlainTableOptions) finalize() {
-	var cptop *C.PlainTableOptions_t= &ptop.ptop
-	C.DeletePlainTableOptionsT(cptop, toCBool(false))
+	if !ptop.closed {
+		ptop.closed = true
+		var cptop *C.PlainTableOptions_t= &ptop.ptop
+		C.DeletePlainTableOptionsT(cptop, toCBool(false))
+	}
+}
+
+// Close the @ptop
+func (ptop *PlainTableOptions) Close() {
+	runtime.SetFinalizer(ptop, nil)
+	ptop.finalize()
 }
 
 // C PlainTableOptions to go PlainTableOptions

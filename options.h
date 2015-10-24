@@ -99,6 +99,10 @@ DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS_DEC(ReadOptions, bool, bool)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(ReadOptions)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(ReadOptions)
 void ReadOptions_set_snapshot(ReadOptions_t* opt, const Snapshot_t* snap);
+// Get/Set methods
+// Set method for @iterate_upper_bound
+DEFINE_C_WRAP_SETTER_WRAP_DEC(ReadOptions, iterate_upper_bound, Slice)
+
 
 
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(WriteOptions)

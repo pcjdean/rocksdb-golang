@@ -150,6 +150,11 @@ DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(ReadOptions, bool, bool)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(ReadOptions)
 DEFINE_C_WRAP_DESTRUCTOR(ReadOptions)
 
+// If "snapshot" is non-nullptr, read as of the supplied snapshot
+// (which must belong to the DB that is being read and which must
+// not have been released).  If "snapshot" is nullptr, use an impliicit
+// snapshot of the state at the beginning of this read operation.
+// Default: nullptr
 void ReadOptions_set_snapshot(ReadOptions_t* opt, const Snapshot_t* snap)
 {
     assert(opt != NULL);
@@ -157,6 +162,17 @@ void ReadOptions_set_snapshot(ReadOptions_t* opt, const Snapshot_t* snap)
     GET_REP(opt, ReadOptions)->snapshot = (snap ? GET_REP(snap, Snapshot) : nullptr);
 }
 
+// "iterate_upper_bound" defines the extent upto which the forward iterator
+// can returns entries. Once the bound is reached, Valid() will be false.
+// "iterate_upper_bound" is exclusive ie the bound value is
+// not a valid entry.  If iterator_extractor is not null, the Seek target
+// and iterator_upper_bound need to have the same prefix.
+// This is because ordering is not guaranteed outside of prefix domain.
+// There is no lower bound on the iterator. If needed, that can be easily
+// implemented
+//
+// Default: nullptr
+DEFINE_C_WRAP_SETTER_PTR_WRAP(ReadOptions, iterate_upper_bound, Slice)
 
 DEFINE_C_WRAP_CONSTRUCTOR(WriteOptions)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(WriteOptions)

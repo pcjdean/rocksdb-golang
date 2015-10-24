@@ -843,76 +843,70 @@ func TestCMain(t *testing.T) {
 	}
 	cuckoo_options.Close()
 
-	// StartPhase("iterate_upper_bound");
-	// {
-	// 	// Create new empty database
-	// 	rocksdb_close(db);
-	// 	rocksdb_destroy_db(options, dbname, &err);
-	// 	CheckNoError(err);
+	t.Log("phase: iterate_upper_bound")
+	// Create new empty database
+	db.Close()
+	stat = DestroyDB(options, &dbname)
+	if !stat.Ok() {
+		t.Fatalf("iterate_upper_bound: DestroyDB: status = %s", stat)
+	}
+	options.SetPrefixExtractor(nil)
+	db, stat, _ = Open(options, &dbname)
+	if !stat.Ok() {
+		t.Fatalf("iterate_upper_bound: err: open: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("a"), []byte("0"))
+	if !stat.Ok() {
+		t.Fatalf("iterate_upper_bound:err: put err: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("foo"), []byte("bar"))
+	if !stat.Ok() {
+		t.Fatalf("iterate_upper_bound:err: put err: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("foo1"), []byte("bar1"))
+	if !stat.Ok() {
+		t.Fatalf("iterate_upper_bound:err: put err: stat = %s", stat)
+	}
+	stat = db.Put(woptions, []byte("g1"), []byte("0"))
+	if !stat.Ok() {
+		t.Fatalf("iterate_upper_bound:err: put err: stat = %s", stat)
+	}
 
-	// 	rocksdb_options_set_prefix_extractor(options, NULL);
-	// 	db = rocksdb_open(options, dbname, &err);
-	// 	CheckNoError(err);
+	// testing basic case with no iterate_upper_bound and no prefix_extractor
+	ropts.SetIterateUpperBound(nil)
+	iter = db.NewIterator(ropts)
+	iter.Seek([]byte("foo"))
+	checkCondition(t, iter.Valid())
+	checkIter(t, iter, "foo", "bar")
+	iter.Next()
+	checkIter(t, iter, "foo1", "bar1")
+	iter.Next()
+	checkIter(t, iter, "g1", "0")
+	iter.Close()
 
-	// 	rocksdb_put(db, woptions, "a",    1, "0",    1, &err); CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "foo",  3, "bar",  3, &err); CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "foo1", 4, "bar1", 4, &err); CheckNoError(err);
-	// 	rocksdb_put(db, woptions, "g1",   2, "0",    1, &err); CheckNoError(err);
+	// testing iterate_upper_bound and forward iterator
+	// to make sure it stops at bound
+	// iterate_upper_bound points beyond the last expected entry
+	ropts.SetIterateUpperBound([]byte("foo2"))
+	iter = db.NewIterator(ropts)
+	iter.Seek([]byte("foo"))
+	checkCondition(t, iter.Valid())
+	checkIter(t, iter, "foo", "bar")
+	iter.Next()
+	checkIter(t, iter, "foo1", "bar1")
+	iter.Next()
+	// should stop here...
+	checkCondition(t, !iter.Valid())
+	iter.Close()
 
-	// 	// testing basic case with no iterate_upper_bound and no prefix_extractor
-	// 	{
-	// 		rocksdb_readoptions_set_iterate_upper_bound(roptions, NULL, 0);
-	// 		rocksdb_iterator_t* iter = rocksdb_create_iterator(db, roptions);
-
-	// 		rocksdb_iter_seek(iter, "foo", 3);
-	// 		CheckCondition(rocksdb_iter_valid(iter));
-	// 		CheckIter(iter, "foo", "bar");
-
-	// 		rocksdb_iter_next(iter);
-	// 		CheckCondition(rocksdb_iter_valid(iter));
-	// 		CheckIter(iter, "foo1", "bar1");
-
-	// 		rocksdb_iter_next(iter);
-	// 		CheckCondition(rocksdb_iter_valid(iter));
-	// 		CheckIter(iter, "g1", "0");
-
-	// 		rocksdb_iter_destroy(iter);
-	// 	}
-
-	// 	// testing iterate_upper_bound and forward iterator
-	// 	// to make sure it stops at bound
-	// 	{
-	// 		// iterate_upper_bound points beyond the last expected entry
-	// 		rocksdb_readoptions_set_iterate_upper_bound(roptions, "foo2", 4);
-
-	// 		rocksdb_iterator_t* iter = rocksdb_create_iterator(db, roptions);
-
-	// 		rocksdb_iter_seek(iter, "foo", 3);
-	// 		CheckCondition(rocksdb_iter_valid(iter));
-	// 		CheckIter(iter, "foo", "bar");
-
-	// 		rocksdb_iter_next(iter);
-	// 		CheckCondition(rocksdb_iter_valid(iter));
-	// 		CheckIter(iter, "foo1", "bar1");
-
-	// 		rocksdb_iter_next(iter);
-	// 		// should stop here...
-	// 		CheckCondition(!rocksdb_iter_valid(iter));
-
-	// 		rocksdb_iter_destroy(iter);
-	// 	}
-	// }
-
-	// StartPhase("cleanup");
-	// rocksdb_close(db);
-	// rocksdb_options_destroy(options);
-	// rocksdb_block_based_options_destroy(table_options);
-	// rocksdb_readoptions_destroy(roptions);
-	// rocksdb_writeoptions_destroy(woptions);
-	// rocksdb_cache_destroy(cache);
+	t.Log("phase: cleanup")
+	db.Close()
+	options.Close()
+	table_options.Close()
+	ropts.Close()
+	woptions.Close()
+	cache.Close()
 	// Kepp cmp from being garbage collected eariler
 	cmp.Close()
 	// rocksdb_env_destroy(env);
-
-	// fprintf(stderr, "PASS\n");
 }

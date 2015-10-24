@@ -29,12 +29,23 @@ import (
 // Wrap go cache
 type Cache struct {
 	cache C.PCache_t
+	// true if cache is deleted
+	closed bool
 }
 
 // Release resources
 func (cache *Cache) finalize() {
-	var ccache *C.PCache_t= &cache.cache
-	C.DeletePCacheT(ccache, toCBool(false))
+	if !cache.closed {
+		cache.closed = true
+		var ccache *C.PCache_t= &cache.cache
+		C.DeletePCacheT(ccache, toCBool(false))
+	}
+}
+
+// Close the @cache
+func (cache *Cache) Close() {
+	runtime.SetFinalizer(cache, nil)
+	cache.finalize()
 }
 
 // C cache to go cache
