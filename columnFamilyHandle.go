@@ -18,12 +18,14 @@ type ColumnFamilyHandle struct {
 	cfh C.ColumnFamilyHandle_t
 	// The cfh is deleted
 	closed bool
+	db *DB // make sure the ColumnFamilyHandle is deleted before the db
 }
 
 // Release the column family
 func (cfh *ColumnFamilyHandle) finalize() {
 	if !cfh.closed {
 		cfh.closed = true
+		cfh.db.removeFromCfhmap(cfh)
 		var ccfh *C.ColumnFamilyHandle_t = &cfh.cfh
 		C.DeleteColumnFamilyHandleT(ccfh, toCBool(false))
 	}
@@ -49,18 +51,20 @@ func (cfh *ColumnFamilyHandle) GetID() uint32 {
 }
 
 // C ColumnFamilyHandle_t to go ColumnFamilyHandle
-func (ccfh *C.ColumnFamilyHandle_t) toColumnFamilyHandle() (cfh *ColumnFamilyHandle) {
-	cfh = &ColumnFamilyHandle{cfh: *ccfh}	
+func (ccfh *C.ColumnFamilyHandle_t) toColumnFamilyHandle(db *DB) (cfh *ColumnFamilyHandle) {
+	cfh = &ColumnFamilyHandle{cfh: *ccfh, db: db}	
+	db.addToCfhmap(cfh)
 	runtime.SetFinalizer(cfh, finalize)
 	return
 }
 
 // C array of ColumnFamilyHandle_t to go array of ColumnFamilyHandle
-func newColumnFamilyHandleArrayFromCArray(cfh *C.ColumnFamilyHandle_t, sz uint) (cfhs []*ColumnFamilyHandle) {
+func newColumnFamilyHandleArrayFromCArray(db *DB, cfh *C.ColumnFamilyHandle_t, sz uint) (cfhs []*ColumnFamilyHandle) {
 	defer C.DeleteColumnFamilyHandleTArray(cfh)
 	cfhs = make([]*ColumnFamilyHandle, sz)
 	for i := uint(0); i < sz; i++ {
-		cfhs[i] = &ColumnFamilyHandle{cfh: (*[arrayDimenMax]C.ColumnFamilyHandle_t)(unsafe.Pointer(cfh))[i]}
+		cfhs[i] = &ColumnFamilyHandle{cfh: (*[arrayDimenMax]C.ColumnFamilyHandle_t)(unsafe.Pointer(cfh))[i], db: db}
+		db.addToCfhmap(cfhs[i])
 		runtime.SetFinalizer(cfhs[i], finalize)
 	}
 	return

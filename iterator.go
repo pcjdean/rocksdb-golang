@@ -39,6 +39,7 @@ type Iterator struct {
 func (it *Iterator) finalize() {
 	if !it.closed {
 		it.closed = true
+		it.db.removeFromItmap(it)
 		var cit *C.Iterator_t = &it.it
 		C.DeleteIteratorT(cit, toCBool(false))
 	}
@@ -53,6 +54,7 @@ func (it *Iterator) Close() {
 // Iterator of C to go iterator
 func (cit *C.Iterator_t) toIterator(db *DB) (it *Iterator) {
 	it = &Iterator{it: *cit, mutex: sync.Mutex{}, db: db}	
+	db.addToItmap(it)
 	runtime.SetFinalizer(it, finalize)
 	return
 }
@@ -63,6 +65,7 @@ func newIteratorArrayFromCArray(cit *C.Iterator_t, sz uint, db *DB) (its []*Iter
 	its = make([]*Iterator, sz)
 	for i := uint(0); i < sz; i++ {
 		its[i] = &Iterator{it: (*[arrayDimenMax]C.Iterator_t)(unsafe.Pointer(cit))[i], mutex: sync.Mutex{}, db: db}
+		db.addToItmap(its[i])
 		runtime.SetFinalizer(its[i], finalize)
 	}
 	return

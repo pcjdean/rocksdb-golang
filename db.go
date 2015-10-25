@@ -13,6 +13,12 @@ import "C"
 
 import (
 	"runtime"
+	"sync"
+)
+
+const (
+	// Initial map size for reference maps
+	initialMapSize int = 20
 )
 
 type TablePropertiesCollection struct {
@@ -156,12 +162,71 @@ type DB struct {
 	db C.DB_t
 	// The db is deleted
 	closed bool
+	// Map of ColumnFamilyHandles to close before the db is closed
+	cfhmap map[*ColumnFamilyHandle]bool
+	// Map of Iterators to close before the db is closed
+	itmap map[*Iterator]bool
+	// Mutext to protect cfhmap
+	cfhmapmtx sync.Mutex
+	// Mutext to protect itmap
+	itmapmtx sync.Mutex
+}
+
+// Return a default DB
+func newDB() (db *DB) {
+	db = &DB{cfhmapmtx: sync.Mutex{}, itmapmtx: sync.Mutex{}}
+	return 
+}
+
+// Add cfh to cfhmap
+func (db *DB) addToCfhmap(cfh *ColumnFamilyHandle) {
+	defer db.cfhmapmtx.Unlock()
+	db.cfhmapmtx.Lock()
+	if nil == db.cfhmap {
+		db.cfhmap = make(map[*ColumnFamilyHandle]bool, initialMapSize)
+	}
+	db.cfhmap[cfh] = true
+}
+
+// Remove cfh from cfhmap
+func (db *DB) removeFromCfhmap(cfh *ColumnFamilyHandle) {
+	defer db.cfhmapmtx.Unlock()
+	db.cfhmapmtx.Lock()
+	delete(db.cfhmap, cfh)
+}
+
+// Add it to itmap
+func (db *DB) addToItmap(it *Iterator) {
+	defer db.itmapmtx.Unlock()
+	db.itmapmtx.Lock()
+	if nil == db.itmap {
+		db.itmap = make(map[*Iterator]bool, initialMapSize)
+	}
+	db.itmap[it] = true
+}
+
+// Remove it from itmap
+func (db *DB) removeFromItmap(it *Iterator) {
+	defer db.itmapmtx.Unlock()
+	db.itmapmtx.Lock()
+	delete(db.itmap, it)
 }
 
 // Release the @db
 func (db *DB) finalize() {
 	if !db.closed {
 		db.closed = true
+
+		// Close all the opened ColumnFamilyHandles 
+		for k, _ := range db.cfhmap {
+			k.Close()
+		}
+
+		// Close all the opened Iterators 
+		for k, _ := range db.itmap {
+			k.Close()
+		}
+
 		var cdb *C.DB_t = &db.db
 		C.DeleteDBT(cdb, toCBool(false))
 	}
@@ -192,7 +257,7 @@ func (db *DB) Close() {
 // as column_families --- handles[i] will be a handle that you
 // will use to operate on column family column_family[i]
 func Open(options *Options, name *string, cfds ...*ColumnFamilyDescriptor) (db *DB, stat *Status, cfhs []*ColumnFamilyHandle) {
-	db = &DB{}
+	db = newDB()
 	rstr := newCStringFromString(name)
 	defer rstr.del()
 
@@ -217,7 +282,7 @@ func Open(options *Options, name *string, cfds ...*ColumnFamilyDescriptor) (db *
 		cstat := C.DBOpenWithColumnFamilies(opt, cstr, &ccfds[0], C.int(len(ccfds)), &cfh, cdb)
 		stat = cstat.toStatus()
 		if stat.Ok() {
-			cfhs = newColumnFamilyHandleArrayFromCArray(cfh, uint(len(ccfds)))
+			cfhs = newColumnFamilyHandleArrayFromCArray(db, cfh, uint(len(ccfds)))
 		}
 	} else {
 		cstat := C.DBOpen(opt, cstr, cdb)
@@ -249,7 +314,7 @@ func Open(options *Options, name *string, cfds ...*ColumnFamilyDescriptor) (db *
 // Not supported in ROCKSDB_LITE, in which case the function will
 // return Status_t::NotSupported.
 func OpenForReadOnly(options *Options, name *string, cfds ...interface{}) (db *DB, cfhs []*ColumnFamilyHandle, stat *Status) {
-	db = &DB{}
+	db = newDB()
 	rstr := newCStringFromString(name)
 	defer rstr.del()
 
@@ -276,7 +341,7 @@ func OpenForReadOnly(options *Options, name *string, cfds ...interface{}) (db *D
 		cstat := C.DBOpenForReadOnlyWithColumnFamilies(opt, cstr, &ccfds[0], C.int(cfdlen), &cfh, cdb, cflg)
 		stat = cstat.toStatus()
 		if stat.Ok() && cfdlen > 0 {
-			cfhs = newColumnFamilyHandleArrayFromCArray(cfh, uint(cfdlen))
+			cfhs = newColumnFamilyHandleArrayFromCArray(db, cfh, uint(cfdlen))
 		}
 	} else {
 		cstat := C.DBOpenForReadOnly(opt, cstr, cdb, cflg)
@@ -332,7 +397,7 @@ func (db *DB) CreateColumnFamily(options *ColumnFamilyOptions, colfname *string)
 	cstat := C.DBCreateColumnFamily(cdb, opt, ccstr, &ccfd)
 	stat = cstat.toStatus()
 	if stat.Ok() {
-		cfd = ccfd.toColumnFamilyHandle()
+		cfd = ccfd.toColumnFamilyHandle(db)
 	}
 	return
 }
@@ -1216,7 +1281,7 @@ func (db *DB) DefaultColumnFamily() (cfh *ColumnFamilyHandle) {
 		cdb *C.DB_t = &db.db
 		ccfh C.ColumnFamilyHandle_t = C.DBDefaultColumnFamily(cdb)
 	)
-	cfh = ccfh.toColumnFamilyHandle()
+	cfh = ccfh.toColumnFamilyHandle(db)
 	return
 }
 
