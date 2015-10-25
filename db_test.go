@@ -311,14 +311,14 @@ func TestCMain(t *testing.T) {
 	
 	icmp := &testComparator{t: t}
 	cmp := NewComparator(icmp)
-	// env = rocksdb_create_default_env();
+	env := NewEnvDefault();
 	cache := NewLRUCache(100000)
 
 	options := NewOptions()
 
 	options.SetComparator(cmp)
 	options.SetErrorIfExists(true)
-	// rocksdb_options_set_env(options, env);
+	options.SetEnv(env)
 	// rocksdb_options_set_info_log(options, NULL);
 	options.SetWriteBufferSize(100000)
 	// rocksdb_options_set_paranoid_checks(options, 1);
@@ -368,40 +368,44 @@ func TestCMain(t *testing.T) {
 	}
 	db.checkGet(t, ropts, []byte("foo"), []byte("hello"))
 
-	// StartPhase("backup_and_restore");
-	// {
-	// 	rocksdb_destroy_db(options, dbbackupname, &err);
-	// 	CheckNoError(err);
-
-	// 	rocksdb_backup_engine_t *be = rocksdb_backup_engine_open(options, dbbackupname, &err);
-	// 	CheckNoError(err);
-
-	// 	rocksdb_backup_engine_create_new_backup(be, db, &err);
-	// 	CheckNoError(err);
-
-	// 	rocksdb_delete(db, woptions, "foo", 3, &err);
-	// 	CheckNoError(err);
-
-	// 	rocksdb_close(db);
-
-	// 	rocksdb_destroy_db(options, dbname, &err);
-	// 	CheckNoError(err);
-
-	// 	rocksdb_restore_options_t *restore_options = rocksdb_restore_options_create();
-	// 	rocksdb_restore_options_set_keep_log_files(restore_options, 0);
-	// 	rocksdb_backup_engine_restore_db_from_latest_backup(be, dbname, dbname, restore_options, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_restore_options_destroy(restore_options);
-
-	// 	rocksdb_options_set_error_if_exists(options, 0);
-	// 	db = rocksdb_open(options, dbname, &err);
-	// 	CheckNoError(err);
-	// 	rocksdb_options_set_error_if_exists(options, 1);
-
-	// 	CheckGet(db, roptions, "foo", "hello");
-
-	// 	rocksdb_backup_engine_close(be);
-	// }
+	t.Log("phase: backup_and_restore")
+	stat = DestroyDB(options, &dbbackupname)
+	if !stat.Ok() {
+		t.Fatalf("backup_and_restore: DestroyDB: status = %s", stat)
+	}
+	var be *BackupEngine
+	be, stat = BackupEngineOpen(options.Env(), NewBackupableDBOptions(&dbbackupname))
+	if !stat.Ok() {
+		t.Fatalf("backup_and_restore: BackupEngineOpen: status = %s", stat)
+	}
+	stat = be.CreateNewBackup(db)
+	if !stat.Ok() {
+		t.Fatalf("backup_and_restore: CreateNewBackup: status = %s", stat)
+	}
+	stat = db.Delete(woptions, []byte("foo"))
+	if !stat.Ok() {
+		t.Fatalf("backup_and_restore: Delete: status = %s", stat)
+	}
+	db.Close()
+	stat = DestroyDB(options, &dbname)
+	if !stat.Ok() {
+		t.Fatalf("backup_and_restore: dbname - DestroyDB: status = %s", stat)
+	}
+	restore_options := NewRestoreOptions()
+	restore_options.SetKeepLogFile(false)
+	stat = be.RestoreDBFromLatestBackup(&dbname, &dbname, restore_options)
+	if !stat.Ok() {
+		t.Fatalf("backup_and_restore: RestoreDBFromLatestBackup: status = %s", stat)
+	}
+	restore_options.Close()
+	options.SetErrorIfExists(false);
+	db, stat, _ = Open(options, &dbname)
+	if !stat.Ok() {
+		t.Fatalf("err: backup_and_restore: open: stat = %s", stat)
+	}
+	options.SetErrorIfExists(true);
+	db.checkGet(t, ropts, []byte("foo"), []byte("hello"))
+	be.Close()
 
 	t.Log("phase: compactall")
 	stat = db.CompactRange(nil, nil)

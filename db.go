@@ -1166,7 +1166,8 @@ func (db *DB) GetEnv() (env *Env) {
 		cdb *C.DB_t = &db.db
 		cenv C.Env_t = C.DBGetEnv(cdb)
 	)
-	env = cenv.toEnv()
+	// The wrapped Env is not deleted by garbage collector
+	env = cenv.toEnv(false)
 	return
 }
 

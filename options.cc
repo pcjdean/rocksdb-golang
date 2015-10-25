@@ -136,6 +136,11 @@ DEFINE_C_WRAP_GETTER(DBOptions, error_if_exists, bool)
 DEFINE_C_WRAP_SETTER(DBOptions, error_if_exists, bool)
 // Allow the OS to mmap file for reading sst tables. Default: false
 DEFINE_C_WRAP_SETTER(DBOptions, allow_mmap_reads, bool)
+// Use the specified object to interact with the environment,
+// e.g. to read/write files, schedule background work, etc.
+// Default: Env::Default()
+DEFINE_C_WRAP_SETTER_PTR_WRAP(DBOptions, env, Env)
+DEFINE_C_WRAP_GETTER_WRAP(DBOptions, env, Env)
 
 
 DEFINE_C_WRAP_CONSTRUCTOR(Options)

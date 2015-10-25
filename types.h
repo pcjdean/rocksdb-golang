@@ -268,9 +268,27 @@ enum bool_t {
 #define DEFINE_C_WRAP_GETTER_DEC(x,y,z) DEFINE_C_WRAP_GETTER_DEC_R(x,y,z);
 #define DEFINE_C_WRAP_GETTER(x,y,z) DEFINE_C_WRAP_GETTER_DEC_R(x,y,z) \
     DEFINE_C_WRAP_GETTER_BODY(x,y,z)
-// Get the member y of x, cast to z
-#define DEFINE_C_WRAP_GETTER_CAST(x,y,z) DEFINE_C_WRAP_GETTER_DEC_R(x,y,z) \
-    DEFINE_C_WRAP_GETTER_BODY(x,y,z)
+
+
+
+// Get the member y of x, in wrapped type z
+#define DEFINE_C_WRAP_GETTER_WRAP_DEC_R(x,y,z) z##_t x##_get_##y(x##_t* ptr)
+#define DEFINE_C_WRAP_GETTER_WRAP_BODY(x,y,z) { \
+        z##_t wrap_t;                           \
+            if (ptr && GET_REP(ptr, x))         \
+        {                                       \
+            wrap_t.rep = (void*)(GET_REP(ptr, x)->y);   \
+        }                                       \
+        else                                    \
+        {                                       \
+            wrap_t.rep = nullptr;               \
+        }                                       \
+        return wrap_t;                          \
+    } 
+
+#define DEFINE_C_WRAP_GETTER_WRAP_DEC(x,y,z) DEFINE_C_WRAP_GETTER_WRAP_DEC_R(x,y,z);
+#define DEFINE_C_WRAP_GETTER_WRAP(x,y,z) DEFINE_C_WRAP_GETTER_WRAP_DEC_R(x,y,z) \
+    DEFINE_C_WRAP_GETTER_WRAP_BODY(x,y,z)
 
 
 

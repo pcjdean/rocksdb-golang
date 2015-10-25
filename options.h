@@ -18,6 +18,7 @@ using namespace rocksdb;
 #include "mergeOperator.h"
 #include "sliceTransform.h"
 #include "memtablerep.h"
+#include "env.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,6 +82,9 @@ DEFINE_C_WRAP_GETTER_DEC(DBOptions, error_if_exists, bool)
 DEFINE_C_WRAP_SETTER_DEC(DBOptions, error_if_exists, bool)
 // Setter method for mmap reads
 DEFINE_C_WRAP_SETTER_DEC(DBOptions, allow_mmap_reads, bool)
+// Get/Set methods for @env
+DEFINE_C_WRAP_SETTER_WRAP_DEC(DBOptions, env, Env)
+DEFINE_C_WRAP_GETTER_WRAP_DEC(DBOptions, env, Env)
 
 
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(Options)

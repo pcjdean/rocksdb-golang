@@ -305,6 +305,21 @@ func (dbopt *DBOptions) SetErrorIfExists(val bool) {
 	C.DBOptions_set_error_if_exists(cdbopt, toCBool(val))
 }
 
+// Use the specified object to interact with the environment,
+// e.g. to read/write files, schedule background work, etc.
+// Default: Env::Default()
+func (dbopt *DBOptions) Env() (env *Env) {
+	var cdbopt *C.DBOptions_t = &dbopt.dbopt
+	cenv := C.DBOptions_get_env(cdbopt)
+	// The wrapped Env is not deleted by garbage collector
+	return cenv.toEnv(false)
+}
+
+func (dbopt *DBOptions) SetEnv(env *Env) {
+	var cdbopt *C.DBOptions_t = &dbopt.dbopt
+	C.DBOptions_set_env(cdbopt, &env.env)
+}
+
 // Allow the OS to mmap file for reading sst tables. Default: false
 func (dbopt *DBOptions) SetAllowMmapReads(val bool) {
 	var cdbopt *C.DBOptions_t = &dbopt.dbopt

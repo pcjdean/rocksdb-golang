@@ -44,11 +44,25 @@ func (env *Env) finalize() {
 	C.DeleteEnvT(cenv, toCBool(false))
 }
 
-// C env to go env
-func (cenv *C.Env_t) toEnv() (env *Env) {
-	env = &Env{env: *cenv}	
-	runtime.SetFinalizer(env, finalize)
+// C env to go env. The returned @env will be garbage collected 
+// if @del is true.
+func (cenv *C.Env_t) toEnv(del bool) (env *Env) {
+	env = &Env{env: *cenv}
+	if del {	
+		runtime.SetFinalizer(env, finalize)
+	}
 	return
+}
+
+// Return a default environment suitable for the current operating
+// system.  Sophisticated users may wish to provide their own Env
+// implementation instead of relying on this default environment.
+//
+// The result of Default() belongs to rocksdb and must never be deleted.
+func NewEnvDefault() (env *Env) {
+	cenv := C.NewEnvDefault()
+	// The wrapped Env is not deleted by garbage collector
+	return cenv.toEnv(false)
 }
 
 // Wrap go Logger

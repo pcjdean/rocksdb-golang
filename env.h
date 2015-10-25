@@ -14,6 +14,12 @@ extern "C" {
 DEFINE_C_WRAP_STRUCT(Env)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(Env)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(Env)
+// Return a default environment suitable for the current operating
+// system.  Sophisticated users may wish to provide their own Env
+// implementation instead of relying on this default environment.
+//
+// The result of Default() belongs to rocksdb and must never be deleted.
+Env_t NewEnvDefault();
 
 DEFINE_C_WRAP_STRUCT(Logger)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(Logger)
