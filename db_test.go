@@ -319,10 +319,10 @@ func TestCMain(t *testing.T) {
 	options.SetComparator(cmp)
 	options.SetErrorIfExists(true)
 	options.SetEnv(env)
-	// rocksdb_options_set_info_log(options, NULL);
+	options.SetInfoLog(NewPLoggerDefault())
 	options.SetWriteBufferSize(100000)
-	// rocksdb_options_set_paranoid_checks(options, 1);
-	// rocksdb_options_set_max_open_files(options, 10);
+	options.SetParanoidChecks(true)
+	options.SetMaxOpenFiles(10)
 	table_options := NewBlockBasedTableOptions()
 	table_options.SetBlockCache(cache)
 	options.SetTableFactory(table_options.NewBlockBasedTableFactory())
@@ -354,8 +354,8 @@ func TestCMain(t *testing.T) {
 	t.Log("phase: get")
 	ropts := NewReadOptions()
 
-	// rocksdb_readoptions_set_verify_checksums(roptions, 1);
-	// rocksdb_readoptions_set_fill_cache(roptions, 0);
+	ropts.SetVerifyChecksums(true)
+	ropts.SetFillCache(false)
 
 	db.checkGet(t, ropts, []byte("foo"), nil)
 
@@ -910,7 +910,6 @@ func TestCMain(t *testing.T) {
 	ropts.Close()
 	woptions.Close()
 	cache.Close()
-	// Kepp cmp from being garbage collected eariler
+	// Keep cmp from being garbage collected eariler
 	cmp.Close()
-	// rocksdb_env_destroy(env);
 }

@@ -39,6 +39,11 @@ void LoggerWarn(Logger_t* info_log, const char* msg);
 void LoggerError(Logger_t* info_log, const char* msg);
 void LoggerFatal(Logger_t* info_log, const char* msg);
 
+DEFINE_C_WRAP_STRUCT(PLogger)
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(PLogger)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(PLogger)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(PLogger)
+
 #ifdef __cplusplus
 }  /* end extern "C" */
 #endif

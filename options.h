@@ -85,6 +85,12 @@ DEFINE_C_WRAP_SETTER_DEC(DBOptions, allow_mmap_reads, bool)
 // Get/Set methods for @env
 DEFINE_C_WRAP_SETTER_WRAP_DEC(DBOptions, env, Env)
 DEFINE_C_WRAP_GETTER_WRAP_DEC(DBOptions, env, Env)
+// Get/Set methods for @info_log
+DEFINE_C_WRAP_SETTER_WRAP_DEC(DBOptions, info_log, PLogger)
+// Get/Set methods for @paranoid_checks
+DEFINE_C_WRAP_SETTER_DEC(DBOptions, paranoid_checks, bool)
+// Get/Set methods for @max_open_files
+DEFINE_C_WRAP_SETTER_DEC(DBOptions, max_open_files, int)
 
 
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(Options)
@@ -106,6 +112,10 @@ void ReadOptions_set_snapshot(ReadOptions_t* opt, const Snapshot_t* snap);
 // Get/Set methods
 // Set method for @iterate_upper_bound
 DEFINE_C_WRAP_SETTER_WRAP_DEC(ReadOptions, iterate_upper_bound, Slice)
+// Get/Set methods for @verify_checksums
+DEFINE_C_WRAP_SETTER_DEC(ReadOptions, verify_checksums, bool)
+// Get/Set methods for @fill_cache
+DEFINE_C_WRAP_SETTER_DEC(ReadOptions, fill_cache, bool)
 
 
 

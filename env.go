@@ -135,3 +135,31 @@ func (log *Logger) Fatal(format string, a ...interface{}) {
 	defer C.free(unsafe.Pointer(str))
 	C.LoggerFatal(&log.log, str)
 }
+
+// Wrap go PLogger
+type PLogger struct {
+	plog C.PLogger_t
+}
+
+// Release resources
+func (plog *PLogger) finalize() {
+	var cplog *C.PLogger_t = &plog.plog
+	C.DeletePLoggerT(cplog, toCBool(false))
+}
+
+// C plogger to go plogger. Delete the underlying c++ wrap object
+// if del is true. 
+func (cplog *C.PLogger_t) toPLogger(del bool) (plog *PLogger) {
+	plog = &PLogger{plog: *cplog}
+	if del {	
+		runtime.SetFinalizer(plog, finalize)
+	}
+	return
+}
+
+// Return a default PLogger.
+func NewPLoggerDefault() (plog *PLogger) {
+	cplog := C.NewPLoggerTDefault()
+	plog = cplog.toPLogger(true)
+	return
+}

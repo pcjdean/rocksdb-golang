@@ -12,6 +12,7 @@
 
 #include <rocksdb/env.h>
 #include "env.h"
+#include "envPrivate.h"
 
 using namespace rocksdb;
 
@@ -118,3 +119,7 @@ void LoggerFatal(Logger_t* info_log, const char* msg)
     }
 }
 
+
+DEFINE_C_WRAP_CONSTRUCTOR(PLogger)
+DEFINE_C_WRAP_DESTRUCTOR(PLogger)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(PLogger)
