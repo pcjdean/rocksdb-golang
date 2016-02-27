@@ -1,7 +1,7 @@
 ####Step one:
 
  * Install rocksdb 
- * The supported version is 4.5
+ * The tested version is 4.5 (latest)
  * Install gflags
  * Install snappy.
  * Install zlib.
