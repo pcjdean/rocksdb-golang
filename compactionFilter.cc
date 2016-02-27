@@ -4,8 +4,8 @@
 
 #include <assert.h>
 #include <rocksdb/slice_transform.h>
-#include "compactionfilterPrivate.h"
-#include "compactionfilter.h"
+#include "compactionFilterPrivate.h"
+#include "compactionFilter.h"
 
 extern "C" {
 #include "_cgo_export.h"
