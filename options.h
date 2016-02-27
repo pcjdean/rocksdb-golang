@@ -14,7 +14,7 @@ using namespace rocksdb;
 #include "snapshot.h"
 #include "table.h"
 #include "comparator.h"
-#include "compactionfilter.h"
+#include "compactionFilter.h"
 #include "mergeOperator.h"
 #include "sliceTransform.h"
 #include "memtablerep.h"
