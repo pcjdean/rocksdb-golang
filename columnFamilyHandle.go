@@ -4,7 +4,7 @@
 package rocksdb
 
 /*
-#include "columnfamilyhandle.h"
+#include "columnFamilyHandle.h"
 */
 import "C"
 
