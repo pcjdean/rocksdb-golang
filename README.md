@@ -1,7 +1,11 @@
 ####Step one:
 
- - Install rocksdb 
- - The supported version is 4.5
+ * Install rocksdb 
+ * The supported version is 4.5
+ * Install gflags
+ * Install snappy.
+ * Install zlib.
+ * Install bzip2:
 
 ####Step two:
 
