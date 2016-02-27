@@ -121,12 +121,6 @@ DEFINE_C_WRAP_SETTER_PTR_WRAP(ColumnFamilyOptions, compaction_filter, Compaction
 // Default: a factory that doesn't provide any object
 DEFINE_C_WRAP_SETTER_WRAP(ColumnFamilyOptions, compaction_filter_factory, PCompactionFilterFactory)
 
-// Version TWO of the compaction_filter_factory
-// It supports rolling compaction
-//
-// Default: a factory that doesn't provide any object
-DEFINE_C_WRAP_SETTER_WRAP(ColumnFamilyOptions, compaction_filter_factory_v2, PCompactionFilterFactoryV2)
-
 DEFINE_C_WRAP_CONSTRUCTOR(DBOptions)
 DEFINE_C_WRAP_CONSTRUCTOR_RAW_ARGS(DBOptions, const Options&)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(DBOptions)
@@ -224,3 +218,8 @@ DEFINE_C_WRAP_DESTRUCTOR(FlushOptions)
 DEFINE_C_WRAP_CONSTRUCTOR(CompactionOptions)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(CompactionOptions)
 DEFINE_C_WRAP_DESTRUCTOR(CompactionOptions)
+
+
+DEFINE_C_WRAP_CONSTRUCTOR(CompactRangeOptions)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT(CompactRangeOptions)
+DEFINE_C_WRAP_DESTRUCTOR(CompactRangeOptions)

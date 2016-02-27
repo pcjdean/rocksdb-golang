@@ -254,18 +254,6 @@ func (cfopt *ColumnFamilyOptions) SetCompactionFilterFactory(cff *CompactionFilt
 	C.ColumnFamilyOptions_set_compaction_filter_factory(ccfopt, &cff.cff)
 }
 
-// Version TWO of the compaction_filter_factory
-// It supports rolling compaction
-//
-// Default: a factory that doesn't provide any object
-func (cfopt *ColumnFamilyOptions) SetCompactionFilterFactoryV2(cff *CompactionFilterFactoryV2) {
-	var ccfopt *C.ColumnFamilyOptions_t = &cfopt.cfopt
-	if nil == cff {
-		cff = NewDefaultCompactionFilterFactoryV2()
-	}
-	C.ColumnFamilyOptions_set_compaction_filter_factory_v2(ccfopt, &cff.cff)
-}
-
 type DBOptions struct {
 	dbopt C.DBOptions_t
 }
@@ -554,5 +542,21 @@ func NewCompactionOptions() *CompactionOptions {
 	copt := &CompactionOptions{copt: C.NewCompactionOptionsTDefault()}
 	runtime.SetFinalizer(copt, finalize)
 	return copt
+}
+
+// CompactRangeOptions is used by CompactRange() call.
+type CompactRangeOptions struct {
+	cropt C.CompactRangeOptions_t
+}
+
+func (cropt *CompactRangeOptions) finalize() {
+	var ccropt *C.CompactRangeOptions_t = &cropt.cropt
+	C.DeleteCompactRangeOptionsT(ccropt, toCBool(false))
+}
+
+func NewCompactRangeOptions() *CompactRangeOptions {
+	cropt := &CompactRangeOptions{cropt: C.NewCompactRangeOptionsTDefault()}
+	runtime.SetFinalizer(cropt, finalize)
+	return cropt
 }
 

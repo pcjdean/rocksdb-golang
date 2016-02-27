@@ -31,7 +31,7 @@ DEFINE_C_WRAP_STRUCT(ReadOptions)
 DEFINE_C_WRAP_STRUCT(WriteOptions)
 DEFINE_C_WRAP_STRUCT(FlushOptions)
 DEFINE_C_WRAP_STRUCT(CompactionOptions)
-
+DEFINE_C_WRAP_STRUCT(CompactRangeOptions)
 
 // Cast Options* to DBOptions*
 DEFINE_C_WRAP_STATIC_CAST_DEC(Options, DBOptions)
@@ -61,7 +61,6 @@ DEFINE_C_WRAP_SETTER_WRAP_DEC(ColumnFamilyOptions, comparator, Comparator)
 // Get/Set methods for compaction filter
 DEFINE_C_WRAP_SETTER_WRAP_DEC(ColumnFamilyOptions, compaction_filter, CompactionFilter)
 DEFINE_C_WRAP_SETTER_WRAP_DEC(ColumnFamilyOptions, compaction_filter_factory, PCompactionFilterFactory)
-DEFINE_C_WRAP_SETTER_WRAP_DEC(ColumnFamilyOptions, compaction_filter_factory_v2, PCompactionFilterFactoryV2)
 void ColumnFamilyOptions_set_compression_per_level(ColumnFamilyOptions_t* opt,
                                                    int* level_values,
                                                    size_t num_levels);
@@ -135,6 +134,11 @@ DEFINE_C_WRAP_DESTRUCTOR_DEC(FlushOptions)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(CompactionOptions)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(CompactionOptions)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(CompactionOptions)
+
+
+DEFINE_C_WRAP_CONSTRUCTOR_DEC(CompactRangeOptions)
+DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(CompactRangeOptions)
+DEFINE_C_WRAP_DESTRUCTOR_DEC(CompactRangeOptions)
 
 
 #ifdef __cplusplus

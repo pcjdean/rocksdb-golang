@@ -6,7 +6,7 @@ package rocksdb
 
 /*
 #cgo CXXFLAGS: -std=c++11
-#cgo LDFLAGS: -lrocksdb -lstdc++ -lz -lrt
+#cgo LDFLAGS: -lrocksdb -lstdc++ -lz -lrt -lsnappy -lbz2
 #include "db.h"
 */
 import "C"
@@ -934,7 +934,11 @@ func (db *DB) GetApproximateSizes(rngs []*Range, cfh ...*ColumnFamilyHandle) (va
 // the data set or a given level (specified by non-negative target_level).
 // Compaction outputs should be placed in options.db_paths[target_path_id].
 // Behavior is undefined if target_path_id is out of range.
-func (db *DB) CompactRange(begin []byte, end []byte, cfhs ...interface{}) (stat *Status) {
+func (db *DB) CompactRange(cropt *CompactRangeOptions, begin []byte, end []byte, cfhs ...interface{}) (stat *Status) {
+	if nil == cropt {
+		panic("CompactRange: cropt is nil")
+	}
+
 	if db.closed {
 		stat = NewDBClosedStatus()
 		return
@@ -952,40 +956,13 @@ func (db *DB) CompactRange(begin []byte, end []byte, cfhs ...interface{}) (stat 
 
 	var (
 		cdb *C.DB_t = &db.db
-		credl C.bool 
-		ctarl C.int = -1
-		ctpi C.uint32_t 
 	)
-
-	if cfhs != nil {
-		n:= len(cfhs)
-		v, ok := cfhs[n].(uint32)
-		if ok {
-			ctpi = C.uint32_t(v)
-			n--
-		}
-
-		if 0 < n {
-			v, ok := cfhs[n].(int)
-			if ok {
-				ctarl = C.int(v)
-				n--
-			}
-
-			if 0 < n {
-				v, ok := cfhs[n].(bool)
-				if ok {
-					credl = toCBool(v)
-				}
-			}
-		}
-	}
 
 	var cstat C.Status_t
 	if ccfhs != nil {
-		cstat = C.DBCompactRangeWithColumnFamily(cdb, &ccfhs[0], &cbegin.slc, &cend.slc, credl, ctarl, ctpi)
+		cstat = C.DBCompactRangeWithColumnFamily(cdb, &cropt.cropt, &ccfhs[0], &cbegin.slc, &cend.slc)
 	} else {
-		cstat = C.DBCompactRange(cdb, &cbegin.slc, &cend.slc, credl, ctarl, ctpi)
+		cstat = C.DBCompactRange(cdb, &cropt.cropt, &cbegin.slc, &cend.slc)
 	}
 	stat = cstat.toStatus()
 	return

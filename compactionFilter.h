@@ -30,23 +30,12 @@ DEFINE_C_WRAP_STRUCT(CompactionFilter_Context)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(CompactionFilter_Context)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(CompactionFilter_Context)
 
-DEFINE_C_WRAP_STRUCT(CompactionFilterV2)
-DEFINE_C_WRAP_CONSTRUCTOR_DEC(CompactionFilterV2)
-DEFINE_C_WRAP_DESTRUCTOR_DEC(CompactionFilterV2)
-
 DEFINE_C_WRAP_STRUCT(PCompactionFilterFactory)
 DEFINE_C_WRAP_CONSTRUCTOR_DEC(PCompactionFilterFactory)
 DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(PCompactionFilterFactory)
 DEFINE_C_WRAP_DESTRUCTOR_DEC(PCompactionFilterFactory)
 // Return a CompactionFilterFactory from a go ICompactionFilterFactory
 PCompactionFilterFactory_t NewPCompactionFilterFactory(void* go_cpflt);
-
-DEFINE_C_WRAP_STRUCT(PCompactionFilterFactoryV2)
-DEFINE_C_WRAP_CONSTRUCTOR_DEC(PCompactionFilterFactoryV2)
-DEFINE_C_WRAP_CONSTRUCTOR_DEFAULT_DEC(PCompactionFilterFactoryV2)
-DEFINE_C_WRAP_DESTRUCTOR_DEC(PCompactionFilterFactoryV2)
-// Return a CompactionFilterFactoryV2 from a go ICompactionFilterFactoryV2
-PCompactionFilterFactoryV2_t NewPCompactionFilterFactoryV2(void* go_cpflt, void* go_stf);
 
 
 #ifdef __cplusplus

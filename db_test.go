@@ -51,7 +51,8 @@ func checkCompaction(t *testing.T, dbname *string, options *Options, roptions *R
 	db.checkGet(t, roptions, []byte("baz"), []byte("bazvalue"))
 
 	// Force compaction
-	db.CompactRange(nil, nil)
+	cropt := NewCompactRangeOptions()
+	db.CompactRange(cropt, nil, nil)
 
 	// should have filtered bar, but not foo
 	db.checkGet(t, roptions, []byte("foo"), []byte("foovalue"))
@@ -193,47 +194,6 @@ func (tcff *testCompactionFilterFactory) CreateCompactionFilter(context *Compact
 	return cff
 }
 
-// Custom CompactionFilterV2 filter
-type testCompactionFilterV2 struct {
-	t *testing.T
-}
-
-func (tcf *testCompactionFilterV2) Name() string {
-	return "TestCompactionFilterV2"
-}
-
-func (tcf *testCompactionFilterV2) Filter(level int, keys, exvals [][]byte) (newvals [][]byte, valchgs []bool, removed []bool) {
-	l := len(keys)
-	if 0 < l {
-		removed = make([]bool, l)
-		valchgs = make([]bool, l)
-	}
-
-	for i, _ := range keys {
-		lv := len(exvals[i])
-		// If any value is "gc", it's removed.
-		if 2 == lv && bytes.Equal([]byte("gc"), exvals[i]) {
-			removed[i] = true;
-		} else if 6 == lv && bytes.Equal([]byte("gc all"), exvals[i]) {
-			// If any value is "gc all", all keys are removed.
-			for j, _ := range keys {
-				removed[j] = true;
-			}
-			// tcf.t.Logf("testCompactionFilter - gc all - level = %v, keys = %s, exvals = %s, newvals = %s, valchgs = %v, removed = %v", level, keys, exvals, newvals, valchgs, removed)
-			return;
-		} else if 6 == lv && bytes.Equal([]byte("change"), exvals[i]) {
-			// If value is "change", set changed value to "changed".
-			newvals = append(newvals, []byte("changed"))
-			valchgs[i] = true
-		} else {
-			// Otherwise, no keys are removed.
-		}
-	}
-
-	// tcf.t.Logf("testCompactionFilter level = %v, keys = %s, exvals = %s, newvals = %s, valchgs = %v, removed = %v", level, keys, exvals, newvals, valchgs, removed)
-	return
-}
-
 // Custom SliceTransform filter
 type testSliceTransform struct {
 	t *testing.T
@@ -272,30 +232,6 @@ func (tstf *testSliceTransform) SameResultWhenAppended(prefix []byte) bool {
 	return false
 }
 
-// Custom CompactionFilterFactoryV2 filter
-type testCompactionFilterFactoryV2 struct {
-	t *testing.T
-	istf ISliceTransform
-}
-
-func (tcff *testCompactionFilterFactoryV2) Name() string {
-	return "TestCompactionFilterV2"
-}
-
-func (tcff *testCompactionFilterFactoryV2) CreateCompactionFilterV2(context *CompactionFilterContext) ICompactionFilterV2 {
-	// tcff.t.Logf("testCompactionFilterFactoryV2 context = %v", context)
-	cff := &testCompactionFilterV2{t: tcff.t}
-	return cff
-}
-
-func (tcff *testCompactionFilterFactoryV2) GetPrefixExtractor() ISliceTransform {
-	return tcff.istf
-}
-
-func (tcff *testCompactionFilterFactoryV2) SetPrefixExtractor(prextrc ISliceTransform) {
-	tcff.istf = prextrc
-}
-
 // Test from rocksdb's c_test.c.
 func TestCMain(t *testing.T) {
 	var (
@@ -305,6 +241,8 @@ func TestCMain(t *testing.T) {
 
 	dbname := fmt.Sprintf("%s/rocksdb_go_test-%d", os.TempDir(), os.Geteuid);
 	dbbackupname := fmt.Sprintf("%s/rocksdb_go_test-%d-backup", os.TempDir(), os.Geteuid);
+	fmt.Printf("rocksdbgo version = %d.%d\n", majorVersionGo, minorVersionGo)
+	fmt.Printf("rocksdb version = %d.%d\n", majorVersion, minorVersion)
 	t.Log("phase: create_objects")
 	fmt.Printf("dbname = %s\n", dbname)
 	fmt.Printf("dbbackupname = %s\n", dbbackupname)
@@ -408,14 +346,15 @@ func TestCMain(t *testing.T) {
 	be.Close()
 
 	t.Log("phase: compactall")
-	stat = db.CompactRange(nil, nil)
+	cropt := NewCompactRangeOptions()
+	stat = db.CompactRange(cropt, nil, nil)
 	if !stat.Ok() {
 		t.Fatalf("err: compactall: stat = %s", stat)
 	}
 	db.checkGet(t, ropts, []byte("foo"), []byte("hello"))
 
 	t.Log("phase: compactrange")
-	stat = db.CompactRange([]byte("a"), []byte("z"))
+	stat = db.CompactRange(cropt, []byte("a"), []byte("z"))
 	if !stat.Ok() {
 		t.Fatalf("err: compactrange: stat = %s", stat)
 	}
@@ -514,7 +453,7 @@ func TestCMain(t *testing.T) {
 	// files (https://reviews.facebook.net/D6123) would leave
 	// around deleted files and the repair process will find
 	// those files and put them back into the database.
-	stat = db.CompactRange(nil, nil)
+	stat = db.CompactRange(cropt, nil, nil)
 	db.Close()
 	options.SetErrorIfExists(false);
 	options.SetCreateIfMissing(false)
@@ -558,7 +497,7 @@ func TestCMain(t *testing.T) {
 		if !stat.Ok() {
 			t.Fatalf("err: put err: stat = %s", stat)
 		}
-		db.CompactRange(nil, nil)
+		db.CompactRange(cropt, nil, nil)
 
 		tfp.fakeResult = true
 		db.checkGet(t, ropts, []byte("foo"), []byte("foovalue"))
@@ -605,56 +544,6 @@ func TestCMain(t *testing.T) {
 	db = checkCompaction(t, &dbname, options_with_filter_factory, ropts, woptions)
 	options_with_filter_factory.SetCompactionFilterFactory(nil)
 	options_with_filter_factory.Close()
-
-	t.Log("phase: compaction_filter_v2")
-	tstf := &testSliceTransform{t: t}
-	tcfv2 := &testCompactionFilterFactoryV2{t: t}
-	factoryv2 := NewCompactionFilterFactoryV2(tcfv2, tstf)
-	db.Close()
-	stat = DestroyDB(options, &dbname)
-	t.Logf("compaction_filter_v2: DestroyDB: status = %s", stat)
-	options.SetCompactionFilterFactoryV2(factoryv2)
-	db, stat, _ = Open(options, &dbname)
-	if !stat.Ok() {
-		t.Fatalf("compaction_filter_v2: err: open: stat = %s", stat)
-	}
-	// Only foo2 is GC'd, foo3 is changed.
-	stat = db.Put(woptions, []byte("foo1"), []byte("no gc"))
-	if !stat.Ok() {
-		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
-	}
-	stat = db.Put(woptions, []byte("foo2"), []byte("gc"))
-	if !stat.Ok() {
-		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
-	}
-	stat = db.Put(woptions, []byte("foo3"), []byte("change"))
-	if !stat.Ok() {
-		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
-	}
-	// All bars are GC'd.
-	stat = db.Put(woptions, []byte("bar1"), []byte("no gc"))
-	if !stat.Ok() {
-		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
-	}
-	stat = db.Put(woptions, []byte("bar2"), []byte("gc all"))
-	if !stat.Ok() {
-		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
-	}
-	stat = db.Put(woptions, []byte("bar3"), []byte("no gc"))
-	if !stat.Ok() {
-		t.Fatalf("compaction_filter_v2:err: put err: stat = %s", stat)
-	}
-	// Compact the DB to garbage collect.
-	db.CompactRange(nil, nil)
-
-	// Verify foo entries.
-	db.checkGet(t, ropts, []byte("foo1"), []byte("no gc"))
-	db.checkGet(t, ropts, []byte("foo2"), nil)
-	db.checkGet(t, ropts, []byte("foo3"), []byte("changed"))
-	// Verify bar entries were all deleted.
-	db.checkGet(t, ropts, []byte("bar1"), nil)
-	db.checkGet(t, ropts, []byte("bar2"), nil)
-	db.checkGet(t, ropts, []byte("bar3"), nil)
 
 	t.Log("phase: merge_operator")
 	cmop := &testMergeOperator{t: t}

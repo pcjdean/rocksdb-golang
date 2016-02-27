@@ -654,39 +654,36 @@ void DBGetApproximateSizes(const DB_t* dbptr,
 // begin==nullptr is treated as a key before all keys in the database.
 // end==nullptr is treated as a key after all keys in the database.
 // Therefore the following call will compact the entire database:
-//    db->CompactRange(nullptr, nullptr);
+//    db->CompactRange(options, nullptr, nullptr);
 // Note that after the entire database is compacted, all data are pushed
-// down to the last level containing any data. If the total data size
-// after compaction is reduced, that level might not be appropriate for
-// hosting all the files. In this case, client could set reduce_level
-// to true, to move the files back to the minimum level capable of holding
-// the data set or a given level (specified by non-negative target_level).
-// Compaction outputs should be placed in options.db_paths[target_path_id].
-// Behavior is undefined if target_path_id is out of range.
+// down to the last level containing any data. If the total data size after
+// compaction is reduced, that level might not be appropriate for hosting all
+// the files. In this case, client could set options.change_level to true, to
+// move the files back to the minimum level capable of holding the data set
+// or a given level (specified by non-negative options.target_level).
 Status_t DBCompactRangeWithColumnFamily(const DB_t* dbptr, 
+                                        const CompactRangeOptions_t* compact_range_options,
                                         const ColumnFamilyHandle_t* column_family,
-                                        const Slice_t* begin, const Slice_t* end,
-                                        bool reduce_level, int target_level,
-                                        uint32_t target_path_id)
+                                        const Slice_t* begin, const Slice_t* end)
 {
     assert(dbptr != NULL);
     assert(GET_REP(dbptr, DB) != NULL);
     assert(GET_REP(column_family, ColumnFamilyHandle) != NULL);
+    assert(GET_REP(compact_range_options, CompactRangeOptions) != NULL);
     assert(begin != NULL);
     assert(end != NULL);
-    Status stat = GET_REP(dbptr, DB)->CompactRange(GET_REP(column_family, ColumnFamilyHandle), GET_REP(begin, Slice), GET_REP(end, Slice), reduce_level, target_level, target_path_id);
+    Status stat = GET_REP(dbptr, DB)->CompactRange(GET_REP_REF(compact_range_options, CompactRangeOptions), GET_REP(column_family, ColumnFamilyHandle), GET_REP(begin, Slice), GET_REP(end, Slice));
     return NewStatusTCopy(dbptr ?
                           &stat :
                           const_cast<Status*>(&invalid_status));
 }
 
 Status_t DBCompactRange(const DB_t* dbptr, 
-                        const Slice_t* begin, const Slice_t* end,
-                        bool reduce_level, int target_level,
-                        uint32_t target_path_id)
+                        const CompactRangeOptions_t* compact_range_options,
+                        const Slice_t* begin, const Slice_t* end)
 {
     const ColumnFamilyHandle_t column_family = DBDefaultColumnFamily(dbptr);
-    return DBCompactRangeWithColumnFamily(dbptr, &column_family, begin, end, reduce_level, target_level, target_path_id);
+    return DBCompactRangeWithColumnFamily(dbptr, compact_range_options, &column_family, begin, end);
 }
 
 Status_t DBSetOptionsWithColumnFamily(const DB_t* dbptr, 
@@ -1167,3 +1164,15 @@ Status_t DBRepairDB(const String_t* dbname, const Options_t* options)
     return NewStatusTCopy(&stat);
 }
 #endif
+
+// Return the major version of DB.
+int DBGetMajorVersion()
+{
+    return kMajorVersion;
+}
+
+// Return the minor version of DB.
+int DBGetMinorVersion()
+{
+    return kMinorVersion;
+}

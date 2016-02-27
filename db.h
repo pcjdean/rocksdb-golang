@@ -134,14 +134,12 @@ void DBGetApproximateSizes(const DB_t* dbptr,
                            const Range_t* range, int n,
                            uint64_t* sizes);
 Status_t DBCompactRangeWithColumnFamily(const DB_t* dbptr, 
+                                        const CompactRangeOptions_t* compact_range_options,
                                         const ColumnFamilyHandle_t* column_family,
-                                        const Slice_t* begin, const Slice_t* end,
-                                        bool reduce_level, int target_level,
-                                        uint32_t target_path_id);
+                                        const Slice_t* begin, const Slice_t* end);
 Status_t DBCompactRange(const DB_t* dbptr, 
-                        const Slice_t* begin, const Slice_t* end,
-                        bool reduce_level, int target_level,
-                        uint32_t target_path_id);
+                        const CompactRangeOptions_t* compact_range_options,
+                        const Slice_t* begin, const Slice_t* end);
 Status_t DBSetOptionsWithColumnFamily(const DB_t* dbptr, 
                                       const ColumnFamilyHandle_t* column_family,
                                       const String_t new_options[],
@@ -209,6 +207,11 @@ Status_t DBGetPropertiesOfAllTables(const DB_t* dbptr,
 Status_t DBDestroyDB(const String_t* name, const Options_t* options);
 Status_t DBRepairDB(const String_t* dbname, const Options_t* options);
 
+
+// Return the major version of DB.
+int DBGetMajorVersion();
+// Return the minor version of DB.
+int DBGetMinorVersion();
 
 #ifdef __cplusplus
 }  /* end extern "C" */

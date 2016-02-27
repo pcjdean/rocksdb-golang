@@ -12,7 +12,6 @@ using namespace rocksdb;
 typedef rocksdb::CompactionFilter::Context CompactionFilter_Context;
 
 typedef std::shared_ptr<CompactionFilterFactory> PCompactionFilterFactory;
-typedef std::shared_ptr<CompactionFilterFactoryV2> PCompactionFilterFactoryV2;
 #endif
 
 #endif  // GO_ROCKSDB_INCLUDE_COMPACTION_FILTER_PRIVATE_H_
