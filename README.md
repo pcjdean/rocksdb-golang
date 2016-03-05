@@ -23,5 +23,5 @@
  4. DB related objects can be closed manually and garbage collected.
  5. It supports most of features already and can be easily extended with the current code struct.
 
-###$Usage:
+###Usage:
 Check TestCMain() in db_test.go
