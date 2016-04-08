@@ -13,8 +13,6 @@
  2. Go to source folder
  3. Run  'go test -v'
 
-*Note: It's tested on Ubuntu so far.*
-
 ###Features of this implementation:
 
  1. It's based totally on the C++ head files of rocksdb. So, it potentially can support all the features of rocksdb.
